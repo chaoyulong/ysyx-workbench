@@ -16,6 +16,11 @@
 #include <isa.h>
 #include <memory/paddr.h>
 
+elf_fun fun_buf[1024];
+uint32_t fun_buf_count = 0;
+
+void elf_get_func(char *filename); 
+
 void init_rand();
 void init_log(const char *log_file);
 void init_mem();
@@ -32,8 +37,6 @@ static void welcome() {
   Log("Build time: %s, %s", __TIME__, __DATE__);
   printf("Welcome to %s-NEMU!\n", ANSI_FMT(str(__GUEST_ISA__), ANSI_FG_YELLOW ANSI_BG_RED));
   printf("For help, type \"help\"\n");
-  Log("Exercise: Please remove me in the source code and compile NEMU again.");
-  assert(0);
 }
 
 #ifndef CONFIG_TARGET_AM
@@ -75,15 +78,17 @@ static int parse_args(int argc, char *argv[]) {
     {"diff"     , required_argument, NULL, 'd'},
     {"port"     , required_argument, NULL, 'p'},
     {"help"     , no_argument      , NULL, 'h'},
+    {"etrace"   , required_argument, NULL, 'e'},
     {0          , 0                , NULL,  0 },
   };
   int o;
-  while ( (o = getopt_long(argc, argv, "-bhl:d:p:", table, NULL)) != -1) {
+  while ( (o = getopt_long(argc, argv, "-bhl:d:p:e:", table, NULL)) != -1) {
     switch (o) {
       case 'b': sdb_set_batch_mode(); break;
       case 'p': sscanf(optarg, "%d", &difftest_port); break;
       case 'l': log_file = optarg; break;
       case 'd': diff_so_file = optarg; break;
+      case 'e': elf_get_func(optarg); break;
       case 1: img_file = optarg; return 0;
       default:
         printf("Usage: %s [OPTION...] IMAGE [args]\n\n", argv[0]);
@@ -151,3 +156,83 @@ void am_init_monitor() {
   welcome();
 }
 #endif
+
+
+#ifdef CONFIG_FTRACE
+void elf_get_func(char *filename) 
+{  
+  FILE *fp;
+  size_t rs;
+  int ostype = 0;
+
+  char strtable[9999];  // 字符串数据暂存
+  Elf32_Ehdr ehdr;    
+  Elf32_Shdr shdr[99], _symtab, _strtab;  // 
+  Elf32_Sym symbuf[9999];
+
+  unsigned char sym_type;
+
+  uint32_t shdr_count;  // 节头表数据的数量
+  uint32_t sym_count;   // 符号表数据的数量
+
+  if(filename == NULL) return;
+  fp = fopen(filename, "r");
+  if(fp == NULL) return;
+  rs = fread(strtable, 1, 5, fp); if(rs == 0) return;
+  if(strtable[0] != 0x7f || strtable[1] != 'E' || strtable[2] != 'L' || strtable[3] != 'F') return;
+  ostype = strtable[4] == 1 ? 32 : 64;// 判断elf文件为32位还是64位,
+  if(ostype != 32) return;
+
+  fseek(fp, 0, SEEK_SET);
+  rs = fread(&ehdr, sizeof(Elf32_Ehdr), 1, fp); if(rs == 0) return;// 获取ELF头
+
+  shdr_count = ehdr.e_shnum;    
+
+  fseek(fp, ehdr.e_shoff, SEEK_SET);
+  rs = fread(shdr, sizeof(Elf32_Shdr), shdr_count, fp); if(rs == 0) return;
+
+  fseek(fp, shdr[ehdr.e_shstrndx].sh_offset, SEEK_SET); 
+  rs = fread(strtable, 1, shdr[ehdr.e_shstrndx].sh_size, fp); if(rs == 0) return; // 获取结头表的字符串数据
+
+  for(int i = 0; i < shdr_count; ++i) // 从结头表分离出符号表和字符串表
+  {
+    if(strcmp(".symtab", &strtable[shdr[i].sh_name]) == 0)    // 获取SYMTAB
+    {
+      _symtab = shdr[i];
+    }
+    else if(strcmp(".strtab", &strtable[shdr[i].sh_name]) == 0)    // 获取STRTAB
+    {
+      _strtab = shdr[i];
+    }
+  }
+  sym_count = _symtab.sh_size/_symtab.sh_entsize;
+  fseek(fp, _symtab.sh_offset, SEEK_SET);  
+  rs = fread(symbuf, _symtab.sh_entsize, _symtab.sh_size, fp); if(rs == 0) return;// 获取符号表中的数据
+
+  fseek(fp, _strtab.sh_offset, SEEK_SET);   
+  rs = fread(strtable, 1, _strtab.sh_size, fp); if(rs == 0) return; // 获取字符串表中的数据
+
+  for(int j = 0; j < sym_count; j++)
+  {
+    sym_type = ELF32_ST_TYPE(symbuf[j].st_info);
+
+    if(sym_type == STT_FUNC && symbuf[j].st_size != 0 )
+    {
+      fun_buf[fun_buf_count].addr = symbuf[j].st_value;
+      fun_buf[fun_buf_count].size = symbuf[j].st_size;
+      strcpy(fun_buf[fun_buf_count].name, &strtable[symbuf[j].st_name]);
+      fun_buf_count++;
+    }
+  }
+  //for (int i = 0; i < fun_buf_count; i++)
+  //{
+  //  printf("addr = 0x%08x    name = %s\n", fun_buf[i].addr, fun_buf[i].name);
+  //}
+}
+#else
+void elf_get_func(char *filename) 
+{
+  puts(filename);
+}
+#endif
+

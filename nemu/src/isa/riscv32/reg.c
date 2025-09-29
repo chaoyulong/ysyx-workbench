@@ -23,9 +23,49 @@ const char *regs[] = {
   "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6"
 };
 
-void isa_reg_display() {
+void isa_reg_display()  // 共有32个寄存器
+{   
+  printf("         reg     hex            dec\n");
+  for(int i = 0; i < 32; i++)
+  {
+    printf("-- %-2d -- %-3s     0x%08x     %-u\n", i, regs[i], gpr(i), gpr(i));
+  }
+  printf("-- 32 -- pc      0x%08x     %-u\n", cpu.pc, cpu.pc);    // 最后打印PC的值,cpu的寄存器组包括gpr和pc
 }
 
-word_t isa_reg_str2val(const char *s, bool *success) {
-  return 0;
+void isa_reg_display_ref(CPU_state *ref)  // difftest使用，对比输出
+{   
+   printf("         reg     hut            ref\n");
+    for(int i = 0; i < 32; i++)
+    {
+      printf("-- %-2d -- %-3s     0x%08x     0x%08x\n", i, regs[i], gpr(i), ref->gpr[i]);
+    }
+    printf("-- 32 -- pc      0x%08x     0x%08x\n", cpu.pc, ref->pc);    // 最后打印PC的值,cpu的寄存器组包括gpr和pc
+}
+
+word_t isa_reg_str2val(const char *s, bool *success)
+{
+  *success = false; 
+  word_t result = 0;
+  if(s[0] != '$')     // 判断符号是否正确
+    return result;
+
+  if(strcmp(&s[1], "pc") == 0)
+  {
+    result = cpu.pc;
+    *success = true;
+  }
+  else
+  {
+    for(int i = 0; i < 32; i++)
+    {
+      if(strcmp(&s[1], regs[i]) == 0)   // 若查找到该名称的寄存器
+      {
+        result = gpr(i);
+        *success = true;
+        break;
+      }
+    }
+  }
+  return result;
 }

@@ -18,6 +18,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "sdb.h"
+#include "memory/paddr.h"
 
 static int is_batch_mode = false;
 
@@ -49,10 +50,17 @@ static int cmd_c(char *args) {
 
 
 static int cmd_q(char *args) {
+  nemu_state.state = NEMU_QUIT;
   return -1;
 }
 
 static int cmd_help(char *args);
+static int cmd_si(char *args);    // 单步执行
+static int cmd_info(char *args);  // 打印寄存器值
+static int cmd_x(char *args);     // 打印内存值
+static int cmd_p(char *args);     // 表达式计算
+static int cmd_w(char *args);     // 设置监视点
+static int cmd_d(char *args);     // 删除监视点
 
 static struct {
   const char *name;
@@ -62,7 +70,12 @@ static struct {
   { "help", "Display information about all supported commands", cmd_help },
   { "c", "Continue the execution of the program", cmd_c },
   { "q", "Exit NEMU", cmd_q },
-
+  { "si", "Execute next program line", cmd_si },
+  { "info", "print the reg(r) or watchpoint(w) value", cmd_info },
+  { "x", "Print memory data", cmd_x },
+  { "p", "Expression evaluation", cmd_p },
+  { "w", "Set up a watchpoint", cmd_w },
+  { "d", "Delete a watchpoint", cmd_d },
   /* TODO: Add more commands */
 
 };
@@ -89,6 +102,164 @@ static int cmd_help(char *args) {
     }
     printf("Unknown command '%s'\n", arg);
   }
+  return 0;
+}
+
+static int cmd_si(char *args) 
+{
+  int steps = 0;
+  if (args == NULL)  // 没有参数默认执行一步
+  {
+    cpu_exec(1);  // 模拟CPU执行一条命令
+  }
+  else 
+  {
+    if(strspn(args, "0123456789") == strlen(args))  // 如果si之后的字符为纯数字
+    {
+      steps = atoi(args);
+      cpu_exec(steps); 
+      printf("-- The program executes %d step forward\n", steps);
+    }
+    else
+    {
+      printf("Please enter the right number after <si>\n");
+    }
+  }
+  return 0;
+}
+
+
+static int cmd_info(char *args) 
+{
+  char *arg = strtok(NULL, " ");  // extract the first argument
+  bool success = false;
+  word_t result = 0;
+  if(arg == NULL)                 //
+  {
+    printf("Please enter the right cmd after <info>\n");
+  }
+  else if(strcmp(arg, "r") == 0)   // 如果info之后的字符为r
+  {
+    arg = strtok(NULL, " ");  // 获取下一个字符
+    if(arg == NULL)
+      isa_reg_display();        // 打印所有寄存器值
+    else
+    {
+      result = isa_reg_str2val(arg, &success);
+      if(success)
+      {
+        printf("         reg     hex            dec\n");
+        printf("-- -- -- %-3s     0x%08x     %-u\n", arg, result, result);
+      }
+      else        // 若没有找到对应寄存器，说明参数错误
+      {
+        printf("Unknown reg '%s'\n", arg);
+      }
+    }
+  }
+  else if(strcmp(arg, "w") == 0)   // 如果info之后的字符为w
+  {
+#ifndef CONFIG_WATCHPOINT
+  printf("The monitoring point is not enabled, please go to menuconfig to enable it\n");
+  return 0;
+#endif
+    arg = strtok(NULL, " ");  // 获取下一个字符
+    if(arg == NULL)
+    {
+      display_all_watchpoints();        // 打印所有监视点的值
+    }
+    else
+    {
+    }
+  }
+  else
+  {
+    printf("Unknown command '%s'\n", arg);
+  }
+
+  return 0;
+}
+
+static int cmd_x(char *args) 
+{
+  char *arg = strtok(NULL, " ");  // extract the first argument
+  int len = 0;          // 要读取的长度
+  paddr_t addr = 0;     // 地址
+  char *temp_arg;       // 用来储存截断后的后一段字符串
+
+  if(arg == NULL)                 //
+  {
+    printf("Please enter the right cmd after <x>\n");
+  }
+  else
+  {
+    if(strspn(arg, "0123456789") == strlen(arg))  // 如果x之后的字符为纯数字
+    {
+      len = atoi(arg);        // 获取第二个参数：读取的长度
+      temp_arg = arg + strlen(arg) + 1; // 获取截断后的另一半字符串
+      if(strspn(temp_arg + 2, "0123456789abcdefABCDEF") == strlen(temp_arg)-2 && temp_arg[0] == '0' && (temp_arg[1] == 'x' || temp_arg[1] == 'X'))
+      {
+        sscanf(temp_arg, "%x", &addr);    // 获取首地址
+        printf("   addr              hex               dec\n");
+        for(int i = 0; i < len; i++)
+        {
+          word_t dat = paddr_read(addr, 4);
+          printf("-- 0x%08x        0x%08x        %u\n", addr, dat, dat);
+          addr = addr + 4;
+        }        
+      }
+      else
+      {
+        printf("Please enter the right addr after <x N>\n");
+      }
+    }
+    else
+    {
+      printf("Please enter the right num after <x>\n");
+    }
+  }
+
+  return 0;
+}
+
+static int cmd_p(char *args) 
+{
+  bool success = false;
+  word_t outcome = 0;
+  outcome = expr(args,&success);
+  if(success)
+    printf("%s = %u\n", args, outcome);
+  else
+    printf("There is an error in the expression\n");
+  return 0;
+}
+
+static int cmd_w(char *args) 
+{
+#ifndef CONFIG_WATCHPOINT
+  printf("The monitoring point is not enabled, please go to menuconfig to enable it\n");
+  return 0;
+#endif
+  if(args == NULL)  return 0;
+  create_watchpoint(args);
+  return 0;
+}
+
+static int cmd_d(char *args) 
+{
+#ifndef CONFIG_WATCHPOINT
+  printf("The monitoring point is not enabled, please go to menuconfig to enable it\n");
+  return 0;
+#endif
+  int no = 555555;
+  if(args == NULL)  return 0;
+  char *arg = strtok(NULL, " ");  // extract the first argument
+  if(strspn(arg, "0123456789") == strlen(arg))  // 如果x之后的字符为纯数字
+  {
+    no = atoi(arg);
+    delete_watchpoint(no);
+  }
+  
   return 0;
 }
 

@@ -18,6 +18,7 @@
 
 // Located at src/isa/$(GUEST_ISA)/include/isa-def.h
 #include <isa-def.h>
+#include <elf.h>
 
 // The macro `__GUEST_ISA__` is defined in $(CFLAGS).
 // It will be expanded as "x86" or "mips32" ...
@@ -31,6 +32,7 @@ void init_isa();
 // reg
 extern CPU_state cpu;
 void isa_reg_display();
+void isa_reg_display_ref(CPU_state *ref);
 word_t isa_reg_str2val(const char *name, bool *success);
 
 // exec
@@ -54,5 +56,37 @@ word_t isa_query_intr();
 // difftest
 bool isa_difftest_checkregs(CPU_state *ref_r, vaddr_t pc);
 void isa_difftest_attach();
+
+
+//  CSR寄存器
+typedef struct {
+  paddr_t mepc;      // 异常pc    0x341
+  paddr_t mcause;    // 原因      0x342
+  paddr_t mtvec;     // 异常入口地址 0x305
+  paddr_t mstatus;   // 状态      0x300
+} riscv32_CSR_state;
+extern riscv32_CSR_state riscv32_CSR;
+
+char *get_csr_name(paddr_t csr);
+paddr_t *CSR_rw(paddr_t csr);
+
+// ftrace
+typedef struct elffun
+{
+  uint32_t addr;  // 地址
+  char name[64];  // 函数名
+  uint32_t size;
+}elf_fun;
+typedef struct _fun_list
+{
+  elf_fun *old_func;
+  elf_fun *new_func;
+  paddr_t addr;
+  int type;
+  struct _fun_list *next;
+}fun_list;
+#define FUNC_CALL 0
+#define FUNC_RET  1
+void print_func();
 
 #endif

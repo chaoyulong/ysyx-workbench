@@ -13,7 +13,7 @@ object Config {
       resetActiveLevel = HIGH
     ),
     onlyStdLogicVectorAtTopLevelIo = false, // 将所有无符号/有符号顶级 io 更改为 std_logic_vector类型。
-    genLineComments = true    // 添加注释
+    genLineComments = true,    // 添加注释
     headerWithDate = true     // 添加时间信息
   )
 

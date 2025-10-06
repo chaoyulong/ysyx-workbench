@@ -72,14 +72,14 @@ case class Adder() extends Component {
     val result = out port UInt(32 bits)
   }
 
-  val dat_a := io.rs1
-  val dat_b := io.rs2 ^ (sub_add #* 32)
-  val result_33 := dat_a + dat_b + sub_add.resize(32)
+  val dat_a = io.rs1
+  val dat_b = io.rs2 ^ (sub_add #* 32)
+  val result_33 = dat_a + dat_b + sub_add.resize(32)
 
   io.carry := result_33(32)
   io.result := result_33(0 to 31)
   io.zero := ~(result.orR)
-  io.overflow := (dat_a(31) === dat_b(31)) && (add_res(31) =/= dat_a(31));
+  io.overflow := (dat_a(31) === dat_b(31)) && (result(31) =/= dat_a(31));
 }
 
 // case class Shifter() extends Component {

@@ -67,7 +67,7 @@ case class Adder() extends Component {
     val sub_add = in port UInt(1 bits)
 
     val carry = out port Bits(1 bits)
-    val zero = out port UInt(1 bits)   
+    val zero = out port Bool
     val overflow = out port Bool
     val result = out port UInt(32 bits)
   }

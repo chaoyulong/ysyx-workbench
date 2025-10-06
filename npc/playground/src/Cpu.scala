@@ -78,7 +78,7 @@ case class Adder() extends Component {
 
   io.carry := result_33(32)
   io.result := result_33(0 to 31)
-  io.zero := ~(result.orR)
+  io.zero := ~(io.result.orR)
   io.overflow := (dat_a(31) === dat_b(31)) && (io.result(31) =/= dat_a(31));
 }
 

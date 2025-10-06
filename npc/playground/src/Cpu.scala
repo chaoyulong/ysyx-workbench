@@ -43,32 +43,60 @@ import spinal.core._
 //   val io = new Bundle {
 //     val rs1 = in port UInt(32 bits)
 //     val rs2 = in port UInt(32 bits)  
-//     val alu_ctr = in port Bits(4 bits) 
+//     val alu_ctr = in port UInt(4 bits) 
 
 //     val less = out port Bool
 //     val zero = out port Bool
 //     val alu_out = out port UInt(32bits) 
 //   }
 
+//   val sub_add = io.alu_ctr(0 to 2) === U("010") ? B"1" : io.alu_ctr(3) // 加法器的加减
+
+
+
+
+
+
 
 // }
 
-case class Shifter() extends Component {
+case class Adder() extends Component {
   val io = new Bundle {
-    val din = in port UInt(32 bits)
-    val shamt = in port UInt(5 bits)
-    val l_r = in port Bool
-    val a_l = in port Bool
-    val shift = out port UInt(32 bits)
+    val rs1 = in port UInt(32 bits)
+    val rs2 = in port UInt(32 bits)  
+    val sub_add = in port UInt(1 bits)
+
+    val carry = out port Bool
+    val zero = out port Bool   
+    val overflow = out port Bool  
+    val result = out port UInt(32 bits)
   }
 
-  switch(io.a_l ## io.l_r){
-    is(B"01") {io.shift := io.din |>> io.shamt}  // 逻辑右移
-    is(B"11") {io.shift := U(S(io.din) >> io.shamt)}  // 算数右移
-    default   {io.shift := io.din |<< io.shamt}   // 左移,使用的逻辑左移
-  }
+  val dat_a := io.rs1
+  val dat_b := io.rs2 ^ (sub_add #* 32)
+  val result_33 := dat_a + dat_b + sub_add.resize(32)
 
+  io.carry := result_33(32)
+  io.result := result_33(0 to 31)
+  io.zero := ~(result.orR)
+  io.overflow := (dat_a(31) === dat_b(31)) && (add_res(31) =/= dat_a(31));
 }
+
+// case class Shifter() extends Component {
+//   val io = new Bundle {
+//     val din = in port UInt(32 bits)
+//     val shamt = in port UInt(5 bits)
+//     val l_r = in port Bool
+//     val a_l = in port Bool
+//     val shift = out port UInt(32 bits)
+//   }
+
+//   switch(io.a_l ## io.l_r){
+//     is(B"01") {io.shift := io.din |>> io.shamt}  // 逻辑右移
+//     is(B"11") {io.shift := U(S(io.din) >> io.shamt)}  // 算数右移
+//     default   {io.shift := io.din |<< io.shamt}   // 左移,使用的逻辑左移
+//   }
+// }
 
 // case class Decoder() extends Component {
 //   val io = new Bundle {

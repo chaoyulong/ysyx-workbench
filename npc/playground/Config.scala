@@ -14,6 +14,9 @@ object Config {
     ),
     onlyStdLogicVectorAtTopLevelIo = false
   )
+  .withDebugComments()      // 源代码注释
+  .withDebugUnnamed()       // 未命名信号调试
+  .withLineNumbers()        // 行号信息
 
   def sim = SimConfig.
     withConfig(spinal).

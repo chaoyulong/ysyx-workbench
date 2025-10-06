@@ -13,7 +13,7 @@ object Config {
       resetActiveLevel = HIGH
     ),                                      // 设置将用作所有新 ``ClockDomain``时钟域默认值的配置。
     onlyStdLogicVectorAtTopLevelIo = false, // 将所有无符号/有符号顶级 io 更改为 std_logic_vector类型。
-    // anonymSignalPrefix = "aa_",             // 未命名信号的前缀
+    anonymSignalPrefix = "_zz",             // 未命名信号的前缀,默认为"_zz"
     genLineComments = true,                 // 添加注释
     headerWithDate = true,                  // 添加时间信息
     headerWithRepoHash = true,              // 添加git hash(默认为true)

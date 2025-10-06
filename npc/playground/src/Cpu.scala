@@ -82,21 +82,21 @@ case class Adder() extends Component {
   io.overflow := (dat_a(31) === dat_b(31)) && (io.result(31) =/= dat_a(31));
 }
 
-// case class Shifter() extends Component {
-//   val io = new Bundle {
-//     val din = in port UInt(32 bits)
-//     val shamt = in port UInt(5 bits)
-//     val l_r = in port Bool
-//     val a_l = in port Bool
-//     val shift = out port UInt(32 bits)
-//   }
+case class Shifter() extends Component {
+  val io = new Bundle {
+    val din = in port UInt(32 bits)
+    val shamt = in port UInt(5 bits)
+    val l_r = in port Bool
+    val a_l = in port Bool
+    val shift = out port UInt(32 bits)
+  }
 
-//   switch(io.a_l ## io.l_r){
-//     is(B"01") {io.shift := io.din |>> io.shamt}  // 逻辑右移
-//     is(B"11") {io.shift := U(S(io.din) >> io.shamt)}  // 算数右移
-//     default   {io.shift := io.din |<< io.shamt}   // 左移,使用的逻辑左移
-//   }
-// }
+  switch(io.a_l ## io.l_r){
+    is(B"01") {io.shift := io.din |>> io.shamt}  // 逻辑右移
+    is(B"11") {io.shift := U(S(io.din) >> io.shamt)}  // 算数右移
+    default   {io.shift := io.din |<< io.shamt}   // 左移,使用的逻辑左移
+  }
+}
 
 // case class Decoder() extends Component {
 //   val io = new Bundle {

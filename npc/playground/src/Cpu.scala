@@ -2,7 +2,7 @@ package playground
 
 import spinal.core._
 
-case class RegFile extends Component {
+case class RegFile() extends Component {
   val io = new Bundle {
     val addr_a = in port UInt(5 bits)
     val addr_b = in port UInt(5 bits)

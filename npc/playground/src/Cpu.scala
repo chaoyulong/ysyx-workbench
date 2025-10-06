@@ -15,11 +15,11 @@ case class RegFile() extends Component {
   }
 
   val rf = Vec(Reg(UInt(32 bits)), 16)    // riscv32e,有16个通用寄存器
-  when(w_en){
-    rf(addr_w(0 to 3)) := wdata
+  when(io.w_en){
+    rf(io.addr_w(0 to 3)) := io.wdata
   }
 
   rf(0) := U"32'h0"
-  rs1 := rf(addr_a(0 to 3))
-  rs2 := rf(addr_b(0 to 3)) 
+  io.rs1 := rf(io.addr_a(0 to 3))
+  io.rs2 := rf(io.addr_b(0 to 3)) 
 }

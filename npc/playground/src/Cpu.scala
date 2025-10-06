@@ -55,7 +55,7 @@ import spinal.core._
 
 case class Shifter() extends Component {
   val io = new Bundle {
-    val din = in port Int(32 bits)
+    val din = in port SInt(32 bits)
     val shamt = in port UInt(5 bits)
     val l_r = in port Bool
     val a_l = in port Bool

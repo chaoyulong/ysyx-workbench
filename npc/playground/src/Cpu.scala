@@ -63,8 +63,8 @@ case class Shifter() extends Component {
   }
 
   switch(io.a_l ## io.l_r){
-    is("01") {io.shift := io.din |>> io.shamt}  // 逻辑右移,
-    is("11") {io.shift := io.din >> io.shamt}  // 算数右移
+    is(B"01") {io.shift := io.din |>> io.shamt}  // 逻辑右移,
+    is(B"11") {io.shift := io.din >> io.shamt}  // 算数右移
     default   {io.shift := io.din |<< io.shamt}   // 左移,使用的逻辑左移
   }
 

@@ -12,10 +12,10 @@ object Config {
     defaultConfigForClockDomains = ClockDomainConfig(
       resetActiveLevel = HIGH
     ),
-    onlyStdLogicVectorAtTopLevelIo = false
+    onlyStdLogicVectorAtTopLevelIo = false, // 将所有无符号/有符号顶级 io 更改为 std_logic_vector类型。
+    genLineComments = true    // 添加注释
+    headerWithDate = true     // 添加时间信息
   )
-  .addTransformationPhase(new CommentWithFileNamePhase())  // 添加文件名注释
-  .addTransformationPhase(new CommentWithLineNumberPhase()) // 添加行号注释
 
   def sim = SimConfig.
     withConfig(spinal).

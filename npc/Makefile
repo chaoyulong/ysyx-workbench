@@ -1,7 +1,7 @@
 # verilator相关
 TOPNAME = TopLevel
 YXYXSOC_VFILE =
-NXDC_FILES = constr/pin.nxdc
+
 INC_PATH += $(abspath include)
 BUILD_DIR = ./build
 OBJ_DIR = $(BUILD_DIR)/obj_dir
@@ -10,7 +10,6 @@ SIM_WAVE = $(BUILD_DIR)/waveform.fst
 # spinal生成verilog相关
 SPINAL_PRJ = playground
 SPINAL_VFILE = $(abspath $(BUILD_DIR)/$(TOPNAME).v)
-
 
 ifneq ($(words $(CURDIR)),1)
   $(error Unsupported: GNU Make cannot build in directories containing spaces, build elsewhere: '$(CURDIR)')
@@ -33,16 +32,19 @@ default: $(BIN)
 $(shell mkdir -p $(BUILD_DIR))
 
 # nvboard引脚绑定文件生成
+NXDC_FILES = constr/pin.nxdc
 SRC_AUTO_BIND = $(abspath $(BUILD_DIR)/auto_bind.cpp)
 $(SRC_AUTO_BIND): $(NXDC_FILES)
 	@(sed -i '1s/.*/top=$(TOPNAME)/' $(NXDC_FILES))
 	@python3 $(NVBOARD_HOME)/scripts/auto_pin_bind.py $^ $@
+# rules for NVBoard	
+include $(NVBOARD_HOME)/scripts/nvboard.mk
 
 VSRCS += $(SPINAL_VFILE)
 CSRCS = $(shell find $(abspath csrc) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
 
-# rules for NVBoard
-include $(NVBOARD_HOME)/scripts/nvboard.mk
+
+
 
 # rules for verilator
 INCFLAGS = $(addprefix -I, $(INC_PATH))

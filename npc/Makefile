@@ -1,8 +1,114 @@
-all:
-	@echo "Write this Makefile by your self."
+# verilator相关
+TOPNAME = TopLevel
+YXYXSOC_VFILE =
+NXDC_FILES = constr/pin.nxdc
+INC_PATH += $(abspath include)
+BUILD_DIR = ./build
+OBJ_DIR = $(BUILD_DIR)/obj_dir
+BIN = $(BUILD_DIR)/V$(TOPNAME)
+SIM_WAVE = $(BUILD_DIR)/waveform.fst
+# spinal生成verilog相关
+SPINAL_PRJ = playground
+SPINAL_VFILE = $(abspath $(BUILD_DIR)/$(TOPNAME).v)
 
-sim:
+
+ifneq ($(words $(CURDIR)),1)
+  $(error Unsupported: GNU Make cannot build in directories containing spaces, build elsewhere: '$(CURDIR)')
+endif
+
+ifeq ($(VERILATOR_ROOT),)
+  VERILATOR = verilator
+else
+  export VERILATOR_ROOT
+  VERILATOR = $(VERILATOR_ROOT)/bin/verilator
+endif
+VERILATOR_CFLAGS += -MMD --build -cc  \
+				-O3 --x-assign fast --x-initial fast --noassert \
+				--trace-fst --relative-includes	\
+				--no-timing --timescale "1ns/1ns"	\
+				--autoflush
+
+default: $(BIN)
+
+$(shell mkdir -p $(BUILD_DIR))
+
+# nvboard引脚绑定文件生成
+SRC_AUTO_BIND = $(abspath $(BUILD_DIR)/auto_bind.cpp)
+$(SRC_AUTO_BIND): $(NXDC_FILES)
+	@(sed -i '1s/.*/top=$(TOPNAME)/' $(NXDC_FILES))
+	@python3 $(NVBOARD_HOME)/scripts/auto_pin_bind.py $^ $@
+
+VSRCS += $(SPINAL_VFILE)
+CSRCS = $(shell find $(abspath csrc) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
+
+# rules for NVBoard
+include $(NVBOARD_HOME)/scripts/nvboard.mk
+
+# rules for verilator
+INCFLAGS = $(addprefix -I, $(INC_PATH))
+CXXFLAGS += $(INCFLAGS) -DTOP_NAME="\"V$(TOPNAME)\""
+LDFLAGS +=
+override ARGS ?=
+IMG ?=
+
+verilog:
+	$(call git_commit, "generate verilog")
+	mkdir -p $(BUILD_DIR)
+	mill -i $(PRJ).runMain $(PRJ).SpinalToVerilog
+
+$(SPINAL_VFILE): verilog
+
+test:
+	mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).$(TOPNAME)Sim
+
+# 此函数用于verilator编译，nvboard和直接仿真所用文件不同#
+define build_target
 	$(call git_commit, "sim RTL") # DO NOT REMOVE THIS LINE!!!
-	@echo "Write this Makefile by your self."
+	@echo verilator[]: compiling...
+	@rm -rf $(OBJ_DIR)
+	@$(VERILATOR) $(VERILATOR_CFLAGS) \
+		$(addprefix -CFLAGS , $(CXXFLAGS) $2) $(addprefix -LDFLAGS , $(LDFLAGS)) \
+		--top-module $(TOPNAME) $1 \
+		--Mdir $(OBJ_DIR) --exe -o $(abspath $(BIN)) \
+		2>&1 | grep -v -E '^g++|^echo|^rm|^python3'
+	@echo verilator[]: completed
+	@echo $(BIN) start running...
+	@$(BIN) $(ARGS) $(IMG)
+endef
 
-include ../Makefile
+# 直接在nvboard上运行，直接查看现象
+run: $(CSRCS) $(VSRCS) $(NVBOARD_ARCHIVE) $(SRC_AUTO_BIND)
+	@$(call build_target, $^, -D__USE_NVBOARD__)
+
+# 用于单步执行，好像用处没剩下两个大 ？？
+sim: $(CSRCS) $(VSRCS)
+	@$(call build_target, $^, )
+
+# 运行并记录波形
+wave: $(CSRCS) $(VSRCS)
+	@$(call build_target, $^, -D__GET_WAVE__)
+	@gtkwave $(SIM_WAVE)
+
+clean:
+	-rm -rf $(BUILD_DIR)
+
+help:
+	mill -i $(SPINAL_PRJ).runMain Elaborate --help
+
+reformat:
+	mill -i __.reformat
+
+checkformat:
+	mill -i __.checkFormat
+
+bsp:
+	mill -i mill.bsp.BSP/install
+
+idea:
+	mill -i mill.idea.GenIdea/idea
+
+
+.PHONY: test verilog help reformat checkformat clean
+
+
+-include ../Makefile

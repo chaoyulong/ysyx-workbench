@@ -66,19 +66,21 @@ case class Adder() extends Component {
     val rs2 = in port UInt(32 bits)  
     val sub_add = in port UInt(1 bits)
 
-    val carry = out port Bits(1 bits)
+    val carry = out port Bool
     val zero = out port Bool
     val overflow = out port Bool
     val result = out port UInt(32 bits)
   }
 
   val dat_a = io.rs1
-  val dat_b = io.rs2 ^ U(io.sub_add #* 32)
-  val result_33 = dat_a + dat_b + io.sub_add.resize(32)
+  // val dat_b = io.rs2 ^ U(io.sub_add #* 32)
+  val dat_b = Mux(io.sub_add === U(1), ~io.rs2, io.rs2)
+  val cin = io.sub_add
+  val result_33 = dat_a + dat_b + cin
 
-  io.carry := B(result_33(32))
+  io.carry := result_33(32)
   io.result := result_33(0 to 31)
-  io.zero := ~(io.result.orR)
+  io.zero := io.result === U(0)
   io.overflow := (dat_a(31) === dat_b(31)) && (io.result(31) =/= dat_a(31));
 }
 

@@ -4,8 +4,11 @@ import spinal.core._
 import spinal.core.sim._
 
 object Config {
+  val build_dir = sys.env.getOrElse("BUILD_DIR", "./build")    // verilog文件生成位置
+  val sim_dir = sys.env.getOrElse("SPINAL_SIM_DIR", "./build/simulations")  // 仿真文件生成位置
+
   def spinal = SpinalConfig(
-    targetDirectory = sys.env.getOrElse("BUILD_DIR", "./build"),    // 输出文件默认位置为./build
+    targetDirectory = build_dir,
     defaultConfigForClockDomains = ClockDomainConfig(
       resetActiveLevel = HIGH
     ),
@@ -15,7 +18,7 @@ object Config {
   def sim = SimConfig.
     withConfig(spinal).
     withFstWave.
-    workspacePath("./build/simulations")
+    workspacePath(sim_dir)
 }
 
 object SpinalToVerilog extends App {

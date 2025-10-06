@@ -10,6 +10,7 @@ SIM_WAVE = $(BUILD_DIR)/waveform.fst
 # spinal生成verilog相关
 SPINAL_PRJ = playground
 SPINAL_VFILE = $(abspath $(BUILD_DIR)/$(TOPNAME).v)
+SPINAL_SIM_DIR = $(BUILD_DIR)/simulations
 
 ifneq ($(words $(CURDIR)),1)
   $(error Unsupported: GNU Make cannot build in directories containing spaces, build elsewhere: '$(CURDIR)')
@@ -31,28 +32,25 @@ default: $(BIN)
 
 $(shell mkdir -p $(BUILD_DIR))
 
-# nvboard引脚绑定文件生成
+# rules for NVBoard	
 NXDC_FILES = constr/pin.nxdc
 SRC_AUTO_BIND = $(abspath $(BUILD_DIR)/auto_bind.cpp)
 $(SRC_AUTO_BIND): $(NXDC_FILES)
 	@(sed -i '1s/.*/top=$(TOPNAME)/' $(NXDC_FILES))
 	@python3 $(NVBOARD_HOME)/scripts/auto_pin_bind.py $^ $@
-# rules for NVBoard	
+
 include $(NVBOARD_HOME)/scripts/nvboard.mk
 
+# verilator相关
 VSRCS += $(SPINAL_VFILE)
 CSRCS = $(shell find $(abspath csrc) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
-
-
-
-
-# rules for verilator
 INCFLAGS = $(addprefix -I, $(INC_PATH))
 CXXFLAGS += $(INCFLAGS) -DTOP_NAME="\"V$(TOPNAME)\""
 LDFLAGS +=
 override ARGS ?=
 IMG ?=
 
+# 只操作spinal的两条命令:
 verilog:
 	$(call git_commit, "generate verilog")
 	mkdir -p $(BUILD_DIR)
@@ -62,6 +60,8 @@ $(SPINAL_VFILE): verilog
 
 test:
 	mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).$(TOPNAME)Sim
+	@gtkwave $(SPINAL_SIM_DIR)/$(TOPNAME)/test/wave.fst
+
 
 # 此函数用于verilator编译，nvboard和直接仿真所用文件不同#
 define build_target
@@ -92,9 +92,6 @@ wave: $(CSRCS) $(VSRCS)
 	@$(call build_target, $^, -D__GET_WAVE__)
 	@gtkwave $(SIM_WAVE)
 
-clean:
-	-rm -rf $(BUILD_DIR)
-
 help:
 	mill -i $(SPINAL_PRJ).runMain Elaborate --help
 
@@ -110,8 +107,10 @@ bsp:
 idea:
 	mill -i mill.idea.GenIdea/idea
 
+clean:
+	-rm -rf $(BUILD_DIR)
 
-.PHONY: test verilog help reformat checkformat clean
+.PHONY: test verilog run sim wave help reformat checkformat clean
 
 
 -include ../Makefile

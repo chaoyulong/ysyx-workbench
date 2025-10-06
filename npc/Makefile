@@ -74,6 +74,7 @@ define build_target
 	@echo verilator[]: completed
 	@echo $(BIN) start running...
 	@$(BIN) $(ARGS) $(IMG)
+	@echo $(BIN) run end
 endef
 
 # 直接在nvboard上运行，直接查看现象

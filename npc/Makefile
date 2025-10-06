@@ -59,7 +59,7 @@ verilog:
 $(SPINAL_VFILE): verilog
 
 test:
-	mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).$(TOPNAME)Sim
+	mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalSim
 	@gtkwave $(SPINAL_SIM_DIR)/$(TOPNAME)/test/wave.fst
 
 

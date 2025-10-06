@@ -3,30 +3,42 @@ package playground
 import spinal.core._
 import spinal.core.sim._
 
-object TopLevelSim extends App {
+object SpinalSim extends App {
   Config.sim.compile(Shifter()).doSim { dut =>
     // Fork a process to generate the reset and the clock on the dut
     dut.clockDomain.forkStimulus(period = 10)
 
-    var modelState = 0
-    for (idx <- 0 to 99) {
-      // Drive the dut inputs with random values
-      // dut.io.cond0.randomize()
-      // dut.io.cond1.randomize()
-      dut.io.num.randomize()
+    for (idx <- 0 to 50) {
+      dut.io.din.randomize()
+      dut.io.shamt.randomize()
+      dut.io.a_l #= false
+      dut.io.l_r #= true
 
-      // Wait a rising edge on the clock
       dut.clockDomain.waitRisingEdge()
+    }
+    for (idx <- 0 to 50) {
+      dut.io.din.randomize()
+      dut.io.shamt.randomize()
+      dut.io.a_l #= true
+      dut.io.l_r #= true
 
-      // Check that the dut values match with the reference model ones
-      // val modelFlag = modelState == 0 || dut.io.cond1.toBoolean
-      // assert(dut.io.state.toInt == modelState)
-      // assert(dut.io.flag.toBoolean == modelFlag)
+      dut.clockDomain.waitRisingEdge()
+    }
+    for (idx <- 0 to 50) {
+      dut.io.din.randomize()
+      dut.io.shamt.randomize()
+      dut.io.a_l #= false
+      dut.io.l_r #= false
 
-      // // Update the reference model value
-      // if (dut.io.cond0.toBoolean) {
-      //   modelState = (modelState + 1) & 0xff
-      // }
+      dut.clockDomain.waitRisingEdge()
+    }
+    for (idx <- 0 to 50) {
+      dut.io.din.randomize()
+      dut.io.shamt.randomize()
+      dut.io.a_l #= true
+      dut.io.l_r #= false
+
+      dut.clockDomain.waitRisingEdge()
     }
   }
 }

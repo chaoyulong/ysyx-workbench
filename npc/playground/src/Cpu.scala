@@ -62,10 +62,10 @@ case class Shifter() extends Component {
     val shift = out port UInt(32 bits)
   }
 
-  switch(a_l ## l_r){
-    is(U"01") {shift := din |>> shamt}  // 逻辑右移,位宽不变
-    is(U"11") {shift := (din >> shamt).resize(32)}  // 算数右移
-    default {shift := (din << shamt).resize(32)}// 左移
+  switch(io.a_l ## io.l_r){
+    is(U"01") {io.shift := io.din |>> io.shamt}  // 逻辑右移,位宽不变
+    is(U"11") {io.shift := (io.din >> io.shamt).resize(32)}  // 算数右移
+    default {io.shift := (io.din << io.shamt).resize(32)}// 左移
   }
 
 }

@@ -22,9 +22,9 @@ object Config {
 }
 
 object SpinalToVerilog extends App {
-  Config.spinal.generateVerilog(TopLevel())
+  Config.spinal.generateVerilog(RegFile())
 }
 
 object SpinalToVhdl extends App {
-  Config.spinal.generateVhdl(TopLevel())
+  Config.spinal.generateVhdl(RegFile())
 }

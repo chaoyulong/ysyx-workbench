@@ -1,5 +1,5 @@
 # verilator相关
-TOPNAME = TopLevel
+TOPNAME = RegFile
 YXYXSOC_VFILE =
 
 INC_PATH += $(abspath include)
@@ -83,7 +83,7 @@ endef
 run: $(CSRCS) $(VSRCS) $(NVBOARD_ARCHIVE) $(SRC_AUTO_BIND)
 	@$(call build_target, $^, -D__USE_NVBOARD__)
 
-# 用于单步执行，好像用处没剩下两个大 ？？
+# 用于单步执行
 sim: $(CSRCS) $(VSRCS)
 	@$(call build_target, $^, )
 
@@ -92,20 +92,20 @@ wave: $(CSRCS) $(VSRCS)
 	@$(call build_target, $^, -D__GET_WAVE__)
 	@gtkwave $(SIM_WAVE)
 
-help:
-	mill -i $(SPINAL_PRJ).runMain Elaborate --help
+# help:
+# 	mill -i $(SPINAL_PRJ).runMain Elborate --help
 
-reformat:
-	mill -i __.reformat
+# reformat:
+# 	mill -i __.reformat
 
-checkformat:
-	mill -i __.checkFormat
+# checkformat:
+# 	mill -i __.checkFormat
 
-bsp:
-	mill -i mill.bsp.BSP/install
+# bsp:
+# 	mill -i mill.bsp.BSP/install
 
-idea:
-	mill -i mill.idea.GenIdea/idea
+# idea:
+# 	mill -i mill.idea.GenIdea/idea
 
 clean:
 	-rm -rf $(BUILD_DIR)

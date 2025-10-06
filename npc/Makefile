@@ -54,7 +54,7 @@ IMG ?=
 verilog:
 	$(call git_commit, "generate verilog")
 	mkdir -p $(BUILD_DIR)
-	mill -i $(PRJ).runMain $(PRJ).SpinalToVerilog
+	mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog
 
 $(SPINAL_VFILE): verilog
 

@@ -19,7 +19,7 @@ case class RegFile() extends Component {
     rf(io.addr_w(0 to 3)) := io.wdata
   }
 
-  rf(0) := U"32'h0"
+  rf(U"4'h0") := U"32'h0"
   io.rs1 := rf(io.addr_a(0 to 3))
   io.rs2 := rf(io.addr_b(0 to 3)) 
 }

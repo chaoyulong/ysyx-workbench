@@ -73,7 +73,7 @@ case class Adder() extends Component {
   }
 
   val dat_a = io.rs1
-  val dat_b = io.rs2 ^ (io.sub_add #* 32)
+  val dat_b = io.rs2 ^ (B(io.sub_add) #* 32)
   val result_33 = dat_a + dat_b + io.sub_add.resize(32)
 
   io.carry := result_33(32)

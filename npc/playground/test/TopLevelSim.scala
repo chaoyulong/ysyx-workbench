@@ -4,7 +4,7 @@ import spinal.core._
 import spinal.core.sim._
 
 object TopLevelSim extends App {
-  Config.sim.compile(TopLevel()).doSim { dut =>
+  Config.sim.compile(Shifter()).doSim { dut =>
     // Fork a process to generate the reset and the clock on the dut
     dut.clockDomain.forkStimulus(period = 10)
 
@@ -13,7 +13,7 @@ object TopLevelSim extends App {
       // Drive the dut inputs with random values
       // dut.io.cond0.randomize()
       // dut.io.cond1.randomize()
-      // dut.io.num.randomize()
+      dut.io.num.randomize()
 
       // Wait a rising edge on the clock
       dut.clockDomain.waitRisingEdge()

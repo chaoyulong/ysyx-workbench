@@ -13,7 +13,7 @@ object TopLevelSim extends App {
       // Drive the dut inputs with random values
       // dut.io.cond0.randomize()
       // dut.io.cond1.randomize()
-      dut.io.num.randomize()
+      // dut.io.num.randomize()
 
       // Wait a rising edge on the clock
       dut.clockDomain.waitRisingEdge()

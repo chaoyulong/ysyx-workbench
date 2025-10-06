@@ -1,5 +1,5 @@
 # verilator相关
-TOPNAME = RegFile
+TOPNAME = Shifter
 YXYXSOC_VFILE =
 
 INC_PATH += $(abspath include)

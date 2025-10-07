@@ -75,7 +75,7 @@ case class ALU() extends Component {
   val less_1 = carry ^ sub_add
   val less = Mux(u_s, less_1, less_0)
 
-  val result_slt = less.resize(32)
+  val result_slt = less.asUInt.resize(32)
   val result_lui = io.rs2
 
   val result_xor = io.rs1 ^ io.rs2;

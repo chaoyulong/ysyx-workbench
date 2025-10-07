@@ -27,7 +27,7 @@ object Config {
 }
 
 object SpinalToVerilog extends App {
-  Config.spinal.generateVerilog(ALU())
+  Config.spinal.generateVerilog(Decoder())
 }
 
 // object SpinalToVhdl extends App {

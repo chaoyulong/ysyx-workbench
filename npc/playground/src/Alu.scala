@@ -18,8 +18,8 @@ import spinal.core._
 */
 case class ALU() extends Component {
   val io = new Bundle {
-    val rs1 = in port UInt(32 bits)
-    val rs2 = in port UInt(32 bits)  
+    val alu_in1 = in port UInt(32 bits)
+    val alu_in2 = in port UInt(32 bits)  
     val alu_ctr = in port UInt(4 bits) 
 
     val less = out port Bool()
@@ -33,16 +33,16 @@ case class ALU() extends Component {
   val l_r = io.alu_ctr(2) // 左/右
 
   val adder = Adder()
-  adder.io.rs1 := io.rs1
-  adder.io.rs2 := io.rs2
+  adder.io.alu_in1 := io.alu_in1
+  adder.io.alu_in2 := io.alu_in2
   adder.io.sub_add := sub_add.asUInt
   val carry = adder.io.carry
   val overflow = adder.io.overflow
   val result_adder = adder.io.result
 
   val shifter = Shifter() 
-  shifter.io.din := io.rs1
-  shifter.io.shamt := io.rs2(0 to 4)
+  shifter.io.din := io.alu_in1
+  shifter.io.shamt := io.alu_in2(0 to 4)
   shifter.io.l_r := l_r
   shifter.io.a_l := a_l
   val result_shift = shifter.io.shift
@@ -53,11 +53,11 @@ case class ALU() extends Component {
   val less = Mux(u_s, less_1, less_0)
 
   val result_slt = less.asUInt.resize(32)
-  val result_lui = io.rs2
+  val result_lui = io.alu_in2
 
-  val result_xor = io.rs1 ^ io.rs2;
-  val result_or  = io.rs1 | io.rs2;
-  val result_and = io.rs1 & io.rs2;
+  val result_xor = io.alu_in1 ^ io.alu_in2;
+  val result_or  = io.alu_in1 | io.alu_in2;
+  val result_and = io.alu_in1 & io.alu_in2;
 
   io.less := less
   io.zero := adder.io.zero
@@ -75,8 +75,8 @@ case class ALU() extends Component {
 
 case class Adder() extends Component {
   val io = new Bundle {
-    val rs1 = in port UInt(32 bits)
-    val rs2 = in port UInt(32 bits)  
+    val in1 = in port UInt(32 bits)
+    val in2 = in port UInt(32 bits)  
     val sub_add = in port UInt(1 bits)
 
     val carry = out port Bool()
@@ -85,8 +85,8 @@ case class Adder() extends Component {
     val result = out port UInt(32 bits)
   }
 
-  val dat_a = io.rs1
-  val dat_b = Mux(io.sub_add === U(1), ~io.rs2, io.rs2)
+  val dat_a = io.in1
+  val dat_b = Mux(io.sub_add === U(1), ~io.in2, io.in2)
   val cin = io.sub_add
   val result_33 = dat_a.resize(33) + dat_b.resize(33) + cin.resize(33)
 

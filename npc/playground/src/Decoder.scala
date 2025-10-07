@@ -29,9 +29,9 @@ case class Decoder() extends Component {
   val func7_61_is_0 = ~(func7(6 downto 1).orR) 
 
 
-  io.rs1 := func(19 downto 15)
-  io.rs2 := func(24 downto 20)
-  io.rd  := func(11 downto 7)
+  io.rs1 := io.instr(19 downto 15)
+  io.rs2 := io.instr(24 downto 20)
+  io.rd  := io.instr(11 downto 7)
 // ***************************************** 立即数生成 *********************************************** //
   val immI = (io.instr(31) #* 20) ## io.instr(31 downto 20);
   val immU = instr(31 downto 12) ## U(0, 12 bits);

@@ -64,16 +64,16 @@ case class Decoder() extends Component {
   } 
 // ****************************************** 指令通用部分译码 ************************************************ //    
   val op_decoder0 = Decoder_4_16()
-  op_decoder0.io.in := op(3 downto 0)
-  val op_decode_l = op_decoder0.io.out
+  op_decoder0.io.input := op(3 downto 0)
+  val op_decode_l = op_decoder0.io.output
 
   val op_decoder1 = Decoder_3_8()
-  op_decoder1.io.in := op(6 downto 4)
-  val op_decode_h = op_decoder1.io.out  
+  op_decoder1.io.input := op(6 downto 4)
+  val op_decode_h = op_decoder1.io.output  
 
   val fun3_decoder = Decoder_3_8()
-  fun3_decoder.io.in := func3
-  val f3_decode = fun3_decoder.io.out  
+  fun3_decoder.io.input := func3
+  val f3_decode = fun3_decoder.io.output  
 // ****************************************** 指令匹配 ************************************************ //        
   val i_auipc  = op_decode_h(U"001") & op_decode_l(U"0111")
   val i_lui    = op_decode_h(U"011") & op_decode_l(U"0111")
@@ -135,8 +135,8 @@ case class Decoder() extends Component {
 
 case class Decoder_4_16() extends Component {   // 4-16译码器
   val io = new Bundle {
-    val in  = in  UInt(4 bits)            
-    val out = out Bits(16 bits)        
+    val input  = in  UInt(4 bits)            
+    val output = out Bits(16 bits)        
   }
   
   switch(io.in) {
@@ -161,8 +161,8 @@ case class Decoder_4_16() extends Component {   // 4-16译码器
 
 case class Decoder_3_8() extends Component {   // 3-8译码器
   val io = new Bundle {
-    val in  = in  UInt(3 bits)          
-    val out = out Bits(8 bits)            
+    val input  = in  UInt(3 bits)          
+    val output = out Bits(8 bits)            
   }
   
   switch(io.in) {

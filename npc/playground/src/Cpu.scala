@@ -55,7 +55,7 @@ case class BranchCond() extends Component {
                 Mux(decode(U"101"), ~io.zero,
                 Mux(decode(U"110"),  io.less,
                 Mux(decode(U"111"), ~io.less,
-                flase)))))
+                false)))))
 
   io.pc_bsrc := decode(U"010")
 }

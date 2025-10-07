@@ -18,13 +18,13 @@ import spinal.core._
 */
 case class ALU() extends Component {
   val io = new Bundle {
-    val alu_in1 = in port UInt(32 bits)
-    val alu_in2 = in port UInt(32 bits)  
-    val alu_ctr = in port UInt(4 bits) 
+    val alu_in1 = in UInt(32 bits)
+    val alu_in2 = in UInt(32 bits)  
+    val alu_ctr = in UInt(4 bits) 
 
-    val less = out port Bool()
-    val zero = out port Bool()
-    val alu_out = out port UInt(32 bits) 
+    val less = out Bool()
+    val zero = out Bool()
+    val alu_result = out UInt(32 bits) 
   }
 
   val sub_add = io.alu_ctr(1) | io.alu_ctr(3) // 加法器的加减,经过卡诺图化简
@@ -62,14 +62,14 @@ case class ALU() extends Component {
   io.less := less
   io.zero := adder.io.zero
   switch(io.alu_ctr(0 to 2)){
-    is(U"3'b000") {io.alu_out := result_adder}
-    is(U"3'b001") {io.alu_out := result_shift}
-    is(U"3'b010") {io.alu_out := result_slt}
-    is(U"3'b011") {io.alu_out := result_lui}
-    is(U"3'b100") {io.alu_out := result_xor}
-    is(U"3'b101") {io.alu_out := result_shift}
-    is(U"3'b110") {io.alu_out := result_or}
-    is(U"3'b111") {io.alu_out := result_and}
+    is(U"3'b000") {io.alu_result := result_adder}
+    is(U"3'b001") {io.alu_result := result_shift}
+    is(U"3'b010") {io.alu_result := result_slt}
+    is(U"3'b011") {io.alu_result := result_lui}
+    is(U"3'b100") {io.alu_result := result_xor}
+    is(U"3'b101") {io.alu_result := result_shift}
+    is(U"3'b110") {io.alu_result := result_or}
+    is(U"3'b111") {io.alu_result := result_and}
   }
 }
 

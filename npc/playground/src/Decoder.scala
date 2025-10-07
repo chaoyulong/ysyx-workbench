@@ -6,19 +6,15 @@ case class Decoder() extends Component {
   val io = new Bundle {
     val instr    = in  UInt(32 bits)
 
-    val rs1      = out UInt(5 bits)  // 读寄存器1选择
-    val rs2      = out UInt(5 bits)  // 读寄存器2选择
-    val rd       = out UInt(5 bits)  // 写寄存器选择
-
-    // val reg_wr   = out port Bool          // 控制是否对寄存器rd进行写回，为1时写回寄存器。
-    // val alu_asrc = out port Bits(1 bits)  // 选择ALU输入端A的来源。为0时选择rs1，为1时选择PC。
-    // val alu_bsrc = out port Bits(2 bits)  // 选择ALU输入端B的来源。为00时选择rs2，为01时选择imm，为10时选择常数4（用于跳转时计算返回地址PC+4），为11时选择csrrdata（用于将csr寄存器值写入通用寄存器）
-    // val alu_ctr  = out port Bits(4 bits)  // 选择ALU执行的操作
-    // val branch   = out port Bits(3 bits)  // 说明分支和跳转的种类，用于生成最终的分支控制信号
-    // val mem2reg  = out port Bool          // 选择写入寄存器的内容，为1时为存储器，为0时为alu
-    // val mem_wr   = out port Bool          // 为1时写入存储器
-    // val mem_op   = out port Bits(3 bits)  // 控制数据存储器读写格式，为010时为4字节读写，为001时为2字节读写带符号扩展，为000时为1字节读写带符号扩展，为101时为2字节读写无符号扩展，为100时为1字节读写无符号扩展
-    val imm      = out UInt(32 bits) // 立即数
+    val reg_wr   = out  Bool          // 控制是否对寄存器rd进行写回，为1时写回寄存器。
+    val alu_asrc = out  Bits(1 bits)  // 选择ALU输入端A的来源。为0时选择rs1，为1时选择PC。
+    val alu_bsrc = out  Bits(2 bits)  // 选择ALU输入端B的来源。为00时选择rs2，为01时选择imm，为10时选择常数4（用于跳转时计算返回地址PC+4），为11时选择csrrdata（用于将csr寄存器值写入通用寄存器）
+    val alu_ctr  = out  Bits(4 bits)  // 选择ALU执行的操作
+    val branch   = out  Bits(3 bits)  // 说明分支和跳转的种类，用于生成最终的分支控制信号
+    val mem2reg  = out  Bool          // 选择写入寄存器的内容，为1时为存储器，为0时为alu
+    val mem_wr   = out  Bool          // 为1时写入存储器
+    val mem_op   = out  Bits(3 bits)  // 控制数据存储器读写格式，为010时为4字节读写，为001时为2字节读写带符号扩展，为000时为1字节读写带符号扩展，为101时为2字节读写无符号扩展，为100时为1字节读写无符号扩展
+    val imm      = out UInt(32 bits)  // 立即数
   }
 
   val instr = io.instr
@@ -32,7 +28,7 @@ case class Decoder() extends Component {
 
   val func7_is_0 = ~(func7.orR)
   val func7_40_is_0 = ~(func7(4 downto 0).orR) 
-  val func7_61_is_0 = ~(func7(6 downto 1).orR) 
+  // val func7_61_is_0 = ~(func7(6 downto 1).orR) 
 
 // ****************************************** 指令通用部分译码 ************************************************ //    
   val op_decoder0 = Decoder_4_16()
@@ -84,14 +80,14 @@ case class Decoder() extends Component {
   val i_sra    = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"101") & func7_40_is_0 & func7(5) & ~func7(6)
   val i_slt    = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"010") & func7_is_0
   val i_sltu   = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"011") & func7_is_0
-  val i_mul    = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"000") & func7_61_is_0 & func7(0);
-  val i_mulh   = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"001") & func7_61_is_0 & func7(0);
-  val i_mulhsu = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"010") & func7_61_is_0 & func7(0);
-  val i_mulhu  = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"011") & func7_61_is_0 & func7(0);
-  val i_div    = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"100") & func7_61_is_0 & func7(0);
-  val i_divu   = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"101") & func7_61_is_0 & func7(0);
-  val i_rem    = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"110") & func7_61_is_0 & func7(0);
-  val i_remu   = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"111") & func7_61_is_0 & func7(0);
+  // val i_mul    = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"000") & func7_61_is_0 & func7(0);
+  // val i_mulh   = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"001") & func7_61_is_0 & func7(0);
+  // val i_mulhsu = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"010") & func7_61_is_0 & func7(0);
+  // val i_mulhu  = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"011") & func7_61_is_0 & func7(0);
+  // val i_div    = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"100") & func7_61_is_0 & func7(0);
+  // val i_divu   = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"101") & func7_61_is_0 & func7(0);
+  // val i_rem    = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"110") & func7_61_is_0 & func7(0);
+  // val i_remu   = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"111") & func7_61_is_0 & func7(0);
   val i_beq    = op_decode_h(U"110") & op_decode_l(U"0011") & f3_decode(U"000")
   val i_bne    = op_decode_h(U"110") & op_decode_l(U"0011") & f3_decode(U"001")
   val i_blt    = op_decode_h(U"110") & op_decode_l(U"0011") & f3_decode(U"100")
@@ -119,24 +115,52 @@ case class Decoder() extends Component {
   val type_R = (i_add | i_sub | i_xor | i_or | i_and | i_sll | i_srl | i_sra | i_slt | i_sltu |
                    i_mul | i_mulh | i_mulhsu | i_mulhu | i_div | i_divu | i_rem | i_remu)
 
-  // switch(True) {
-  //   is(type_U) { io.imm := immU }
-  //   is(type_J) { io.imm := immJ }
-  //   is(type_I) { io.imm := immI }
-  //   is(type_S) { io.imm := immS }
-  //   is(type_B) { io.imm := immB }
-  //   default    { io.imm := U(0, 32 bits) }
-  // } 
+  io.imm := Mux(type_U, immU,
+            Mux(type_J, immJ,
+            Mux(type_I, immI,
+            Mux(type_S, immS,
+            Mux(type_B, immB, U(0, 32 bits))))))
 
-io.imm := Mux(type_U, immU,
-          Mux(type_J, immJ,
-          Mux(type_I, immI,
-          Mux(type_S, immS,
-          Mux(type_B, immB, U(0, 32 bits))))))
-// ***************************************** 输出信号 *********************************************** //
-  io.rs1 := rs1
-  io.rs2 := rs2
-  io.rd  := rd 
+// **************************************** 控制信号生成 ********************************************** // 
+reg_wr  
+alu_asrc
+alu_bsrc
+alu_ctr 
+branch  
+mem2reg 
+mem_wr  
+mem_op    
+
+  io.reg_wr := (i_lui|i_auipc|i_jal|i_jalr|i_csrrw| i_csrrs|
+              i_addi|i_slti|i_sltiu|i_xori|i_ori|i_andi|i_slli|i_srli|i_srai|
+              i_add|i_sub|i_xor|i_or|i_and|i_sll|i_srl|i_sra|i_slt|i_sltu|
+              i_lb|i_lh|i_lw|i_lbu|i_lhu)
+  io.alu_asrc := (i_auipc | i_jal | i_jalr)                                     // 0：选通rdata1，1：选通PC。
+  io.alu_bsrc := (i_jal | i_jalr) ? 2'b10 :                                    // 选通4，用于跳转
+                 (i_add|i_sub|i_xor|i_or|i_and|i_sll|i_srl|i_sra|i_slt|
+                 i_sltu|i_beq|i_bne|i_blt|i_bge|i_bltu|i_bgeu) ? 2'b00 :        // 选通rdata2
+                2'b01;                                                          // 选通imm
+  io.alu_ctr := (i_and | i_andi) ? 4'b0111 :                                  // 选择逻辑与输出
+                  (i_or  | i_ori ) ? 4'b0110 :                                  // 选择逻辑或输出
+                  (i_sra | i_srai) ? 4'b1101 :                                  // 选择移位器输出，算术右移
+                  (i_srl | i_srli) ? 4'b0101 :                                  // 选择移位器输出，逻辑右移
+                  (i_xor | i_xori) ? 4'b0100 :                                  // 选择异或输出
+                  (i_lui) ? 4'b0011 :                                           // 选择ALU输入B的结果直接输出
+                  (i_sltu| i_sltiu | i_bltu | i_bgeu) ? 4'b1010 :               // 做减法，选择无符号小于置位结果输出, Less按无符号结果设置
+                  (i_slt | i_slti | i_beq | i_bne | i_blt | i_bge) ? 4'b0010 :  // 做减法，选择带符号小于置位结果输出, Less按带符号结果设置
+                  (i_sll | i_slli) ? 4'b0001 :                                  // 选择移位器输出，左移
+                  (i_sub) ? 4'b1000 :                                           // 选择加法器输出，做减法
+                  4'b0000;                                                      // 选择加法器输出，做加法
+  io.branch := i_jal ? 3'b001 :                                              // 无条件跳转PC目标
+                  i_jalr? 3'b010 :                                              // 无条件跳转寄存器目标
+                  i_beq ? 3'b100 :                                              // 条件分支，等于
+                  i_bne ? 3'b101 :                                              // 条件分支，不等于
+                  (i_blt | i_bltu) ? 3'b110 :                                   // 条件分支，小于
+                  (i_bge | i_bgeu) ? 3'b111 :                                   // 条件分支，大于等于
+                  3'b000;
+  io.mem2reg  := (i_lb | i_lh | i_lw | i_lbu | i_lhu);
+  io.mem_wr  := (i_sb | i_sh | i_sw);
+  io.mem_op  := func3;  
 }
 
 

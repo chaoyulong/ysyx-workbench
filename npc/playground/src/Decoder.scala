@@ -4,11 +4,11 @@ import spinal.core._
 
 case class Decoder() extends Component {
   val io = new Bundle {
-    val instr    = in  port UInt(32 bits)
+    val instr    = in  UInt(32 bits)
 
-    val rs1      = out port UInt(5 bits)  // 读寄存器1选择
-    val rs2      = out port UInt(5 bits)  // 读寄存器2选择
-    val rd       = out port UInt(5 bits)  // 写寄存器选择
+    val rs1      = out UInt(5 bits)  // 读寄存器1选择
+    val rs2      = out UInt(5 bits)  // 读寄存器2选择
+    val rd       = out UInt(5 bits)  // 写寄存器选择
 
     // val reg_wr   = out port Bool          // 控制是否对寄存器rd进行写回，为1时写回寄存器。
     // val alu_asrc = out port Bits(1 bits)  // 选择ALU输入端A的来源。为0时选择rs1，为1时选择PC。
@@ -18,7 +18,7 @@ case class Decoder() extends Component {
     // val mem2reg  = out port Bool          // 选择写入寄存器的内容，为1时为存储器，为0时为alu
     // val mem_wr   = out port Bool          // 为1时写入存储器
     // val mem_op   = out port Bits(3 bits)  // 控制数据存储器读写格式，为010时为4字节读写，为001时为2字节读写带符号扩展，为000时为1字节读写带符号扩展，为101时为2字节读写无符号扩展，为100时为1字节读写无符号扩展
-    val imm      = out port UInt(32 bits) // 立即数
+    val imm      = out UInt(32 bits) // 立即数
   }
 
   val instr = io.instr
@@ -26,29 +26,33 @@ case class Decoder() extends Component {
   val op   = instr( 6 downto  0)     
   val func3= instr(14 downto 12)
   val func7= instr(31 downto 25)
+  val rs1  = instr(19 downto 15) 
+  val rs2  = instr(24 downto 20)
+  val rd   = instr(11 downto 7)
+
   val func7_is_0 = ~(func7.orR)
   val func7_40_is_0 = ~(func7(4 downto 0).orR) 
   val func7_61_is_0 = ~(func7(6 downto 1).orR) 
 
 
-  io.rs1 := io.instr(19 downto 15)
-  io.rs2 := io.instr(24 downto 20)
-  io.rd  := io.instr(11 downto 7)
+  io.rs1 := rs1
+  io.rs2 := rs2
+  io.rd  := rd 
 // ***************************************** 立即数生成 *********************************************** //
-  val immI = (instr(31) #* 20) ## instr(31 downto 20);
-  val immU = instr(31 downto 12) ## U(0, 12 bits);
-  val immS = (instr(31) #* 20) ## instr(31 downto 25) ## instr(11 downto 7);
-  val immB = (instr(31) #* 20) ## instr(7) ## instr(30 downto 25) ## instr(11 downto 8) ## U(0, 1 bits);
-  val immJ = (instr(31) #* 12) ## instr(19 downto 12) ## instr(20) ## instr(30 downto 21)## U(0, 1 bits);
+  val immI = (instr(31) #* 20) ## instr(31 downto 20)
+  val immU = instr(31 downto 12) ## U(0, 12 bits)
+  val immS = (instr(31) #* 20) ## instr(31 downto 25) ## instr(11 downto 7)
+  val immB = (instr(31) #* 20) ## instr(7) ## instr(30 downto 25) ## instr(11 downto 8) ## U(0, 1 bits)
+  val immJ = (instr(31) #* 12) ## instr(19 downto 12) ## instr(20) ## instr(30 downto 21)## U(0, 1 bits)
 
-  val type_U = (i_auipc | i_lui);
-  val type_J = (i_jal);
+  val type_U = (i_auipc | i_lui)
+  val type_J = (i_jal)
   val type_I = (i_lb | i_lh | i_lw | i_lbu | i_lhu | i_addi | i_slti | i_sltiu | i_xori | 
-                   i_ori | i_andi | i_slli | i_srli | i_srai | i_jalr | i_csrrw | i_csrrs);                
+                   i_ori | i_andi | i_slli | i_srli | i_srai | i_jalr | i_csrrw | i_csrrs)            
   val type_S = (i_sb | i_sh | i_sw);
-  val type_B = (i_beq | i_bne | i_blt | i_bge | i_bltu | i_bgeu);
+  val type_B = (i_beq | i_bne | i_blt | i_bge | i_bltu | i_bgeu)
   val type_R = (i_add | i_sub | i_xor | i_or | i_and | i_sll | i_srl | i_sra | i_slt | i_sltu |
-                   i_mul | i_mulh | i_mulhsu | i_mulhu | i_div | i_divu | i_rem | i_remu);
+                   i_mul | i_mulh | i_mulhsu | i_mulhu | i_div | i_divu | i_rem | i_remu)
 
   switch(True) {
     is(type_U) { io.imm := immU }
@@ -68,12 +72,12 @@ case class Decoder() extends Component {
   val op_decode_h = op_decoder1.io.out  
 
   val fun3_decoder = Decoder_3_8()
-  fun3_decoder.io.in := op(func3)
+  fun3_decoder.io.in := func3
   val f3_decode = fun3_decoder.io.out  
 // ****************************************** 指令匹配 ************************************************ //        
-  val i_auipc  = op_decode_h(U"3'b001") & op_decode_l(U"4'b0111")
-  val i_lui    = op_decode_h(U"3'b011") & op_decode_l(U"4'b0111")
-  val i_jal    = op_decode_h(U"3'b110") & op_decode_l(U"4'b1111")
+  val i_auipc  = op_decode_h(B"3'b001") & op_decode_l(B"4'b0111")
+  val i_lui    = op_decode_h(B"3'b011") & op_decode_l(B"4'b0111")
+  val i_jal    = op_decode_h(B"3'b110") & op_decode_l(B"4'b1111")
   val i_lb     = op_decode_h(B"000") & op_decode_l(B"0011") & f3_decode(B"000")
   val i_lh     = op_decode_h(B"000") & op_decode_l(B"0011") & f3_decode(B"001")
   val i_lw     = op_decode_h(B"000") & op_decode_l(B"0011") & f3_decode(B"010")
@@ -131,8 +135,8 @@ case class Decoder() extends Component {
 
 case class Decoder_4_16() extends Component {   // 4-16译码器
   val io = new Bundle {
-    val in = in port UInt(4 bits)            
-    val out = out port Bits(16 bits)        
+    val in  = in  UInt(4 bits)            
+    val out = out Bits(16 bits)        
   }
   
   switch(io.in) {
@@ -157,8 +161,8 @@ case class Decoder_4_16() extends Component {   // 4-16译码器
 
 case class Decoder_3_8() extends Component {   // 3-8译码器
   val io = new Bundle {
-    val in = in port UInt(3 bits)          
-    val out = out port Bits(8 bits)            
+    val in  = in  UInt(3 bits)          
+    val out = out Bits(8 bits)            
   }
   
   switch(io.in) {

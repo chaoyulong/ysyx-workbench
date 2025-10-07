@@ -1,5 +1,5 @@
 # verilator相关
-TOPNAME = Shifter
+TOPNAME = ALU
 YXYXSOC_VFILE =
 
 INC_PATH += $(abspath include)

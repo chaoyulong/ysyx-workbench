@@ -75,61 +75,61 @@ case class Decoder() extends Component {
   fun3_decoder.io.in := func3
   val f3_decode = fun3_decoder.io.out  
 // ****************************************** 指令匹配 ************************************************ //        
-  val i_auipc  = op_decode_h(B"3'b001") & op_decode_l(B"4'b0111")
-  val i_lui    = op_decode_h(B"3'b011") & op_decode_l(B"4'b0111")
-  val i_jal    = op_decode_h(B"3'b110") & op_decode_l(B"4'b1111")
-  val i_lb     = op_decode_h(B"000") & op_decode_l(B"0011") & f3_decode(B"000")
-  val i_lh     = op_decode_h(B"000") & op_decode_l(B"0011") & f3_decode(B"001")
-  val i_lw     = op_decode_h(B"000") & op_decode_l(B"0011") & f3_decode(B"010")
-  val i_lbu    = op_decode_h(B"000") & op_decode_l(B"0011") & f3_decode(B"100")
-  val i_lhu    = op_decode_h(B"000") & op_decode_l(B"0011") & f3_decode(B"101")
-  val i_addi   = op_decode_h(B"001") & op_decode_l(B"0011") & f3_decode(B"000")
-  val i_slti   = op_decode_h(B"001") & op_decode_l(B"0011") & f3_decode(B"010")
-  val i_sltiu  = op_decode_h(B"001") & op_decode_l(B"0011") & f3_decode(B"011")
-  val i_xori   = op_decode_h(B"001") & op_decode_l(B"0011") & f3_decode(B"100")
-  val i_ori    = op_decode_h(B"001") & op_decode_l(B"0011") & f3_decode(B"110")
-  val i_andi   = op_decode_h(B"001") & op_decode_l(B"0011") & f3_decode(B"111")
-  val i_slli   = op_decode_h(B"001") & op_decode_l(B"0011") & f3_decode(B"001") & func7_is_0
-  val i_srli   = op_decode_h(B"001") & op_decode_l(B"0011") & f3_decode(B"101") & func7_is_0
-  val i_srai   = op_decode_h(B"001") & op_decode_l(B"0011") & f3_decode(B"101") & func7_40_is_0 & func7(5) & ~func7(6)
-  val i_csrrw  = op_decode_h(B"111") & op_decode_l(B"0011") & f3_decode(B"001")
-  val i_csrrs  = op_decode_h(B"111") & op_decode_l(B"0011") & f3_decode(B"010")
-  // val i_csrrc  = op_decode_h(B"111") & op_decode_l(B"0011") & f3_decode(B"011");
-  // val i_csrrwi = op_decode_h(B"111") & op_decode_l(B"0011") & f3_decode(B"101");
-  // val i_csrrsi = op_decode_h(B"111") & op_decode_l(B"0011") & f3_decode(B"110");
-  // val i_csrrci = op_decode_h(B"111") & op_decode_l(B"0011") & f3_decode(B"111");
-  val i_jalr   = op_decode_h(B"110") & op_decode_l(B"0111") & f3_decode(B"000")
-  val i_sb     = op_decode_h(B"010") & op_decode_l(B"0011") & f3_decode(B"000")
-  val i_sh     = op_decode_h(B"010") & op_decode_l(B"0011") & f3_decode(B"001")
-  val i_sw     = op_decode_h(B"010") & op_decode_l(B"0011") & f3_decode(B"010")
-  val i_add    = op_decode_h(B"011") & op_decode_l(B"0011") & f3_decode(B"000") & func7_is_0
-  val i_sub    = op_decode_h(B"011") & op_decode_l(B"0011") & f3_decode(B"000") & func7_40_is_0 & func7(5) & ~func7(6)
-  val i_xor    = op_decode_h(B"011") & op_decode_l(B"0011") & f3_decode(B"100") & func7_is_0
-  val i_or     = op_decode_h(B"011") & op_decode_l(B"0011") & f3_decode(B"110") & func7_is_0
-  val i_and    = op_decode_h(B"011") & op_decode_l(B"0011") & f3_decode(B"111") & func7_is_0
-  val i_sll    = op_decode_h(B"011") & op_decode_l(B"0011") & f3_decode(B"001") & func7_is_0
-  val i_srl    = op_decode_h(B"011") & op_decode_l(B"0011") & f3_decode(B"101") & func7_is_0
-  val i_sra    = op_decode_h(B"011") & op_decode_l(B"0011") & f3_decode(B"101") & func7_40_is_0 & func7(5) & ~func7(6)
-  val i_slt    = op_decode_h(B"011") & op_decode_l(B"0011") & f3_decode(B"010") & func7_is_0
-  val i_sltu   = op_decode_h(B"011") & op_decode_l(B"0011") & f3_decode(B"011") & func7_is_0
-  val i_mul    = op_decode_h(B"011") & op_decode_l(B"0011") & f3_decode(B"000") & func7_61_is_0 & func7(0);
-  val i_mulh   = op_decode_h(B"011") & op_decode_l(B"0011") & f3_decode(B"001") & func7_61_is_0 & func7(0);
-  val i_mulhsu = op_decode_h(B"011") & op_decode_l(B"0011") & f3_decode(B"010") & func7_61_is_0 & func7(0);
-  val i_mulhu  = op_decode_h(B"011") & op_decode_l(B"0011") & f3_decode(B"011") & func7_61_is_0 & func7(0);
-  val i_div    = op_decode_h(B"011") & op_decode_l(B"0011") & f3_decode(B"100") & func7_61_is_0 & func7(0);
-  val i_divu   = op_decode_h(B"011") & op_decode_l(B"0011") & f3_decode(B"101") & func7_61_is_0 & func7(0);
-  val i_rem    = op_decode_h(B"011") & op_decode_l(B"0011") & f3_decode(B"110") & func7_61_is_0 & func7(0);
-  val i_remu   = op_decode_h(B"011") & op_decode_l(B"0011") & f3_decode(B"111") & func7_61_is_0 & func7(0);
-  val i_beq    = op_decode_h(B"110") & op_decode_l(B"0011") & f3_decode(B"000")
-  val i_bne    = op_decode_h(B"110") & op_decode_l(B"0011") & f3_decode(B"001")
-  val i_blt    = op_decode_h(B"110") & op_decode_l(B"0011") & f3_decode(B"100")
-  val i_bge    = op_decode_h(B"110") & op_decode_l(B"0011") & f3_decode(B"101")
-  val i_bltu   = op_decode_h(B"110") & op_decode_l(B"0011") & f3_decode(B"110")
-  val i_bgeu   = op_decode_h(B"110") & op_decode_l(B"0011") & f3_decode(B"111")
-  val i_ecall  = op_decode_h(B"111") & op_decode_l(B"0011") & f3_decode(B"000") & func7 === U"7'b0000000" & rs2 === U"5'b00000" & rs1 === B"5'b00000" & rd === B"5'b00000"
-  val i_ebreak = op_decode_h(B"111") & op_decode_l(B"0011") & f3_decode(B"000") & func7 === U"7'b0000000" & rs2 === U"5'b00001" & rs1 === B"5'b00000" & rd === B"5'b00000"
-  val i_mret   = op_decode_h(B"111") & op_decode_l(B"0011") & f3_decode(B"000") & func7 === U"7'b0011000" & rs2 === U"5'b00010" & rs1 === B"5'b00000" & rd === B"5'b00000"
-  val i_fence_i= op_decode_h(B"000") & op_decode_l(B"1111") & f3_decode(B"001");
+  val i_auipc  = op_decode_h(U"001") & op_decode_l(U"0111")
+  val i_lui    = op_decode_h(U"011") & op_decode_l(U"0111")
+  val i_jal    = op_decode_h(U"110") & op_decode_l(U"1111")
+  val i_lb     = op_decode_h(U"000") & op_decode_l(U"0011") & f3_decode(U"000")
+  val i_lh     = op_decode_h(U"000") & op_decode_l(U"0011") & f3_decode(U"001")
+  val i_lw     = op_decode_h(U"000") & op_decode_l(U"0011") & f3_decode(U"010")
+  val i_lbu    = op_decode_h(U"000") & op_decode_l(U"0011") & f3_decode(U"100")
+  val i_lhu    = op_decode_h(U"000") & op_decode_l(U"0011") & f3_decode(U"101")
+  val i_addi   = op_decode_h(U"001") & op_decode_l(U"0011") & f3_decode(U"000")
+  val i_slti   = op_decode_h(U"001") & op_decode_l(U"0011") & f3_decode(U"010")
+  val i_sltiu  = op_decode_h(U"001") & op_decode_l(U"0011") & f3_decode(U"011")
+  val i_xori   = op_decode_h(U"001") & op_decode_l(U"0011") & f3_decode(U"100")
+  val i_ori    = op_decode_h(U"001") & op_decode_l(U"0011") & f3_decode(U"110")
+  val i_andi   = op_decode_h(U"001") & op_decode_l(U"0011") & f3_decode(U"111")
+  val i_slli   = op_decode_h(U"001") & op_decode_l(U"0011") & f3_decode(U"001") & func7_is_0
+  val i_srli   = op_decode_h(U"001") & op_decode_l(U"0011") & f3_decode(U"101") & func7_is_0
+  val i_srai   = op_decode_h(U"001") & op_decode_l(U"0011") & f3_decode(U"101") & func7_40_is_0 & func7(5) & ~func7(6)
+  val i_csrrw  = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"001")
+  val i_csrrs  = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"010")
+  val i_csrrc  = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"011")
+  val i_csrrwi = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"101")
+  val i_csrrsi = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"110")
+  val i_csrrci = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"111")
+  val i_jalr   = op_decode_h(U"110") & op_decode_l(U"0111") & f3_decode(U"000")
+  val i_sb     = op_decode_h(U"010") & op_decode_l(U"0011") & f3_decode(U"000")
+  val i_sh     = op_decode_h(U"010") & op_decode_l(U"0011") & f3_decode(U"001")
+  val i_sw     = op_decode_h(U"010") & op_decode_l(U"0011") & f3_decode(U"010")
+  val i_add    = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"000") & func7_is_0
+  val i_sub    = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"000") & func7_40_is_0 & func7(5) & ~func7(6)
+  val i_xor    = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"100") & func7_is_0
+  val i_or     = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"110") & func7_is_0
+  val i_and    = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"111") & func7_is_0
+  val i_sll    = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"001") & func7_is_0
+  val i_srl    = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"101") & func7_is_0
+  val i_sra    = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"101") & func7_40_is_0 & func7(5) & ~func7(6)
+  val i_slt    = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"010") & func7_is_0
+  val i_sltu   = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"011") & func7_is_0
+  val i_mul    = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"000") & func7_61_is_0 & func7(0);
+  val i_mulh   = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"001") & func7_61_is_0 & func7(0);
+  val i_mulhsu = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"010") & func7_61_is_0 & func7(0);
+  val i_mulhu  = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"011") & func7_61_is_0 & func7(0);
+  val i_div    = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"100") & func7_61_is_0 & func7(0);
+  val i_divu   = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"101") & func7_61_is_0 & func7(0);
+  val i_rem    = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"110") & func7_61_is_0 & func7(0);
+  val i_remu   = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"111") & func7_61_is_0 & func7(0);
+  val i_beq    = op_decode_h(U"110") & op_decode_l(U"0011") & f3_decode(U"000")
+  val i_bne    = op_decode_h(U"110") & op_decode_l(U"0011") & f3_decode(U"001")
+  val i_blt    = op_decode_h(U"110") & op_decode_l(U"0011") & f3_decode(U"100")
+  val i_bge    = op_decode_h(U"110") & op_decode_l(U"0011") & f3_decode(U"101")
+  val i_bltu   = op_decode_h(U"110") & op_decode_l(U"0011") & f3_decode(U"110")
+  val i_bgeu   = op_decode_h(U"110") & op_decode_l(U"0011") & f3_decode(U"111")
+  val i_ecall  = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"000") & func7 === U"0000000" & rs2 === U"00000" & rs1 === B"00000" & rd === B"00000"
+  val i_ebreak = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"000") & func7 === U"0000000" & rs2 === U"00001" & rs1 === B"00000" & rd === B"00000"
+  val i_mret   = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"000") & func7 === U"0011000" & rs2 === U"00010" & rs1 === B"00000" & rd === B"00000"
+  val i_fence_i= op_decode_h(U"000") & op_decode_l(U"1111") & f3_decode(U"001");
 }
 
 

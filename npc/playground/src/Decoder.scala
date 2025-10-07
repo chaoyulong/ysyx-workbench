@@ -126,9 +126,9 @@ case class Decoder() extends Component {
   val i_bge    = op_decode_h(U"110") & op_decode_l(U"0011") & f3_decode(U"101")
   val i_bltu   = op_decode_h(U"110") & op_decode_l(U"0011") & f3_decode(U"110")
   val i_bgeu   = op_decode_h(U"110") & op_decode_l(U"0011") & f3_decode(U"111")
-  val i_ecall  = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"000") & func7 === U"0000000" & rs2 === U"00000" & rs1 === B"00000" & rd === B"00000"
-  val i_ebreak = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"000") & func7 === U"0000000" & rs2 === U"00001" & rs1 === B"00000" & rd === B"00000"
-  val i_mret   = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"000") & func7 === U"0011000" & rs2 === U"00010" & rs1 === B"00000" & rd === B"00000"
+  val i_ecall  = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"000") & func7 === U"0000000" & rs2 === U"00000" & rs1 === U"00000" & rd === U"00000"
+  val i_ebreak = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"000") & func7 === U"0000000" & rs2 === U"00001" & rs1 === U"00000" & rd === U"00000"
+  val i_mret   = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"000") & func7 === U"0011000" & rs2 === U"00010" & rs1 === U"00000" & rd === U"00000"
   val i_fence_i= op_decode_h(U"000") & op_decode_l(U"1111") & f3_decode(U"001");
 }
 

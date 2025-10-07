@@ -1,6 +1,7 @@
 #include <verilated.h>
 #include <verilated_fst_c.h>
 #include "VALU.h"
+#include <iostream>
 #ifdef __USE_NVBOARD__
 #include <nvboard.h>
 #endif

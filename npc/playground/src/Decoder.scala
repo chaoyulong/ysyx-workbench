@@ -21,9 +21,11 @@ case class Decoder() extends Component {
     val imm      = out port UInt(32 bits) // 立即数
   }
 
-  val op   = io.instr( 6 downto  0)     
-  val func3= io.instr(14 downto 12)
-  val func7= io.instr(31 downto 25)
+  val instr = io.instr
+
+  val op   = instr( 6 downto  0)     
+  val func3= instr(14 downto 12)
+  val func7= instr(31 downto 25)
   val func7_is_0 = ~(func7.orR)
   val func7_40_is_0 = ~(func7(4 downto 0).orR) 
   val func7_61_is_0 = ~(func7(6 downto 1).orR) 
@@ -33,11 +35,11 @@ case class Decoder() extends Component {
   io.rs2 := io.instr(24 downto 20)
   io.rd  := io.instr(11 downto 7)
 // ***************************************** 立即数生成 *********************************************** //
-  val immI = (io.instr(31) #* 20) ## io.instr(31 downto 20);
+  val immI = (instr(31) #* 20) ## instr(31 downto 20);
   val immU = instr(31 downto 12) ## U(0, 12 bits);
-  val immS = (io.instr(31) #* 20) ## instr(31 downto 25) ## instr(11 downto 7);
-  val immB = (io.instr(31) #* 20) ## instr(7) ## instr(30 downto 25) ## instr(11 downto 8) ## U(0, 1 bits);
-  val immJ = (io.instr(31) #* 12) ## instr(19 downto 12) ## instr(20) ## instr(30 downto 21)## U(0, 1 bits);
+  val immS = (instr(31) #* 20) ## instr(31 downto 25) ## instr(11 downto 7);
+  val immB = (instr(31) #* 20) ## instr(7) ## instr(30 downto 25) ## instr(11 downto 8) ## U(0, 1 bits);
+  val immJ = (instr(31) #* 12) ## instr(19 downto 12) ## instr(20) ## instr(30 downto 21)## U(0, 1 bits);
 
   val type_U = (i_auipc | i_lui);
   val type_J = (i_jal);

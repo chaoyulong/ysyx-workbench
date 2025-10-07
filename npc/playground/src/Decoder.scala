@@ -11,8 +11,8 @@ case class Decoder() extends Component {
     val alu_bsrc = out UInt(2 bits)  // 选择ALU输入端B的来源。为00时选择rs2，为01时选择imm，为10时选择常数4（用于跳转时计算返回地址PC+4），为11时选择csrrdata（用于将csr寄存器值写入通用寄存器）
     val alu_ctr  = out UInt(4 bits)  // 选择ALU执行的操作
     val branch   = out UInt(3 bits)  // 说明分支和跳转的种类，用于生成最终的分支控制信号
-    val mem2reg  = out UInt(3 bits)  // 选择写入寄存器的内容，为1时为存储器，为0时为alu
-    val mem_wr   = out UInt(3 bits)  // 为1时写入存储器
+    val mem2reg  = out Bool()  // 选择写入寄存器的内容，为1时为存储器，为0时为alu
+    val mem_wr   = out Bool()  // 为1时写入存储器
     val mem_op   = out UInt(3 bits)  // 控制数据存储器读写格式，为010时为4字节读写，为001时为2字节读写带符号扩展，为000时为1字节读写带符号扩展，为101时为2字节读写无符号扩展，为100时为1字节读写无符号扩展
     val imm      = out UInt(32 bits)  // 立即数
   }

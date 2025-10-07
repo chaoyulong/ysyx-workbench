@@ -38,7 +38,7 @@ case class PCUpdate() extends Component {
   
   val reg_pc = Reg(UInt(32 bits)) init(U"32'h80000000")
   val pc_add1 = Mux(io.pc_asrc, io.imm, U"32'd4")
-  val pc_add2 = Mux(io.pc_bsrc, io.rs1, pc)
+  val pc_add2 = Mux(io.pc_bsrc, io.rs1, reg_pc)
   val next_pc = pc_add1 + pc_add2
   
   reg_pc := next_pc

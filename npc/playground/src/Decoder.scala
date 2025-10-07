@@ -39,11 +39,11 @@ case class Decoder() extends Component {
   io.rs2 := rs2
   io.rd  := rd 
 // ***************************************** 立即数生成 *********************************************** //
-  val immI = U(instr(31) #* 20) ## instr(31 downto 20)
-  val immU = instr(31 downto 12) ## U(0, 12 bits)
-  val immS = U(instr(31) #* 20) ## instr(31 downto 25) ## instr(11 downto 7)
-  val immB = U(instr(31) #* 20) ## instr(7) ## instr(30 downto 25) ## instr(11 downto 8) ## U(0, 1 bits)
-  val immJ = U(instr(31) #* 12) ## instr(19 downto 12) ## instr(20) ## instr(30 downto 21)## U(0, 1 bits)
+  val immI = U((instr(31) #* 20) ## instr(31 downto 20))
+  val immU = U(instr(31 downto 12) ## U(0, 12 bits))
+  val immS = U((instr(31) #* 20) ## instr(31 downto 25) ## instr(11 downto 7))
+  val immB = U((instr(31) #* 20) ## instr(7) ## instr(30 downto 25) ## instr(11 downto 8) ## U(0, 1 bits))
+  val immJ = U((instr(31) #* 12) ## instr(19 downto 12) ## instr(20) ## instr(30 downto 21)## U(0, 1 bits))
 
   val type_U = (i_auipc | i_lui)
   val type_J = (i_jal)

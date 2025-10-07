@@ -26,6 +26,24 @@ case class RegFile() extends Component {
   io.rs2 := rf(io.addr_b(0 to 3)) 
 }
 
+case class PCUpdate() extends Component {
+  val io = new Bundle {
+    val rs1 = in UInt(32 bits)
+    val imm = in UInt(32 bits)
+    val pc_asrc = in Bool()
+    val pc_bsrc = in Bool()
+
+    val pc = out UInt(32 bits)
+  }
+  
+  val pc_add1 := Mux(io.pc_asrc, io.imm, U"32'd4")
+  val pc_add2 := Mux(io.pc_bsrc, io.rs1, pc)
+  val next_pc := pc_add1 + pc_add2
+  val pc = RegNext(next_pc, init = U"32'h80000000")
+  io.pc := pc
+
+}
+
 /*    Branch      跳转类型
   -------------------------------------
       000         非跳转指令

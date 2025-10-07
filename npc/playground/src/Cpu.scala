@@ -50,7 +50,7 @@ case class ALU() extends Component {
     val alu_out = out port UInt(32 bits) 
   }
 
-  val sub_add = io.alu_ctr(1) || io.alu_ctr(3) // 加法器的加减,经过卡诺图化简
+  val sub_add = io.alu_ctr(1) | io.alu_ctr(3) // 加法器的加减,经过卡诺图化简
   val u_s = io.alu_ctr(3) // 符号/无符号
   val a_l = io.alu_ctr(3) // 算数/逻辑
   val l_r = io.alu_ctr(2) // 左/右
@@ -100,7 +100,7 @@ case class Adder() extends Component {
   val io = new Bundle {
     val rs1 = in port UInt(32 bits)
     val rs2 = in port UInt(32 bits)  
-    val sub_add = in port Bool
+    val sub_add = in port UInt(1 bits)
 
     val carry = out port Bool
     val zero = out port Bool

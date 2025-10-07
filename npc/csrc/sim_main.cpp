@@ -19,25 +19,25 @@ static void step_and_dump_wave()
 #endif
 }
 
-void single_cycle() 
-{
-  top->clk = 0; step_and_dump_wave();
-  top->clk = 1; step_and_dump_wave();
-#ifdef __USE_NVBOARD__
-  nvboard_update();
-#endif
-}
+// void single_cycle() 
+// {
+//   top->clk = 0; step_and_dump_wave();
+//   top->clk = 1; step_and_dump_wave();
+// #ifdef __USE_NVBOARD__
+//   nvboard_update();
+// #endif
+// }
 
-static void reset(int n) {
-  top->reset = 1;
-  while (n -- > 0) step_and_dump_wave();
-  top->reset = 0;
-}
+// static void reset(int n) {
+//   top->reset = 1;
+//   while (n -- > 0) step_and_dump_wave();
+//   top->reset = 0;
+// }
 
-void n_cycle(int n)
-{
-  while (n -- > 0) single_cycle();
-}
+// void n_cycle(int n)
+// {
+//   while (n -- > 0) single_cycle();
+// }
 
 void sim_init(int argc, char *argv[])
 {

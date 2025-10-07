@@ -50,12 +50,12 @@ case class BranchCond() extends Component {
   branch_decoder.io.input := io.branch
   val decode = branch_decoder.io.output  
 
-  io.pc_bsrc := Mux(op(U"001") | op(U"010"), true,
-                Mux(op(U"100"),  io.zero,
-                Mux(op(U"101"), ~io.zero,
-                Mux(op(U"110"),  io.less,
-                Mux(op(U"111"), ~io.less,
+  io.pc_bsrc := Mux(decode(U"001") | decode(U"010"), true,
+                Mux(decode(U"100"),  io.zero,
+                Mux(decode(U"101"), ~io.zero,
+                Mux(decode(U"110"),  io.less,
+                Mux(decode(U"111"), ~io.less,
                 flase)))))
 
-  io.pc_bsrc := op(U"010")
+  io.pc_bsrc := decode(U"010")
 }

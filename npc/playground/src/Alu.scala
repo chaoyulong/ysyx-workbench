@@ -1,4 +1,6 @@
+package playground
 
+import spinal.core._
 /*              控制信号ALUctr的含义
     -----------------------------------------------
     ALUctr[3]   ALUctr[2:0]     ALU操作

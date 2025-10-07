@@ -62,10 +62,10 @@ case class Decoder() extends Component {
   val i_srai   = op_decode_h(U"001") & op_decode_l(U"0011") & f3_decode(U"101") & func7_40_is_0 & func7(5) & ~func7(6)
   val i_csrrw  = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"001")
   val i_csrrs  = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"010")
-  val i_csrrc  = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"011")
-  val i_csrrwi = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"101")
-  val i_csrrsi = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"110")
-  val i_csrrci = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"111")
+  // val i_csrrc  = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"011")
+  // val i_csrrwi = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"101")
+  // val i_csrrsi = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"110")
+  // val i_csrrci = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"111")
   val i_jalr   = op_decode_h(U"110") & op_decode_l(U"0111") & f3_decode(U"000")
   val i_sb     = op_decode_h(U"010") & op_decode_l(U"0011") & f3_decode(U"000")
   val i_sh     = op_decode_h(U"010") & op_decode_l(U"0011") & f3_decode(U"001")
@@ -112,8 +112,7 @@ case class Decoder() extends Component {
                    i_ori | i_andi | i_slli | i_srli | i_srai | i_jalr | i_csrrw | i_csrrs)            
   val type_S = (i_sb | i_sh | i_sw)
   val type_B = (i_beq | i_bne | i_blt | i_bge | i_bltu | i_bgeu)
-  val type_R = (i_add | i_sub | i_xor | i_or | i_and | i_sll | i_srl | i_sra | i_slt | i_sltu |
-                   i_mul | i_mulh | i_mulhsu | i_mulhu | i_div | i_divu | i_rem | i_remu)
+  val type_R = (i_add | i_sub | i_xor | i_or | i_and | i_sll | i_srl | i_sra | i_slt | i_sltu)
 
   io.imm := Mux(type_U, immU,
             Mux(type_J, immJ,

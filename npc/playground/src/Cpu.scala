@@ -100,7 +100,7 @@ case class Adder() extends Component {
   val io = new Bundle {
     val rs1 = in port UInt(32 bits)
     val rs2 = in port UInt(32 bits)  
-    val sub_add = in port UInt(1 bits)
+    val sub_add = in port Bool
 
     val carry = out port Bool
     val zero = out port Bool

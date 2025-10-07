@@ -39,26 +39,62 @@ import spinal.core._
     x           110             选择逻辑或输出
     x           111             选择逻辑与输出
 */
-// case class ALU() extends Component {
-//   val io = new Bundle {
-//     val rs1 = in port UInt(32 bits)
-//     val rs2 = in port UInt(32 bits)  
-//     val alu_ctr = in port UInt(4 bits) 
+case class ALU() extends Component {
+  val io = new Bundle {
+    val rs1 = in port UInt(32 bits)
+    val rs2 = in port UInt(32 bits)  
+    val alu_ctr = in port UInt(4 bits) 
 
-//     val less = out port Bool
-//     val zero = out port Bool
-//     val alu_out = out port UInt(32bits) 
-//   }
+    val less = out port Bool
+    val zero = out port Bool
+    val alu_out = out port UInt(32bits) 
+  }
 
-//   val sub_add = io.alu_ctr(0 to 2) === U("010") ? B"1" : io.alu_ctr(3) // 加法器的加减
+  val sub_add = io.alu_ctr(0 to 2) === U("010") ? B"1" : io.alu_ctr(3) // 加法器的加减
+  val u_s = io.alu_ctr(3) // 符号/无符号
+  val a_l = io.alu_ctr(3) // 算数/逻辑
+  val l_r = io.alu_ctr(2) // 左/右
+
+  val adder = Adder()
+  adder.io.rs1 := io.rs1
+  adder.io.rs2 := io.rs2
+  adder.io.sub_add := sub_add
+  val carry = adder.io.carry
+  val zero = adder.io.zero
+  val overflow = adder.io.overflow
+  val result_adder = adder.io.result
+
+  val shifter = Shifter() 
+  shifter.io.din := io.rs1
+  shifter.io.shamt := io.rs2(0 to 4)
+  shifter.io.l_r := l_r
+  shifter.io.a_l := a_l
+  val result_shift = shifter.io.shift
 
 
+  val less_0 = overflow ^ result_adder(31)
+  val less_1 = carry ^ sub_add
+  val less = Mux(u_s, Less_1, Less_0)
 
+  val result_slt = less.resize(32)
+  val result_outb = io.rs1
 
+  val result_xor = rs1 ^ rs2;
+  val result_or  = rs1 | rs2;
+  val result_and = rs1 & rs2;
 
+  switch(io.alu_ctr(0 to 2)){
+    is(U"3'b000") {io.alu_out := result_adder}
+    is(U"3'b001") {io.alu_out := result_shift}
+    is(U"3'b010") {io.alu_out := result_slt}
+    is(U"3'b011") {io.alu_out := result_outb}
+    is(U"3'b100") {io.alu_out := result_xor}
+    is(U"3'b101") {io.alu_out := result_shift}
+    is(U"3'b110") {io.alu_out := result_or}
+    is(U"3'b111") {io.alu_out := result_and}
+  }
 
-
-// }
+}
 
 case class Adder() extends Component {
   val io = new Bundle {

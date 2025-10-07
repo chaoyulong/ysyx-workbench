@@ -58,7 +58,7 @@ case class ALU() extends Component {
   val adder = Adder()
   adder.io.rs1 := io.rs1
   adder.io.rs2 := io.rs2
-  adder.io.sub_add = sub_add
+  adder.io.sub_add = sub_add.asUInt
   val carry = adder.io.carry
   val overflow = adder.io.overflow
   val result_adder = adder.io.result

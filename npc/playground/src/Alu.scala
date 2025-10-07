@@ -33,8 +33,8 @@ case class ALU() extends Component {
   val l_r = io.alu_ctr(2) // 左/右
 
   val adder = Adder()
-  adder.io.alu_in1 := io.alu_in1
-  adder.io.alu_in2 := io.alu_in2
+  adder.io.in1 := io.alu_in1
+  adder.io.in2 := io.alu_in2
   adder.io.sub_add := sub_add.asUInt
   val carry = adder.io.carry
   val overflow = adder.io.overflow

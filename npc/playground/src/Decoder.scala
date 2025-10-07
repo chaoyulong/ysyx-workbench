@@ -110,16 +110,16 @@ case class Decoder() extends Component {
   val immB = U((instr(31) #* 20) ## instr(7) ## instr(30 downto 25) ## instr(11 downto 8) ## U(0, 1 bits))
   val immJ = U((instr(31) #* 12) ## instr(19 downto 12) ## instr(20) ## instr(30 downto 21)## U(0, 1 bits))
 
-  val type_U = (i_auipc | i_lui)
-  val type_J = (i_jal)
+  val type_U = (i_auipc | i_lui).asBits
+  val type_J = (i_jal).asBits
   val type_I = (i_lb | i_lh | i_lw | i_lbu | i_lhu | i_addi | i_slti | i_sltiu | i_xori | 
-                   i_ori | i_andi | i_slli | i_srli | i_srai | i_jalr | i_csrrw | i_csrrs)            
-  val type_S = (i_sb | i_sh | i_sw);
-  val type_B = (i_beq | i_bne | i_blt | i_bge | i_bltu | i_bgeu)
+                   i_ori | i_andi | i_slli | i_srli | i_srai | i_jalr | i_csrrw | i_csrrs)    .asBits        
+  val type_S = (i_sb | i_sh | i_sw).asBits
+  val type_B = (i_beq | i_bne | i_blt | i_bge | i_bltu | i_bgeu).asBits
   val type_R = (i_add | i_sub | i_xor | i_or | i_and | i_sll | i_srl | i_sra | i_slt | i_sltu |
-                   i_mul | i_mulh | i_mulhsu | i_mulhu | i_div | i_divu | i_rem | i_remu)
+                   i_mul | i_mulh | i_mulhsu | i_mulhu | i_div | i_divu | i_rem | i_remu).asBits
 
-  switch(True) {
+  switch(B"1") {
     is(type_U) { io.imm := immU }
     is(type_J) { io.imm := immJ }
     is(type_I) { io.imm := immI }

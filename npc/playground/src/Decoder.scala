@@ -34,34 +34,6 @@ case class Decoder() extends Component {
   val func7_40_is_0 = ~(func7(4 downto 0).orR) 
   val func7_61_is_0 = ~(func7(6 downto 1).orR) 
 
-
-  io.rs1 := rs1
-  io.rs2 := rs2
-  io.rd  := rd 
-// ***************************************** 立即数生成 *********************************************** //
-  val immI = U((instr(31) #* 20) ## instr(31 downto 20))
-  val immU = U(instr(31 downto 12) ## U(0, 12 bits))
-  val immS = U((instr(31) #* 20) ## instr(31 downto 25) ## instr(11 downto 7))
-  val immB = U((instr(31) #* 20) ## instr(7) ## instr(30 downto 25) ## instr(11 downto 8) ## U(0, 1 bits))
-  val immJ = U((instr(31) #* 12) ## instr(19 downto 12) ## instr(20) ## instr(30 downto 21)## U(0, 1 bits))
-
-  val type_U = (i_auipc | i_lui)
-  val type_J = (i_jal)
-  val type_I = (i_lb | i_lh | i_lw | i_lbu | i_lhu | i_addi | i_slti | i_sltiu | i_xori | 
-                   i_ori | i_andi | i_slli | i_srli | i_srai | i_jalr | i_csrrw | i_csrrs)            
-  val type_S = (i_sb | i_sh | i_sw);
-  val type_B = (i_beq | i_bne | i_blt | i_bge | i_bltu | i_bgeu)
-  val type_R = (i_add | i_sub | i_xor | i_or | i_and | i_sll | i_srl | i_sra | i_slt | i_sltu |
-                   i_mul | i_mulh | i_mulhsu | i_mulhu | i_div | i_divu | i_rem | i_remu)
-
-  switch(True) {
-    is(type_U) { io.imm := immU }
-    is(type_J) { io.imm := immJ }
-    is(type_I) { io.imm := immI }
-    is(type_S) { io.imm := immS }
-    is(type_B) { io.imm := immB }
-    default    { io.imm := U(0, 32 bits) }
-  } 
 // ****************************************** 指令通用部分译码 ************************************************ //    
   val op_decoder0 = Decoder_4_16()
   op_decoder0.io.input := op(3 downto 0)
@@ -130,6 +102,35 @@ case class Decoder() extends Component {
   val i_ebreak = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"000") & func7 === U"0000000" & rs2 === U"00001" & rs1 === U"00000" & rd === U"00000"
   val i_mret   = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"000") & func7 === U"0011000" & rs2 === U"00010" & rs1 === U"00000" & rd === U"00000"
   val i_fence_i= op_decode_h(U"000") & op_decode_l(U"1111") & f3_decode(U"001");
+
+// ***************************************** 立即数生成 *********************************************** //
+  val immI = U((instr(31) #* 20) ## instr(31 downto 20))
+  val immU = U(instr(31 downto 12) ## U(0, 12 bits))
+  val immS = U((instr(31) #* 20) ## instr(31 downto 25) ## instr(11 downto 7))
+  val immB = U((instr(31) #* 20) ## instr(7) ## instr(30 downto 25) ## instr(11 downto 8) ## U(0, 1 bits))
+  val immJ = U((instr(31) #* 12) ## instr(19 downto 12) ## instr(20) ## instr(30 downto 21)## U(0, 1 bits))
+
+  val type_U = (i_auipc | i_lui)
+  val type_J = (i_jal)
+  val type_I = (i_lb | i_lh | i_lw | i_lbu | i_lhu | i_addi | i_slti | i_sltiu | i_xori | 
+                   i_ori | i_andi | i_slli | i_srli | i_srai | i_jalr | i_csrrw | i_csrrs)            
+  val type_S = (i_sb | i_sh | i_sw);
+  val type_B = (i_beq | i_bne | i_blt | i_bge | i_bltu | i_bgeu)
+  val type_R = (i_add | i_sub | i_xor | i_or | i_and | i_sll | i_srl | i_sra | i_slt | i_sltu |
+                   i_mul | i_mulh | i_mulhsu | i_mulhu | i_div | i_divu | i_rem | i_remu)
+
+  switch(True) {
+    is(type_U) { io.imm := immU }
+    is(type_J) { io.imm := immJ }
+    is(type_I) { io.imm := immI }
+    is(type_S) { io.imm := immS }
+    is(type_B) { io.imm := immB }
+    default    { io.imm := U(0, 32 bits) }
+  } 
+// ***************************************** 输出信号 *********************************************** //
+  io.rs1 := rs1
+  io.rs2 := rs2
+  io.rd  := rd 
 }
 
 

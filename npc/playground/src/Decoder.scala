@@ -127,24 +127,12 @@ case class Decoder() extends Component {
   //   is(type_B) { io.imm := immB }
   //   default    { io.imm := U(0, 32 bits) }
   // } 
-val selected_imm = UInt(32 bits)
 
-// 使用嵌套的when语句，综合器会优化成并行结构
-when(type_U) {
-  selected_imm := immU
-}.elsewhen(type_J) {
-  selected_imm := immJ
-}.elsewhen(type_I) {
-  selected_imm := immI
-}.elsewhen(type_S) {
-  selected_imm := immS
-}.elsewhen(type_B) {
-  selected_imm := immB
-}.otherwise {
-  selected_imm := U(0, 32 bits)
-}
-
-io.imm := selected_imm
+io.imm := Mux(type_U, immU,
+          Mux(type_J, immJ,
+          Mux(type_I, immI,
+          Mux(type_S, immS,
+          Mux(type_B, immB, U(0, 32 bits))))))
 // ***************************************** 输出信号 *********************************************** //
   io.rs1 := rs1
   io.rs2 := rs2

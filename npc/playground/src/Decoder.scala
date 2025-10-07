@@ -131,8 +131,8 @@ case class Decoder() extends Component {
 
 case class Decoder_4_16() extends Component {   // 4-16译码器
   val io = new Bundle {
-    val in = in UInt(4 bits)            
-    val out = out Bits(16 bits)        
+    val in = in port UInt(4 bits)            
+    val out = out port Bits(16 bits)        
   }
   
   switch(io.in) {
@@ -157,8 +157,8 @@ case class Decoder_4_16() extends Component {   // 4-16译码器
 
 case class Decoder_3_8() extends Component {   // 3-8译码器
   val io = new Bundle {
-    val in = in UInt(3 bits)          
-    val out = out Bits(8 bits)            
+    val in = in port UInt(3 bits)          
+    val out = out port Bits(8 bits)            
   }
   
   switch(io.in) {

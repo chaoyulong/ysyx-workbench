@@ -1,7 +1,6 @@
 package playground
 
 import spinal.core._
-import spinal.lib.misc.MuxOH
 
 case class Decoder() extends Component {
   val io = new Bundle {

@@ -58,7 +58,7 @@ case class ALU() extends Component {
   val adder = Adder()
   adder.io.rs1 := io.rs1
   adder.io.rs2 := io.rs2
-  adder.io.sub_add = sub_add.asUInt
+  adder.io.sub_add := sub_add.asUInt
   val carry = adder.io.carry
   val overflow = adder.io.overflow
   val result_adder = adder.io.result
@@ -76,7 +76,7 @@ case class ALU() extends Component {
   val less = Mux(u_s, less_1, less_0)
 
   val result_slt = less.resize(32)
-  val result_outb = io.rs1
+  val result_lui = io.rs2
 
   val result_xor = io.rs1 ^ io.rs2;
   val result_or  = io.rs1 | io.rs2;
@@ -88,7 +88,7 @@ case class ALU() extends Component {
     is(U"3'b000") {io.alu_out := result_adder}
     is(U"3'b001") {io.alu_out := result_shift}
     is(U"3'b010") {io.alu_out := result_slt}
-    is(U"3'b011") {io.alu_out := result_outb}
+    is(U"3'b011") {io.alu_out := result_lui}
     is(U"3'b100") {io.alu_out := result_xor}
     is(U"3'b101") {io.alu_out := result_shift}
     is(U"3'b110") {io.alu_out := result_or}

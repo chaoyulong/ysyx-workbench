@@ -78,9 +78,9 @@ case class ALU() extends Component {
   val result_slt = less.resize(32)
   val result_outb = io.rs1
 
-  val result_xor = rs1 ^ rs2;
-  val result_or  = rs1 | rs2;
-  val result_and = rs1 & rs2;
+  val result_xor = io.rs1 ^ io.rs2;
+  val result_or  = io.rs1 | io.rs2;
+  val result_and = io.rs1 & io.rs2;
 
   io.less := less
   io.zero := adder.io.zero

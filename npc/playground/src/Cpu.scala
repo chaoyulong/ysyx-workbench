@@ -41,7 +41,7 @@ case class PCUpdate() extends Component {
   val pc_add2 = Mux(io.pc_bsrc, io.rs1, pc)
   val next_pc = pc_add1 + pc_add2
   val pc := next_pc
-  io.pc := pc
+  io.pc = pc
 
 }
 

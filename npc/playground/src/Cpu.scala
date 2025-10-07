@@ -47,7 +47,7 @@ case class ALU() extends Component {
 
     val less = out port Bool
     val zero = out port Bool
-    val alu_out = out port UInt(32bits) 
+    val alu_out = out port UInt(32 bits) 
   }
 
   val sub_add = io.alu_ctr(0 to 2) === U("010") ? B"1" : io.alu_ctr(3) // 加法器的加减

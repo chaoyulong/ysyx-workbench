@@ -30,10 +30,10 @@ object Config {
 object SpinalToVerilog extends App {
   def failWithHelp(message: String): Nothing = {
     println(s"❌ $message")
-    println("❌ Usage: SPINAL_TOPNAME=<module> make run")
+    println("❌ Usage: SPINAL_TOP_FULL=<module> make run")
     sys.exit(1)
   }
-  val moduleSpec = sys.env.getOrElse("SPINAL_TOPNAME", failWithHelp("SPINAL_TOP environment variable not set!"))
+  val moduleSpec = sys.env.getOrElse("SPINAL_TOP_FULL", failWithHelp("SPINAL_TOP environment variable not set!"))
 
   val topModule = if (moduleSpec.contains(".")) {
     // 如果是完整类名，使用反射

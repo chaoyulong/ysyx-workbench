@@ -27,11 +27,7 @@ object Config {
 }
 
 object SpinalToVerilog extends App {
-  val clock, reset = in Bool()
-  val myClockDomain = ClockDomain(clock, reset)
-  new ClockingArea(myClockDomain){
-    Config.spinal.generateVerilog(CPU())
-  }
+  Config.spinal.generateVerilog(CPU())
 }
 
 // object SpinalToVhdl extends App {

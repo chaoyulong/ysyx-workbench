@@ -58,7 +58,7 @@ IMG ?=
 verilog:
 	$(call git_commit, "generate verilog")
 	mkdir -p $(BUILD_DIR)
-	BUILD_DIR=$(BUILD_DIR)  mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog --SPINAL_TOP_FULL=$(SPINAL_PRJ).$(SPINAL_TOPNAME)
+	BUILD_DIR=$(BUILD_DIR)  mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog -- SPINAL_TOP_FULL=$(SPINAL_PRJ).$(SPINAL_TOPNAME)
 
 $(SPINAL_VFILE): verilog
 

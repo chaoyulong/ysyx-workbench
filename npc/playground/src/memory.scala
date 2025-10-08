@@ -27,5 +27,5 @@ class Memory extends BlackBox{
   }
   noIoPrefix()
   mapClockDomain(clock = io.clk,reset = io.rst)
-  addRTLPath("./verilog/memory.v")   
+  // addRTLPath("./verilog/memory.v")   
 }

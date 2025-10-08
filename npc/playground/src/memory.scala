@@ -5,12 +5,12 @@ import spinal.core._
 object Memory{
   def apply(valid:Bool, wen:Bool, addr:UInt, wdata:UInt, wmask:UInt, rdata:UInt): Memory ={
     val memory = new Memory()
-    memory.io.valid := valid
-    memory.io.wen   := wen  
-    memory.io.addr  := addr 
-    memory.io.wdata := wdata
-    memory.io.wmask := wmask
-    memory.io.rdata := rdata
+    memory.io.valid <> valid
+    memory.io.wen   <> wen  
+    memory.io.addr  <> addr 
+    memory.io.wdata <> wdata
+    memory.io.wmask <> wmask
+    memory.io.rdata <> rdata
     memory
   }
 }

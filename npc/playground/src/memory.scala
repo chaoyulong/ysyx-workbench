@@ -11,6 +11,7 @@ object Memory{
     memory.io.wdata := wdata
     memory.io.wmask := wmask
     memory.io.rdata := rdata
+    memory
   }
 }
 class Memory extends BlackBox{

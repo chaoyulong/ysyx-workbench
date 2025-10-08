@@ -2,29 +2,34 @@ package playground
 
 import spinal.core._
 
-case class Cpu() extends Component {
+case class CPU() extends Component {
   val io = new Bundle {
 
   }
+  val rdata = UInt(32 bits)
+  memory = Memory(True, False, U"32'h80000000", U"0", U"0", rdata)
 
-  val decoder = Decoder()
+//   val addr_a = instr(19 downto 15)
+//   val addr_b = instr(24 downto 20)
+//   val addr_w = instr(11 downto 7)
 
-  val alu = ALU()
+//   val decoder = Decoder()
+//   val imm = decoder.io.imm
 
+//   val alu = ALU()
 
-  val branch_cond = BranchCond()
-  val reg_file = RegFile()
+//   val branch_cond = BranchCond()
+//   val reg_file = RegFile()
 
-// ****************************************** 更新PC ************************************************ //  
-  val reg_pc = Reg(UInt(32 bits)) init(U"32'h80000000")
-  val pc_add1 = Mux(io.pc_asrc, io.imm, U"32'd4")
-  val pc_add2 = Mux(io.pc_bsrc, io.rs1, reg_pc)
+// // ****************************************** 更新PC ************************************************ //  
+//   val reg_pc = Reg(UInt(32 bits)) init(U"32'h80000000")
+//   val pc_add1 = Mux(branch_cond.io.pc_asrc, imm, U"32'd4")
+//   val pc_add2 = Mux(branch_cond.io.pc_bsrc, rs1, reg_pc)
 
-  val next_pc = pc_add1 + pc_add2
-  reg_pc := next_pc
+//   val next_pc = pc_add1 + pc_add2
+//   reg_pc := next_pc
 
 }
-
 
 case class RegFile() extends Component {
   val io = new Bundle {

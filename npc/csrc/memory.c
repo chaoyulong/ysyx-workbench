@@ -1,0 +1,39 @@
+#include "memory.h"
+
+static void out_of_bound(int addr, int rw) 
+{
+  const char *a[2]={"read", "write"};
+  printf("%s address = 0x%08x is out of bound of pmem [0x%08x, 0x%08x]\n", 
+          a[rw], addr, PMEM_LEFT, PMEM_RIGHT);
+  assert(0);
+}
+
+extern "C" int pmem_read(int raddr) {
+  // 总是读取地址为`raddr & ~0x3u`的4字节返回
+  if(in_pmem(raddr))
+  {
+    paddr_t real_addr = ((paddr_t)raddr & (paddr_t)(~0x3u));
+    return host_read(guest_to_host(real_addr));
+  }
+  else
+  {
+    out_of_bound(raddr, 0);
+    return 0;
+  }
+}
+extern "C" void pmem_write(int waddr, int wdata, char wmask) {
+  // 总是往地址为`waddr & ~0x3u`的4字节按写掩码`wmask`写入`wdata`
+  // `wmask`中每比特表示`wdata`中1个字节的掩码,
+  // 如`wmask = 0x3`代表只写入最低2个字节, 内存中的其它字节保持不变
+  if(in_pmem(waddr))
+  {
+    paddr_t real_addr = ((paddr_t)waddr & (paddr_t)(~0x3u));
+    word_t old_data = host_read(guest_to_host(real_addr)) & ~wmask;    // 先读出以前数据再对对应位清除
+    word_t real_wdata = old_data + (wdata & wmask);
+    host_write(guest_to_host(real_addr), real_wdata);
+  }
+  else
+  {
+    out_of_bound(waddr, 1);
+  }
+}

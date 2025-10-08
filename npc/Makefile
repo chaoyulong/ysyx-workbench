@@ -1,5 +1,5 @@
 # verilator相关
-TOPNAME = Decoder
+TOPNAME = CPU
 YXYXSOC_VFILE =
 
 INC_PATH += $(abspath include)

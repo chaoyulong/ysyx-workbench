@@ -1,5 +1,6 @@
-# verilator相关
 SPINAL_TOPNAME = CPU
+
+# verilator相关
 TOPNAME = $(SPINAL_TOPNAME)
 YXYXSOC_VFILE =
 
@@ -13,7 +14,6 @@ SIM_WAVE = $(BUILD_DIR)/waveform.fst
 SPINAL_PRJ = playground
 SPINAL_VFILE = $(abspath $(BUILD_DIR)/$(TOPNAME).v)
 SPINAL_SIM_DIR = $(BUILD_DIR)/simulations
-SPINAL_TOP_FULL = $(SPINAL_PRJ).$(SPINAL_TOPNAME)
 
 ifneq ($(words $(CURDIR)),1)
   $(error Unsupported: GNU Make cannot build in directories containing spaces, build elsewhere: '$(CURDIR)')
@@ -58,12 +58,12 @@ IMG ?=
 verilog:
 	$(call git_commit, "generate verilog")
 	mkdir -p $(BUILD_DIR)
-	mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog
+	SPINAL_TOP_FULL = $(SPINAL_PRJ).$(SPINAL_TOPNAME) mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog
 
 $(SPINAL_VFILE): verilog
 
 test:
-	mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalSim
+	SPINAL_TOP_FULL = $(SPINAL_PRJ).$(SPINAL_TOPNAME) mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalSim
 	@gtkwave $(SPINAL_SIM_DIR)/$(SPINAL_TOPNAME)/test/wave.fst
 
 

@@ -7,7 +7,7 @@ case class CPU() extends Component {
 
   }
   val rdata = UInt(32 bits)
-  memory = Memory(True, False, U"32'h80000000", U"0", U"0", rdata)
+  val memory = Memory(True, False, U"32'h80000000", U"0", U"0", rdata)
 
 //   val addr_a = instr(19 downto 15)
 //   val addr_b = instr(24 downto 20)

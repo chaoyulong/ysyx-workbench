@@ -1,3 +1,6 @@
+package playground
+
+import spinal.core._
 
 object Memory{
   def apply(valid:Bool, wen:Bool, addr:UInt, wdata:UInt, wmask:UInt, rdata:UInt): Memory ={

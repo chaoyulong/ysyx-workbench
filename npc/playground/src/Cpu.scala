@@ -21,9 +21,9 @@ case class CPU() extends Component {
   val rs1      = reg_file.io.rs1
   val rs2      = reg_file.io.rs2
 
-  val less     = Bool()
-  val zero     = Bool()
-  val alu_result = UInt(32 bits)
+  val less     = alu.io.less
+  val zero     = alu.io.zero
+  val alu_result = alu.io.alu_result 
 
   val pc_asrc  = Bool()
   val pc_bsrc  = Bool()  
@@ -56,10 +56,8 @@ case class CPU() extends Component {
     is(U"01"){alu.io.alu_in2 := imm}
     default  {alu.io.alu_in2 := U"32'h4"}
   }
-  alu.io.ctr := alu_ctr
-  less = alu.io.less
-  zero = alu.io.zero
-  alu_result = alu.io.alu_result 
+  alu.io.alu_ctr := alu_ctr
+
 
   branch_cond.io.branch := branch
   branch_cond.io.less   := less

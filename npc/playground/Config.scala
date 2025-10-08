@@ -29,8 +29,7 @@ object Config {
 object SpinalToVerilog extends App {
   def failWithHelp(message: String): Nothing = {
     println(s"❌ $message")
-    println()
-    println("Usage: SPINAL_TOP=<module> make run")
+    println("❌Usage: SPINAL_TOPNAME=<module> make run")
     sys.exit(1)
   }
   val moduleSpec = sys.env.getOrElse("SPINAL_TOPNAME", failWithHelp("SPINAL_TOP environment variable not set!"))

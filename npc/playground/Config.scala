@@ -49,11 +49,9 @@ object SpinalToVerilog extends App {
   //   failWithHelp("Please use full name like: playground.TopLevel")
   // }
   val topModule = {
-    try {
       val clazz = Class.forName(moduleSpec)
       val constructor = clazz.getConstructor()
       constructor.newInstance().asInstanceOf[Component]
-    } 
   } 
 
   Config.spinal.generateVerilog(topModule)

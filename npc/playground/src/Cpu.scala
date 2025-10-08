@@ -20,8 +20,8 @@ import spinal.core._
 case class CPU_TOP() extends Component {
   val io = new Bundle{
   }
-  mapClockDomain(clock = clockDomain.clock, reset = clockDomain.reset, 
-                 clockName = "clk", resetName = "rst_n")
+  clockDomain.clock.setName("sys_clk")
+  clockDomain.reset.setName("sys_rst")
     val cpu = CPU()
 }
 

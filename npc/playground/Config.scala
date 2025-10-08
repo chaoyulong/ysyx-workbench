@@ -66,6 +66,7 @@ object SpinalToVerilog extends App {
         // }.asInstanceOf[Array[AnyRef]]
 
         // applyMethod.invoke(module, params: _*).asInstanceOf[Component]
+        ALU()
       }
     }
   } catch {

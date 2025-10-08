@@ -2,6 +2,28 @@ package playground
 
 import spinal.core._
 
+case class Cpu() extends Component {
+  val io = new Bundle {
+
+  }
+
+  val decoder = Decoder()
+
+  val alu = ALU()
+
+
+  val branch_cond = BranchCond()
+  val reg_file = RegFile()
+
+// ****************************************** 更新PC ************************************************ //  
+  val reg_pc = Reg(UInt(32 bits)) init(U"32'h80000000")
+  val pc_add1 = Mux(io.pc_asrc, io.imm, U"32'd4")
+  val pc_add2 = Mux(io.pc_bsrc, io.rs1, reg_pc)
+
+  val next_pc = pc_add1 + pc_add2
+  reg_pc := next_pc
+
+}
 
 
 case class RegFile() extends Component {
@@ -24,27 +46,6 @@ case class RegFile() extends Component {
   
   io.rs1 := rf(io.addr_a(0 to 3))
   io.rs2 := rf(io.addr_b(0 to 3)) 
-}
-
-case class PCUpdate() extends Component {
-  val io = new Bundle {
-    val rs1 = in UInt(32 bits)
-    val imm = in UInt(32 bits)
-    val pc_asrc = in Bool()
-    val pc_bsrc = in Bool()
-
-    val pc = out UInt(32 bits)
-  }
-  
-  val reg_pc = Reg(UInt(32 bits)) init(U"32'h80000000")
-  val pc_add1 = Mux(io.pc_asrc, io.imm, U"32'd4")
-  val pc_add2 = Mux(io.pc_bsrc, io.rs1, reg_pc)
-  val next_pc = pc_add1 + pc_add2
-  
-  reg_pc := next_pc
-
-  io.pc := reg_pc
-
 }
 
 /*    Branch      跳转类型

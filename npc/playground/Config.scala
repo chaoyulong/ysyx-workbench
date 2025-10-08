@@ -28,25 +28,33 @@ object Config {
 }
 
 object SpinalToVerilog extends App {
-  def failWithHelp(message: String): Nothing = {
+   def failWithHelp(message: String): Nothing = {
     println(s"❌ $message")
-    println("❌ Usage: SPINAL_TOP_FULL=<module> make run")
+    println("❌ Usage: make run MODULE=playground.CPU")
     sys.exit(1)
   }
-  val moduleSpec = sys.env.getOrElse("SPINAL_TOP_FULL", failWithHelp("SPINAL_TOP environment variable not set!"))
-
+  
+  val moduleSpec = if (args.length > 0) args(0) else 
+    failWithHelp("No module specified!")
+  
   val topModule = if (moduleSpec.contains(".")) {
-    // 如果是完整类名，使用反射
     try {
-      val clazz = Class.forName(moduleSpec)
-      val constructor = clazz.getConstructor()
-      constructor.newInstance().asInstanceOf[Component]
+      // 对于case class，我们需要调用伴生对象的apply方法
+      val lastDot = moduleSpec.lastIndexOf('.')
+      val className = moduleSpec.substring(0, lastDot)
+      val objectName = moduleSpec.substring(lastDot + 1)
+      
+      val companionClass = Class.forName(className + "$")
+      val companionObject = companionClass.getField("MODULE$").get(null)
+      val applyMethod = companionClass.getMethod("apply")
+      
+      applyMethod.invoke(companionObject).asInstanceOf[Component]
     } catch {
       case e: Exception =>
         failWithHelp(s"Cannot load class: $moduleSpec (${e.getMessage})")
     }
-  } else{
-    failWithHelp("Please use full name like: playground.TopLevel")
+  } else {
+    failWithHelp("Please use full name like: playground.CPU")
   }
   Config.spinal.generateVerilog(topModule)
   // Config.spinal.generateVerilog(CPU())

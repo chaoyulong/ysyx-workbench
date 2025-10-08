@@ -10,7 +10,7 @@ object Mem_rw{
     memory.io.addr  <> addr 
     memory.io.wdata <> wdata
     memory.io.wmask <> wmask
-    rdata
+    memory.io.rdata
   }
 }
 class Mem_rw extends BlackBox{
@@ -27,5 +27,4 @@ class Mem_rw extends BlackBox{
   noIoPrefix()
   mapClockDomain(clock = io.clock,reset = io.reset)
   addRTLPath(s"${sys.env("NPC_HOME")}/playground/verilog/memory.v")   
-  
 }

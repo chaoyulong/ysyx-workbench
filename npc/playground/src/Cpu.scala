@@ -38,9 +38,9 @@ case class CPU() extends Component {
   val reg_file = RegFile()
   val data_mem_rdata = Mem_rw(mem2reg | mem_wr, False, reg_pc, U"32'h0", U"4'h0")
 
-  reg_file.io.addr_a := U(instr(19 downto 15))
-  reg_file.io.addr_b := U(instr(24 downto 20))
-  reg_file.io.addr_w := U(instr(11 downto 7))
+  reg_file.io.addr_a := instr(19 downto 15)
+  reg_file.io.addr_b := instr(24 downto 20)
+  reg_file.io.addr_w := instr(11 downto 7)
   reg_file.io.wdata  := Mux(mem2reg, data_mem_rdata, alu_result)
   reg_file.io.reg_wr := reg_wr
   rs1 = reg_file.io.rs1

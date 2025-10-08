@@ -6,28 +6,74 @@ case class CPU() extends Component {
   val io = new Bundle {
 
   }
-  val rdata = UInt(32 bits)
-  val memory = Memory(True, False, U"32'h80000000", U"32'h0", U"4'h0", rdata)
 
-//   val addr_a = instr(19 downto 15)
-//   val addr_b = instr(24 downto 20)
-//   val addr_w = instr(11 downto 7)
+  // 控制信号
+  val reg_wr   = Bool()  
+  val alu_asrc = Bool() 
+  val alu_bsrc = UInt(2 bits) 
+  val alu_ctr  = UInt(4 bits) 
+  val branch   = UInt(3 bits) 
+  val mem2reg  = Bool()  
+  val mem_wr   = Bool()  
+  val mem_op   = UInt(3 bits) 
+  val imm      = UInt(32 bits)
 
-//   val decoder = Decoder()
-//   val imm = decoder.io.imm
+  val rs1      = UInt(32 bits)
+  val rs2      = UInt(32 bits)
 
-//   val alu = ALU()
+  val less     = Bool()
+  val zero     = Bool()
+  val alu_result = UInt(32 bits)
 
-//   val branch_cond = BranchCond()
-//   val reg_file = RegFile()
+  val pc_asrc  = Bool()
+  val pc_bsrc  = Bool()  
 
-// // ****************************************** 更新PC ************************************************ //  
-//   val reg_pc = Reg(UInt(32 bits)) init(U"32'h80000000")
-//   val pc_add1 = Mux(branch_cond.io.pc_asrc, imm, U"32'd4")
-//   val pc_add2 = Mux(branch_cond.io.pc_bsrc, rs1, reg_pc)
+  val reg_pc   = Reg(UInt(32 bits)) init(U"32'h80000000")
+  val next_pc  = UInt(32 bits)
 
-//   val next_pc = pc_add1 + pc_add2
-//   reg_pc := next_pc
+  val instr = Mem_rw(True, False, reg_pc, U"32'h0", U"4'h0")    // 只用于读取指令
+  val decoder = Decoder() 
+  val alu = ALU()
+  val branch_cond = BranchCond()
+  val reg_file = RegFile()
+  val data_mem_rdata = Mem_rw(mem2reg | mem_wr, False, reg_pc, U"32'h0", U"4'h0")
+
+  reg_file.io.addr_a := instr(19 downto 15)
+  reg_file.io.addr_b := instr(24 downto 20)
+  reg_file.io.addr_w := instr(11 downto 7)
+  reg_file.io.wdata  := Mux(mem2reg, data_mem_rdata, alu_result)
+  reg_file.io.reg_wr := reg_wr
+  rs1 = reg_file.io.rs1
+  rs2 = reg_file.io.rs2
+
+  next_pc = Mux(pc_asrc, imm, U"32'd4") + Mux(pc_bsrc, rs1, reg_pc)
+  reg_pc := next_pc
+
+  decoder.io.instr := instr
+
+  alu_asrc = decoder.io.alu_asrc
+  alu_bsrc = decoder.io.alu_bsrc
+  alu_ctr  = decoder.io.alu_ctr 
+  branch   = decoder.io.branch  
+  mem2reg  = decoder.io.mem2reg 
+  mem_wr   = decoder.io.mem_wr  
+  mem_op   = decoder.io.mem_op  
+  imm      = decoder.io.imm
+
+  alu.io.alu_in1 := Mux(decoder.io.alu_asrc, rs1, reg_pc)
+  switch(alu_bsrc){
+    is(U"00"){alu.io.alu_in2 := rs2}
+    is(U"01"){alu.io.alu_in2 := imm}
+    default  {alu.io.alu_in2 := U"32'h4"}
+  }
+  alu.io.ctr := alu_ctr
+  less = alu.io.less
+  zero = alu.io.zero
+  alu_result = alu.io.alu_result 
+
+  branch_cond.io.branch := branch
+  branch_cond.io.less   := less
+  branch_cond.io.zero   := zero
 
 }
 

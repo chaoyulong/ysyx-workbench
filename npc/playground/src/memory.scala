@@ -2,16 +2,15 @@ package playground
 
 import spinal.core._
 
-object Memory{
-  def apply(valid:Bool, wen:Bool, addr:UInt, wdata:UInt, wmask:UInt, rdata:UInt): Mem_rw ={
+object Mem_rw{
+  def apply(valid:Bool, wen:Bool, addr:UInt, wdata:UInt, wmask:UInt): Mem_rw ={
     val memory = new Mem_rw()
     memory.io.valid <> valid
     memory.io.wen   <> wen  
     memory.io.addr  <> addr 
     memory.io.wdata <> wdata
     memory.io.wmask <> wmask
-    memory.io.rdata <> rdata
-    memory
+    rdata
   }
 }
 class Mem_rw extends BlackBox{
@@ -27,7 +26,6 @@ class Mem_rw extends BlackBox{
   }
   noIoPrefix()
   mapClockDomain(clock = io.clock,reset = io.reset)
-  // addRTLPath("./verilog/memory.v")   
   addRTLPath(s"${sys.env("NPC_HOME")}/playground/verilog/memory.v")   
   
 }

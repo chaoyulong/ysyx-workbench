@@ -1,7 +1,7 @@
 
 object Memory{
   def apply(valid:Bool, wen:Bool, addr:UInt, wdata:UInt, wmask:UInt, rdata:UInt): Memory ={
-    val memory = Memory()
+    val memory = new Memory()
     memory.io.valid := valid
     memory.io.wen   := wen  
     memory.io.addr  := addr 
@@ -10,7 +10,7 @@ object Memory{
     memory.io.rdata := rdata
   }
 }
-case class Memory extends BlackBox{
+class Memory extends BlackBox{
   val io=new Bundle{
     val clk   = in Bool
     val rst   = in Bool

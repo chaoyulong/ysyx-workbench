@@ -48,25 +48,25 @@ object SpinalToVerilog extends App {
       if (applyMethod.getParameterCount == 0) {
         applyMethod.invoke(module).asInstanceOf[Component]
       } 
-      // else {
-      //   // 如果 apply 有参数，尝试从环境变量 SPINAL_ARGS 取 CSV 参数（简单示例）
-      //   val rawArgs = sys.env.get("SPINAL_ARGS").map(_.split(",")).getOrElse(Array.empty[String])
-      //   if (rawArgs.length < applyMethod.getParameterCount)
-      //     throw new IllegalArgumentException(s"Need ${applyMethod.getParameterCount} SPINAL_ARGS, got ${rawArgs.length}")
+      else {
+        // // 如果 apply 有参数，尝试从环境变量 SPINAL_ARGS 取 CSV 参数（简单示例）
+        // val rawArgs = sys.env.get("SPINAL_ARGS").map(_.split(",")).getOrElse(Array.empty[String])
+        // if (rawArgs.length < applyMethod.getParameterCount)
+        //   throw new IllegalArgumentException(s"Need ${applyMethod.getParameterCount} SPINAL_ARGS, got ${rawArgs.length}")
 
-      //   val params: Array[AnyRef] = applyMethod.getParameterTypes.zipWithIndex.map {
-      //     case (pt, i) =>
-      //       val s = rawArgs(i)
-      //       // 支持简单的几种类型（按需扩展）
-      //       if (pt == classOf[java.lang.String]) s
-      //       else if (pt == java.lang.Integer.TYPE) java.lang.Integer.valueOf(s)
-      //       else if (pt == java.lang.Long.TYPE) java.lang.Long.valueOf(s)
-      //       else if (pt == java.lang.Boolean.TYPE) java.lang.Boolean.valueOf(s)
-      //       else throw new IllegalArgumentException(s"Unsupported param type: $pt for top $fullName. Consider providing a zero-arg wrapper object.")
-      //   }.asInstanceOf[Array[AnyRef]]
+        // val params: Array[AnyRef] = applyMethod.getParameterTypes.zipWithIndex.map {
+        //   case (pt, i) =>
+        //     val s = rawArgs(i)
+        //     // 支持简单的几种类型（按需扩展）
+        //     if (pt == classOf[java.lang.String]) s
+        //     else if (pt == java.lang.Integer.TYPE) java.lang.Integer.valueOf(s)
+        //     else if (pt == java.lang.Long.TYPE) java.lang.Long.valueOf(s)
+        //     else if (pt == java.lang.Boolean.TYPE) java.lang.Boolean.valueOf(s)
+        //     else throw new IllegalArgumentException(s"Unsupported param type: $pt for top $fullName. Consider providing a zero-arg wrapper object.")
+        // }.asInstanceOf[Array[AnyRef]]
 
-      //   applyMethod.invoke(module, params: _*).asInstanceOf[Component]
-      // }
+        // applyMethod.invoke(module, params: _*).asInstanceOf[Component]
+      }
     }
   } catch {
     case e: Throwable =>

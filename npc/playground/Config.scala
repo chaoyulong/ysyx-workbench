@@ -29,15 +29,33 @@ object Config {
 }
 
 object SpinalToVerilog extends App {
+  // 从环境变量读取顶层模块名
   val topName = sys.env.getOrElse("SPINAL_TOPNAME", "CPU")
-  val mirror = universe.runtimeMirror(getClass.getClassLoader)
-  val cls = mirror.staticClass(s"playground.$topName")
-  val classMirror = mirror.reflectClass(cls)
-  val ctor = cls.primaryConstructor.asMethod
-  val ctorMirror = classMirror.reflectConstructor(ctor)
-  val component = ctorMirror().asInstanceOf[Component]
+  val fullName = s"playground.$topName"   // 包名 + 类名
+  println(s"[SpinalToVerilog] Generating Verilog for top module: $fullName")
 
-  Config.spinal.generateVerilog(component)
+  // 获取运行时反射镜像
+  val mirror = universe.runtimeMirror(getClass.getClassLoader)
+
+  try {
+    // 获取伴生对象（object CPU）
+    val moduleSymbol = mirror.staticModule(fullName)
+    val module = mirror.reflectModule(moduleSymbol).instance
+
+    // 调用 apply() 生成实例（case class 有自动 apply）
+    val applyMethod = module.getClass.getMethod("apply")
+    val component = applyMethod.invoke(module).asInstanceOf[Component]
+
+    // 使用你的配置生成 Verilog
+    Config.spinal.generateVerilog(component)
+  } catch {
+    case e: scala.ScalaReflectionException =>
+      Console.err.println(s"Error: Cannot find module '$fullName'")
+      e.printStackTrace()
+    case e: Throwable =>
+      Console.err.println(s"Error while generating Verilog for '$fullName': ${e.getMessage}")
+      e.printStackTrace()
+  }
   // Config.spinal.generateVerilog(CPU())
 }
 

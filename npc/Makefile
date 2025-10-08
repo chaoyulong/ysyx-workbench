@@ -1,5 +1,5 @@
 # verilator相关
-TOPNAME = CPU
+TOPNAME = CPU_TOP
 YXYXSOC_VFILE =
 
 INC_PATH += $(abspath include)

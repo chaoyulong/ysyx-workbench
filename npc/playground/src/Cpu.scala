@@ -32,8 +32,8 @@ case class CPU() extends Component {
   val zero     = alu.io.zero
   val alu_result = alu.io.alu_result 
 
-  val pc_asrc  = Bool()
-  val pc_bsrc  = Bool()  
+  val pc_asrc  = branch_cond.io.pc_asrc
+  val pc_bsrc  = branch_cond.io.pc_bsrc
 
 
   val next_pc  = Mux(pc_asrc, imm, U"32'd4") + Mux(pc_bsrc, rs1, reg_pc)
@@ -57,7 +57,6 @@ case class CPU() extends Component {
     default  {alu.io.alu_in2 := U"32'h4"}
   }
   alu.io.alu_ctr := alu_ctr
-
 
   branch_cond.io.branch := branch
   branch_cond.io.less   := less

@@ -3,7 +3,7 @@ package playground
 import spinal.core._
 
 object Memory{
-  def apply(valid:Bool, wen:Bool, addr:UInt, wdata:UInt, wmask:UInt, rdata:UInt): Memory ={
+  def apply(valid:Bool, wen:Bool, addr:UInt, wdata:UInt, wmask:UInt, rdata:UInt): Mem_rw ={
     val memory = new Mem_rw()
     memory.io.valid <> valid
     memory.io.wen   <> wen  

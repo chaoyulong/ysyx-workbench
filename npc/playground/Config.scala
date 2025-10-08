@@ -29,32 +29,49 @@ object Config {
 }
 
 object SpinalToVerilog extends App {
-  // 从环境变量读取顶层模块名
   val topName = sys.env.getOrElse("SPINAL_TOPNAME", "CPU")
-  val fullName = s"playground.$topName"   // 包名 + 类名
+  val fullName = s"playground.$topName"
   println(s"[SpinalToVerilog] Generating Verilog for top module: $fullName")
 
-  // 获取运行时反射镜像
   val mirror = universe.runtimeMirror(getClass.getClassLoader)
-
   try {
-    // 获取伴生对象（object CPU）
-    val moduleSymbol = mirror.staticModule(fullName)
+    val moduleSymbol = mirror.staticModule(fullName) // companion object
     val module = mirror.reflectModule(moduleSymbol).instance
 
-    // 调用 apply() 生成实例（case class 有自动 apply）
-    val applyMethod = module.getClass.getMethod("apply")
-    val component = applyMethod.invoke(module).asInstanceOf[Component]
+    // 找到 companion 的 apply 方法（可能有参数或无参数）
+    val applyMethod = module.getClass.getMethods.find(_.getName == "apply")
+      .getOrElse(throw new NoSuchMethodException(s"No apply() in companion object of $fullName"))
 
-    // 使用你的配置生成 Verilog
-    Config.spinal.generateVerilog(component)
+    // **重点**：在 generateVerilog 的 by-name 块里实例化 component
+    Config.spinal.generateVerilog {
+      // 如果 apply 无参数，直接调用
+      if (applyMethod.getParameterCount == 0) {
+        applyMethod.invoke(module).asInstanceOf[Component]
+      } else {
+        // 如果 apply 有参数，尝试从环境变量 SPINAL_ARGS 取 CSV 参数（简单示例）
+        val rawArgs = sys.env.get("SPINAL_ARGS").map(_.split(",")).getOrElse(Array.empty[String])
+        if (rawArgs.length < applyMethod.getParameterCount)
+          throw new IllegalArgumentException(s"Need ${applyMethod.getParameterCount} SPINAL_ARGS, got ${rawArgs.length}")
+
+        val params: Array[AnyRef] = applyMethod.getParameterTypes.zipWithIndex.map {
+          case (pt, i) =>
+            val s = rawArgs(i)
+            // 支持简单的几种类型（按需扩展）
+            if (pt == classOf[java.lang.String]) s
+            else if (pt == java.lang.Integer.TYPE) java.lang.Integer.valueOf(s)
+            else if (pt == java.lang.Long.TYPE) java.lang.Long.valueOf(s)
+            else if (pt == java.lang.Boolean.TYPE) java.lang.Boolean.valueOf(s)
+            else throw new IllegalArgumentException(s"Unsupported param type: $pt for top $fullName. Consider providing a zero-arg wrapper object.")
+        }.asInstanceOf[Array[AnyRef]]
+
+        applyMethod.invoke(module, params: _*).asInstanceOf[Component]
+      }
+    }
   } catch {
-    case e: scala.ScalaReflectionException =>
-      Console.err.println(s"Error: Cannot find module '$fullName'")
-      e.printStackTrace()
     case e: Throwable =>
-      Console.err.println(s"Error while generating Verilog for '$fullName': ${e.getMessage}")
+      System.err.println(s"Error while generating Verilog for '$fullName': ${e.getMessage}")
       e.printStackTrace()
+      sys.exit(1)
   }
   // Config.spinal.generateVerilog(CPU())
 }

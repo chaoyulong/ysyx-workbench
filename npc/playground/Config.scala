@@ -27,8 +27,14 @@ object Config {
 }
 
 object SpinalToVerilog extends App {
-  val moduleSpec = sys.env.getOrElse("SPINAL_TOPNAME", "unknown_topname")
-  
+  def failWithHelp(message: String): Nothing = {
+    println(s"❌ $message")
+    println()
+    println("Usage: SPINAL_TOP=<module> make run")
+    sys.exit(1)
+  }
+  val moduleSpec = sys.env.getOrElse("SPINAL_TOPNAME", failWithHelp("SPINAL_TOP environment variable not set!"))
+
   val topModule = if (moduleSpec.contains(".")) {
     // 如果是完整类名，使用反射
     try {
@@ -37,9 +43,10 @@ object SpinalToVerilog extends App {
       constructor.newInstance().asInstanceOf[Component]
     } catch {
       case e: Exception =>
-        println(s"Error instantiating $moduleSpec")
-        unknown_topname()
+        failWithHelp(s"Cannot load class: $moduleSpec (${e.getMessage})")
     }
+  } else{
+    failWithHelp(s"Please use full name like: playgroung.$other")
   }
   Config.spinal.generateVerilog(topModule)
   // Config.spinal.generateVerilog(CPU())
@@ -48,3 +55,4 @@ object SpinalToVerilog extends App {
 // object SpinalToVhdl extends App {
 //   Config.spinal.generateVhdl(Top())
 // }
+

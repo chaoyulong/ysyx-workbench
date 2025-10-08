@@ -28,32 +28,15 @@ object Config {
 }
 
 object SpinalToVerilog extends App {
-  // def failWithHelp(message: String): Nothing = {
-  //   println(s"❌ $message")
-  //   println("❌ Usage: mill -i playground.runMain playground.SpinalToVerilog -- <module>")
-  //   println("❌ Example: mill -i playground.runMain playground.SpinalToVerilog -- playground.CPU")
-  //   sys.exit(1)
-  // }
-  
-  // // 从命令行参数获取，而不是环境变量
-  // val moduleSpec = if (args.length > 0) args(0) else 
-  //   failWithHelp("No module specified!")
-  
-  // val topModule = if (moduleSpec.contains(".")) {
-  //   try {
-  //     val clazz = Class.forName(moduleSpec)
-  //     val constructor = clazz.getConstructor()
-  //     constructor.newInstance().asInstanceOf[Component]
-  //   } catch {
-  //     case e: Exception =>
-  //       failWithHelp(s"Cannot load class: $moduleSpec (${e.getMessage})")
-  //   }
-  // } else {
-  //   failWithHelp("Please use full name like: playground.CPU")
-  // }
+  val topName = sys.env.getOrElse("SPINAL_TOPNAME", "ALU") // 默认为 CPU
+  val mirror = universe.runtimeMirror(getClass.getClassLoader)
+  val moduleClass = mirror.staticModule(s"playground.$topName") // 注意加上包名
+  val moduleObj = mirror.reflectModule(moduleClass).instance
+  val genMethod = moduleObj.getClass.getMethod("apply")
+  val component = genMethod.invoke(moduleObj).asInstanceOf[Component]
 
-  // Config.spinal.generateVerilog(topModule)
-  Config.spinal.generateVerilog(CPU())
+  Config.spinal.generateVerilog(component)
+  // Config.spinal.generateVerilog(CPU())
 }
 
 // object SpinalToVhdl extends App {

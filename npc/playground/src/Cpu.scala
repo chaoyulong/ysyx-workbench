@@ -29,7 +29,7 @@ case class CPU() extends Component {
   val pc_bsrc  = Bool()  
 
   val reg_pc   = Reg(UInt(32 bits)) init(U"32'h80000000")
-  val next_pc  = UInt(32 bits)
+  val next_pc  = Mux(pc_asrc, imm, U"32'd4") + Mux(pc_bsrc, rs1, reg_pc)
 
   val instr = Mem_rw(True, False, reg_pc, U"32'h0", U"4'h0")    // 只用于读取指令
   val decoder = Decoder() 
@@ -44,11 +44,9 @@ case class CPU() extends Component {
   reg_file.io.wdata  := Mux(mem2reg, data_mem_rdata, alu_result)
   reg_file.io.reg_wr := reg_wr
 
-  next_pc = Mux(pc_asrc, imm, U"32'd4") + Mux(pc_bsrc, rs1, reg_pc)
   reg_pc := next_pc
 
   decoder.io.instr := instr
-
 
   alu.io.alu_in1 := Mux(decoder.io.alu_asrc, rs1, reg_pc)
   switch(alu_bsrc){

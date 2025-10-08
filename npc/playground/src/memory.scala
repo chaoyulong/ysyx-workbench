@@ -16,8 +16,8 @@ object Memory{
 }
 class Mem_rw extends BlackBox{
   val io=new Bundle{
-    val clk   = in Bool
-    val rst   = in Bool
+    val clock = in Bool
+    val reset = in Bool
     val valid = in Bool
     val wen   = in Bool
     val addr  = in UInt(32 bits)
@@ -26,7 +26,7 @@ class Mem_rw extends BlackBox{
     val rdata = out UInt(32 bits)
   }
   noIoPrefix()
-  mapClockDomain(clock = io.clk,reset = io.rst)
+  mapClockDomain(clock = io.clock,reset = io.reset)
   // addRTLPath("./verilog/memory.v")   
   addRTLPath(s"${sys.env("NPC_HOME")}/playground/verilog/memory.v")   
   

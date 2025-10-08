@@ -5,7 +5,7 @@ import spinal.core.sim._
 
 object Config {
   // val build_dir = sys.env.getOrElse("BUILD_DIR", "./build")    // verilog文件生成位置
-  val build_dir = sys.env.getOrElse("BUILD_DIR", ".")    // verilog文件生成位置
+  val build_dir = sys.env.getOrElse("$BUILD_DIR", ".")    // verilog文件生成位置
   val sim_dir = sys.env.getOrElse("SPINAL_SIM_DIR", "./build/simulations")  // 仿真文件生成位置
 
   def spinal = SpinalConfig(

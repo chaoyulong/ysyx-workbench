@@ -2,7 +2,7 @@ package playground
 
 import spinal.core._
 
-class CPU() extends Component {
+case class CPU() extends Component {
   val io = new Bundle {
   }
 

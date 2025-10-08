@@ -2,32 +2,12 @@ package playground
 
 import spinal.core._
 
-// case class CPU_TOP() extends Component {
-//   val io = new Bundle{
-//     val clock = in Bool()
-//     val reset = in Bool()
-//   }
-//    noIoPrefix() // 去掉生成代码的io前缀
-//    // Define a new clock domain
-//    val clkDomain = ClockDomain(io.myClk,io.myRst)
-//    // Use this domain in an area of the design
-//    val clkArea = new ClockingArea(clkDomain) {
-//     val cpu = CPU()
-//    }
-// }
-
-
-case class CPU_TOP() extends Component {
-  val io = new Bundle{
-  }
-  clockDomain.clock.setName("sys_clk")
-  clockDomain.reset.setName("sys_rst")
-    val cpu = CPU()
-}
-
 case class CPU() extends Component {
   val io = new Bundle {
   }
+
+  clockDomain.clock.setName("clock")
+  clockDomain.reset.setName("reset")
 
   val reg_pc   = Reg(UInt(32 bits)) init(U"32'h80000000")
   val instr = Mem_rw(True, False, reg_pc, U"32'h0", U"4'h0")    // 只用于读取指令

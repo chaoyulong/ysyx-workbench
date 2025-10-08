@@ -27,7 +27,22 @@ object Config {
 }
 
 object SpinalToVerilog extends App {
-  Config.spinal.generateVerilog(CPU())
+  val moduleSpec = sys.env.getOrElse("SPINAL_TOPNAME", "unknown_topname")
+  
+  val topModule = if (moduleSpec.contains(".")) {
+    // 如果是完整类名，使用反射
+    try {
+      val clazz = Class.forName(moduleSpec)
+      val constructor = clazz.getConstructor()
+      constructor.newInstance().asInstanceOf[Component]
+    } catch {
+      case e: Exception =>
+        println(s"Error instantiating $moduleSpec")
+        unknown_topname()
+    }
+  }
+  Config.spinal.generateVerilog(topModule)
+  // Config.spinal.generateVerilog(CPU())
 }
 
 // object SpinalToVhdl extends App {

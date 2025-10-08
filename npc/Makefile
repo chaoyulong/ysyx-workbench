@@ -1,5 +1,6 @@
 # verilator相关
-TOPNAME = CPU
+SPINAL_TOPNAME = CPU
+TOPNAME = $(SPINAL_TOPNAME)
 YXYXSOC_VFILE =
 
 INC_PATH += $(abspath include)
@@ -7,10 +8,12 @@ BUILD_DIR = ./build
 OBJ_DIR = $(BUILD_DIR)/obj_dir
 BIN = $(BUILD_DIR)/V$(TOPNAME)
 SIM_WAVE = $(BUILD_DIR)/waveform.fst
+
 # spinal生成verilog相关
 SPINAL_PRJ = playground
 SPINAL_VFILE = $(abspath $(BUILD_DIR)/$(TOPNAME).v)
 SPINAL_SIM_DIR = $(BUILD_DIR)/simulations
+SPINAL_TOP_FULL = $(SPINAL_PRJ).$(SPINAL_TOPNAME)
 
 ifneq ($(words $(CURDIR)),1)
   $(error Unsupported: GNU Make cannot build in directories containing spaces, build elsewhere: '$(CURDIR)')
@@ -61,7 +64,7 @@ $(SPINAL_VFILE): verilog
 
 test:
 	mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalSim
-	@gtkwave $(SPINAL_SIM_DIR)/$(TOPNAME)/test/wave.fst
+	@gtkwave $(SPINAL_SIM_DIR)/$(SPINAL_TOPNAME)/test/wave.fst
 
 
 # 此函数用于verilator编译，nvboard和直接仿真所用文件不同，例如：

@@ -2,6 +2,7 @@ package playground
 
 import spinal.core._
 import spinal.core.sim._
+import scala.reflect.runtime.universe
 
 object Config {
   val build_dir = sys.env.getOrElse("BUILD_DIR", ".")    // verilog文件生成位置

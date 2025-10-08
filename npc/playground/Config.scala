@@ -29,12 +29,13 @@ object Config {
 }
 
 object SpinalToVerilog extends App {
-  val topName = sys.env.getOrElse("SPINAL_TOPNAME", "ALU") // 默认为 CPU
+  val topName = sys.env.getOrElse("SPINAL_TOPNAME", "CPU")
   val mirror = universe.runtimeMirror(getClass.getClassLoader)
-  val moduleClass = mirror.staticModule(s"playground.$topName") // 注意加上包名
-  val moduleObj = mirror.reflectModule(moduleClass).instance
-  val genMethod = moduleObj.getClass.getMethod("apply")
-  val component = genMethod.invoke(moduleObj).asInstanceOf[Component]
+  val cls = mirror.staticClass(s"playground.$topName")
+  val classMirror = mirror.reflectClass(cls)
+  val ctor = cls.primaryConstructor.asMethod
+  val ctorMirror = classMirror.reflectConstructor(ctor)
+  val component = ctorMirror().asInstanceOf[Component]
 
   Config.spinal.generateVerilog(component)
   // Config.spinal.generateVerilog(CPU())

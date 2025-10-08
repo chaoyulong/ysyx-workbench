@@ -4,7 +4,7 @@ import spinal.core._
 import spinal.core.sim._
 
 object Config {
-  val build_dir = sys.env.getOrElse("BUILD_DIR", "./build")    // verilog文件生成位置
+  val build_dir = sys.env.getOrElse("BUILD_DIR", ".")    // verilog文件生成位置
   // val build_dir = sys.env.getOrElse("$BUILD_DIR", ".")    // verilog文件生成位置
   val sim_dir = sys.env.getOrElse("SPINAL_SIM_DIR", "./build/simulations")  // 仿真文件生成位置
 
@@ -28,36 +28,36 @@ object Config {
 }
 
 object SpinalToVerilog extends App {
-   def failWithHelp(message: String): Nothing = {
-    println(s"❌ $message")
-    println("❌ Usage: make run MODULE=playground.CPU")
-    sys.exit(1)
-  }
+  //  def failWithHelp(message: String): Nothing = {
+  //   println(s"❌ $message")
+  //   println("❌ Usage: make run MODULE=playground.CPU")
+  //   sys.exit(1)
+  // }
   
-  val moduleSpec = if (args.length > 0) args(0) else 
-    failWithHelp("No module specified!")
+  // val moduleSpec = if (args.length > 0) args(0) else 
+  //   failWithHelp("No module specified!")
   
-  val topModule = if (moduleSpec.contains(".")) {
-    try {
-      // 对于case class，我们需要调用伴生对象的apply方法
-      val lastDot = moduleSpec.lastIndexOf('.')
-      val className = moduleSpec.substring(0, lastDot)
-      val objectName = moduleSpec.substring(lastDot + 1)
+  // val topModule = if (moduleSpec.contains(".")) {
+  //   try {
+  //     // 对于case class，我们需要调用伴生对象的apply方法
+  //     val lastDot = moduleSpec.lastIndexOf('.')
+  //     val className = moduleSpec.substring(0, lastDot)
+  //     val objectName = moduleSpec.substring(lastDot + 1)
       
-      val companionClass = Class.forName(className + "$")
-      val companionObject = companionClass.getField("MODULE$").get(null)
-      val applyMethod = companionClass.getMethod("apply")
+  //     val companionClass = Class.forName(className + "$")
+  //     val companionObject = companionClass.getField("MODULE$").get(null)
+  //     val applyMethod = companionClass.getMethod("apply")
       
-      applyMethod.invoke(companionObject).asInstanceOf[Component]
-    } catch {
-      case e: Exception =>
-        failWithHelp(s"Cannot load class: $moduleSpec (${e.getMessage})")
-    }
-  } else {
-    failWithHelp("Please use full name like: playground.CPU")
-  }
-  Config.spinal.generateVerilog(topModule)
-  // Config.spinal.generateVerilog(CPU())
+  //     applyMethod.invoke(companionObject).asInstanceOf[Component]
+  //   } catch {
+  //     case e: Exception =>
+  //       failWithHelp(s"Cannot load class: $moduleSpec (${e.getMessage})")
+  //   }
+  // } else {
+  //   failWithHelp("Please use full name like: playground.CPU")
+  // }
+  // Config.spinal.generateVerilog(topModule)
+  Config.spinal.generateVerilog(CPU())
 }
 
 // object SpinalToVhdl extends App {

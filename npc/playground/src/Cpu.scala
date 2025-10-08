@@ -8,18 +8,18 @@ case class CPU() extends Component {
   }
 
   // 控制信号
-  val reg_wr   = Bool()  
-  val alu_asrc = Bool() 
-  val alu_bsrc = UInt(2 bits) 
-  val alu_ctr  = UInt(4 bits) 
-  val branch   = UInt(3 bits) 
-  val mem2reg  = Bool()  
-  val mem_wr   = Bool()  
-  val mem_op   = UInt(3 bits) 
-  val imm      = UInt(32 bits)
+  val reg_wr   = decoder.io.reg_wr
+  val alu_asrc = decoder.io.alu_asrc
+  val alu_bsrc = decoder.io.alu_bsrc
+  val alu_ctr  = decoder.io.alu_ctr 
+  val branch   = decoder.io.branch  
+  val mem2reg  = decoder.io.mem2reg 
+  val mem_wr   = decoder.io.mem_wr  
+  val mem_op   = decoder.io.mem_op  
+  val imm      = decoder.io.imm
 
-  val rs1      = UInt(32 bits)
-  val rs2      = UInt(32 bits)
+  val rs1      = reg_file.io.rs1
+  val rs2      = reg_file.io.rs2
 
   val less     = Bool()
   val zero     = Bool()
@@ -43,22 +43,12 @@ case class CPU() extends Component {
   reg_file.io.addr_w := instr(11 downto 7)
   reg_file.io.wdata  := Mux(mem2reg, data_mem_rdata, alu_result)
   reg_file.io.reg_wr := reg_wr
-  rs1 = reg_file.io.rs1
-  rs2 = reg_file.io.rs2
 
   next_pc = Mux(pc_asrc, imm, U"32'd4") + Mux(pc_bsrc, rs1, reg_pc)
   reg_pc := next_pc
 
   decoder.io.instr := instr
 
-  alu_asrc = decoder.io.alu_asrc
-  alu_bsrc = decoder.io.alu_bsrc
-  alu_ctr  = decoder.io.alu_ctr 
-  branch   = decoder.io.branch  
-  mem2reg  = decoder.io.mem2reg 
-  mem_wr   = decoder.io.mem_wr  
-  mem_op   = decoder.io.mem_op  
-  imm      = decoder.io.imm
 
   alu.io.alu_in1 := Mux(decoder.io.alu_asrc, rs1, reg_pc)
   switch(alu_bsrc){

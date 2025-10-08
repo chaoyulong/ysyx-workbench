@@ -27,6 +27,8 @@ object Config {
 }
 
 object SpinalToVerilog extends App {
+  clockDomain.clock.setName("clock")
+  clockDomain.reset.setName("reset")
   Config.spinal.generateVerilog(CPU())
 }
 

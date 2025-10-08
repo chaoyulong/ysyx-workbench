@@ -53,10 +53,7 @@ object SpinalToVerilog extends App {
       val clazz = Class.forName(moduleSpec)
       val constructor = clazz.getConstructor()
       constructor.newInstance().asInstanceOf[Component]
-    } catch {
-      case e: Exception =>
-        failWithHelp(s"Cannot load class: $moduleSpec (${e.getMessage})")
-    }
+    } 
   } 
 
   Config.spinal.generateVerilog(topModule)

@@ -29,8 +29,7 @@ object Config {
 }
 
 object SpinalToVerilog extends App {
-  val topName = sys.env.getOrElse("SPINAL_TOPNAME", "CPU")
-  val fullName = s"playground.$topName"
+  val fullName = sys.env.getOrElse("SPINAL_TOPNAME", "CPU")
   println(s"[SpinalToVerilog] Generating Verilog for top module: $fullName")
 
   val mirror = universe.runtimeMirror(getClass.getClassLoader)

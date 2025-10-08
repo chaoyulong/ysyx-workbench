@@ -4,7 +4,7 @@ import spinal.core._
 import spinal.core.sim._
 
 object Config {
-  val build_dir = sys.env.getOrElse("BUILD_DIR", "./build")    // verilog文件生成位置
+  val build_dir = sys.env.getOrElse("BUILD_DIR", ".")    // verilog文件生成位置
   // val build_dir = sys.env.getOrElse("$BUILD_DIR", ".")    // verilog文件生成位置
   val sim_dir = sys.env.getOrElse("SPINAL_SIM_DIR", "./build/simulations")  // 仿真文件生成位置
 
@@ -28,32 +28,32 @@ object Config {
 }
 
 object SpinalToVerilog extends App {
-  def failWithHelp(message: String): Nothing = {
-    println(s"❌ $message")
-    println("❌ Usage: mill -i playground.runMain playground.SpinalToVerilog -- <module>")
-    println("❌ Example: mill -i playground.runMain playground.SpinalToVerilog -- playground.CPU")
-    sys.exit(1)
-  }
+  // def failWithHelp(message: String): Nothing = {
+  //   println(s"❌ $message")
+  //   println("❌ Usage: mill -i playground.runMain playground.SpinalToVerilog -- <module>")
+  //   println("❌ Example: mill -i playground.runMain playground.SpinalToVerilog -- playground.CPU")
+  //   sys.exit(1)
+  // }
   
-  // 从命令行参数获取，而不是环境变量
-  val moduleSpec = if (args.length > 0) args(0) else 
-    failWithHelp("No module specified!")
+  // // 从命令行参数获取，而不是环境变量
+  // val moduleSpec = if (args.length > 0) args(0) else 
+  //   failWithHelp("No module specified!")
   
-  val topModule = if (moduleSpec.contains(".")) {
-    try {
-      val clazz = Class.forName(moduleSpec)
-      val constructor = clazz.getConstructor()
-      constructor.newInstance().asInstanceOf[Component]
-    } catch {
-      case e: Exception =>
-        failWithHelp(s"Cannot load class: $moduleSpec (${e.getMessage})")
-    }
-  } else {
-    failWithHelp("Please use full name like: playground.CPU")
-  }
+  // val topModule = if (moduleSpec.contains(".")) {
+  //   try {
+  //     val clazz = Class.forName(moduleSpec)
+  //     val constructor = clazz.getConstructor()
+  //     constructor.newInstance().asInstanceOf[Component]
+  //   } catch {
+  //     case e: Exception =>
+  //       failWithHelp(s"Cannot load class: $moduleSpec (${e.getMessage})")
+  //   }
+  // } else {
+  //   failWithHelp("Please use full name like: playground.CPU")
+  // }
 
-  Config.spinal.generateVerilog(topModule)
-  // Config.spinal.generateVerilog(CPU())
+  // Config.spinal.generateVerilog(topModule)
+  Config.spinal.generateVerilog(CPU())
 }
 
 // object SpinalToVhdl extends App {

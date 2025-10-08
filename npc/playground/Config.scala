@@ -46,7 +46,7 @@ object SpinalToVerilog extends App {
         failWithHelp(s"Cannot load class: $moduleSpec (${e.getMessage})")
     }
   } else{
-    failWithHelp(s"Please use full name like: playgroung.$other")
+    failWithHelp("Please use full name like: playground.TopLevel")
   }
   Config.spinal.generateVerilog(topModule)
   // Config.spinal.generateVerilog(CPU())

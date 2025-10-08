@@ -43,6 +43,7 @@ include $(NVBOARD_HOME)/scripts/nvboard.mk
 
 # verilator相关
 VSRCS += $(SPINAL_VFILE)
+VSRCS += $(shell find $(abspath playground/verilog) -name "*.v")
 CSRCS = $(shell find $(abspath csrc) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
 INCFLAGS = $(addprefix -I, $(INC_PATH))
 CXXFLAGS += $(INCFLAGS) -DTOP_NAME="\"V$(TOPNAME)\""
@@ -63,7 +64,8 @@ test:
 	@gtkwave $(SPINAL_SIM_DIR)/$(TOPNAME)/test/wave.fst
 
 
-# 此函数用于verilator编译，nvboard和直接仿真所用文件不同#
+# 此函数用于verilator编译，nvboard和直接仿真所用文件不同，例如：
+# 		$(call build_target, $^, -D__USE_NVBOARD__),第一个变量为所需的文件，第二个变量为加入的宏定义
 define build_target
 	$(call git_commit, "sim RTL") # DO NOT REMOVE THIS LINE!!!
 	@echo verilator[]: compiling...

@@ -1,5 +1,5 @@
 
-module mem_rw(
+module Mem_rw(
   input             clock,
   input             reset,
   input             valid,

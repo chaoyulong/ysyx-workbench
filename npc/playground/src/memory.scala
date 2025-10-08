@@ -4,7 +4,7 @@ import spinal.core._
 
 object Memory{
   def apply(valid:Bool, wen:Bool, addr:UInt, wdata:UInt, wmask:UInt, rdata:UInt): Memory ={
-    val memory = new Memory()
+    val memory = new Mem_rw()
     memory.io.valid <> valid
     memory.io.wen   <> wen  
     memory.io.addr  <> addr 
@@ -14,7 +14,7 @@ object Memory{
     memory
   }
 }
-class Memory extends BlackBox{
+class Mem_rw extends BlackBox{
   val io=new Bundle{
     val clk   = in Bool
     val rst   = in Bool

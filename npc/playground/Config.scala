@@ -92,7 +92,7 @@ object SpinalToVerilog extends App {
       applyMethod.invoke(module, params: _*).asInstanceOf[Component]
     )
 
-    println(s"${YELLOW}[Info] Verilog generation completed successfully for $fullName.${RESET}")
+    println(s"${BLUE}[Info] Verilog generation completed successfully for $fullName.${RESET}")
 
   } catch {
     case e: Throwable =>

@@ -3,8 +3,8 @@ package playground
 import spinal.core._
 
 
-case class MyEbreak() extends BlackBox{
-  val io=new Bundle{
+class MyEbreak() extends BlackBox{
+  val io = new Bundle{
     val i_ebreak = in Bool()
   }
   noIoPrefix()

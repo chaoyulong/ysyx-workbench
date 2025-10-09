@@ -2,7 +2,7 @@ package playground
 
 import spinal.core._
 import spinal.core.sim._
-import scala.reflect.runtime.universe
+import scala.reflect.runtime.{universe => ru}
 
 // ============================================
 // 顶层名称解析模块（支持反射加载）

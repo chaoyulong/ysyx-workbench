@@ -3,7 +3,7 @@ package playground
 import spinal.core._
 
 object IFU_Rd{
-  def apply(valid:Bool, wen:Bool, addr:UInt, wdata:UInt, wmask:UInt): UInt ={
+  def apply(addr:UInt): UInt ={
     val memory = new IFU_Rd()
     memory.io.addr  <> addr 
     memory.io.rdata

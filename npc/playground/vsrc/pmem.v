@@ -19,7 +19,7 @@ module Mem_rw(
       // if (wen) begin // 有写请求时
       //   pmem_write(addr, wdata, {4'b0, wmask});
       // end
-      rdata = 32'h01c50513
+      rdata = 32'h01c50513;
     end
     else begin
       rdata = 0;

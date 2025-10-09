@@ -12,7 +12,7 @@ case class CPU() extends Component {
   val inReset = RegInit(False)   // 创建一个寄存器来指示复位
   inReset := True
 
-  val reg_pc   = Reg(UInt(32 bits)) init(U"32'h80000000")
+  val pc   = Reg(UInt(32 bits)) init(U"32'h80000000")
   // val instr = Mem_rw(inReset, False, reg_pc, U"32'h0", U"4'h0")    // 只用于读取指令
   val instr = IFU_Rd(reg_pc)
   val decoder = Decoder() 
@@ -42,7 +42,7 @@ case class CPU() extends Component {
   val pc_bsrc  = branch_cond.io.pc_bsrc
 
 
-  val next_pc  = Mux(pc_asrc, imm, U"32'd4") + Mux(pc_bsrc, rs1, reg_pc)
+  val next_pc  = Mux(pc_asrc, imm, U"32'd4") + Mux(pc_bsrc, rs1, pc)
 
   // val data_mem_rdata = Mem_rw(mem2reg | mem_wr, mem_wr, reg_pc, U"32'h0", U"4'h0")
     val data_mem_rdata = LSU_RW(False, False, reg_pc, U"32'h0", U"4'h0")
@@ -53,11 +53,11 @@ case class CPU() extends Component {
   reg_file.io.wdata  := Mux(mem2reg, data_mem_rdata, alu_result)
   reg_file.io.reg_wr := reg_wr
 
-  reg_pc := next_pc
+  pc := next_pc
 
   decoder.io.instr := instr
 
-  alu.io.alu_in1 := Mux(decoder.io.alu_asrc, rs1, reg_pc)
+  alu.io.alu_in1 := Mux(decoder.io.alu_asrc, rs1, pc)
   switch(alu_bsrc){
     is(U"00"){alu.io.alu_in2 := rs2}
     is(U"01"){alu.io.alu_in2 := imm}

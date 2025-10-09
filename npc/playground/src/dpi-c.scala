@@ -2,6 +2,15 @@ package playground
 
 import spinal.core._
 
+
+case class MyEbreak extends BlackBox{
+  val io=new Bundle{
+    val i_ebreak = in Bool
+  }
+  noIoPrefix()
+  addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/dpi-c.v")   
+}
+
 object IFU_Rd{
   def apply(addr:UInt): UInt ={
     val memory = new IFU_Rd()
@@ -18,7 +27,7 @@ class IFU_Rd extends BlackBox{
   }
   noIoPrefix()
   mapClockDomain(clock = io.clock,reset = io.reset)
-  addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/pmem.v")   
+  addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/dpi-c.v")   
 }
 
 
@@ -46,5 +55,7 @@ class LSU_RW extends BlackBox{
   }
   noIoPrefix()
   mapClockDomain(clock = io.clock,reset = io.reset)
-  addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/pmem.v")   
+  addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/dpi-c.v")   
 }
+
+

@@ -84,6 +84,9 @@ void sim_exit()
 #endif
 }
 
+extern "C" void my_ebreak(void){
+  printf("in ebreak\n");
+}
 
 int main(int argc, char** argv) 
 {

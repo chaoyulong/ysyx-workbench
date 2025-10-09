@@ -1,5 +1,6 @@
 import "DPI-C" function int pmem_read(input int raddr);
 import "DPI-C" function void pmem_write(input int waddr, input int wdata, input byte wmask);
+import "DPI-C" function void my_ebreak();
 
 module IFU_Rd(
   input             clock,
@@ -45,5 +46,16 @@ module LSU_RW(
       rdata = 0;
     end
   end
+
+endmodule
+
+module MyEbreak(
+  input i_ebreak;
+);
+
+always @(*) begin
+  if(i_ebreak)
+    my_ebreak();
+end
 
 endmodule

@@ -99,10 +99,6 @@ case class Decoder() extends Component {
   val i_mret   = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"000") & func7 === U"0011000" & rs2 === U"00010" & rs1 === U"00000" & rd === U"00000"
   val i_fence_i= op_decode_h(U"000") & op_decode_l(U"1111") & f3_decode(U"001");
 
-  when(i_ebreak){
-    println("ebreak!!!")
-  }
-
 // ***************************************** 立即数生成 *********************************************** //
   val immI = U((instr(31) #* 20) ## instr(31 downto 20))
   val immU = U(instr(31 downto 12) ## U(0, 12 bits))
@@ -125,6 +121,9 @@ case class Decoder() extends Component {
             Mux(type_B, immB, U(0, 32 bits))))))
 
 // **************************************** 控制信号生成 ********************************************** // 
+  val my_ebreak = MyEbreak()
+  my_ebreak.i_ebreak := i_ebreak
+
   io.reg_wr := (i_lui|i_auipc|i_jal|i_jalr|i_csrrw| i_csrrs|
               i_addi|i_slti|i_sltiu|i_xori|i_ori|i_andi|i_slli|i_srli|i_srai|
               i_add|i_sub|i_xor|i_or|i_and|i_sll|i_srl|i_sra|i_slt|i_sltu|

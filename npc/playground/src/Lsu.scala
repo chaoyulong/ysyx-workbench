@@ -2,7 +2,7 @@ package playground
 
 import spinal.core._
 
-case class LSU_RW() extends BlackBox{
+case class LSU_RW() extends Component{
   val io = new Bundle{
     val mem2reg  = in Bool()
     val mem_wr   = in Bool()

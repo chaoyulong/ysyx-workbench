@@ -121,8 +121,8 @@ case class Decoder() extends Component {
             Mux(type_B, immB, U(0, 32 bits))))))
 
 // **************************************** 控制信号生成 ********************************************** // 
-  val my_ebreak = new MyEbreak()
-  my_ebreak.i_ebreak := i_ebreak
+  val my_ebreak = MyEbreak()
+  my_ebreak.io.i_ebreak := i_ebreak
 
   io.reg_wr := (i_lui|i_auipc|i_jal|i_jalr|i_csrrw| i_csrrs|
               i_addi|i_slti|i_sltiu|i_xori|i_ori|i_andi|i_slli|i_srli|i_srai|

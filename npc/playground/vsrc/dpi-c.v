@@ -35,7 +35,6 @@ module LSU_RW(
   
   always @(*) begin
     if (valid) begin // 有读写请求时
-      $display("mem read at %h", addr);
       // rdata = pmem_read(addr);
       // if (wen) begin // 有写请求时
       //   pmem_write(addr, wdata, {4'b0, wmask});

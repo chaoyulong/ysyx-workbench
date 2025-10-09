@@ -13,7 +13,7 @@ module IFU_Rd(
       rdata <= 32'h0;
     end
     else begin
-      $display("mem read at %h", addr);
+      // $display("mem read at %h", addr);
       rdata <= 32'h01c50513;
       rdata <= pmem_read(addr);
     end

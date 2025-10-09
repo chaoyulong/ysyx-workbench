@@ -22,9 +22,11 @@ static void step_and_dump_wave()
 {  
   top->eval();
 #ifdef __GET_WAVE__
-  static uint64_t sim_time = 0;
-  sim_time++;
-  tfp->dump(sim_time);
+  // static uint64_t sim_time = 0;
+  // sim_time++;
+  // tfp->dump(sim_time);
+  tfp->dump(contextp->time());
+  contextp->timeInc(1);
 #endif
 }
 

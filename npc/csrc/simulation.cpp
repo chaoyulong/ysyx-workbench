@@ -1,30 +1,33 @@
-// #include <verilated.h>
-// #include "verilated_vcd_c.h"
-// #include "VysyxSoCFull.h"
-// #include "VysyxSoCFull___024root.h"
-// // #include "VysyxSoCFull__Dpi.h"
-// #include "svdpi.h"
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
 
-// #include "cpu-exec.h"
-// #include "sdb.h"
-// #ifdef USE_NVBOARD
-// #include <nvboard.h>
-// #endif
+#include <verilated.h>
+#include <verilated_fst_c.h>
+#include STR(TOP_NAME.h)    // 自动生成
+#ifdef __USE_NVBOARD__
+#include <nvboard.h>
+#endif
+
+VerilatedContext* contextp = new VerilatedContext;  // 环境
+TOP_NAME* top = new TOP_NAME{contextp};             // 设计
+VerilatedFstC* tfp = new VerilatedFstC;             // 波形
+
+static void step_and_dump_wave()
+{  
+  top->eval();
+#ifdef __GET_WAVE__
+  // static uint64_t sim_time = 0;
+  // sim_time++;
+  // tfp->dump(sim_time);
+  tfp->dump(contextp->time());
+  contextp->timeInc(1);
+#endif
+}
 
 // VerilatedContext* contextp = NULL;  // 环境
 // VerilatedVcdC* tfp = NULL;          // 波形
 // VysyxSoCFull* top;                  // 设计
 // VysyxSoCFull___024root* rootp;
-
-// static void step_and_dump_wave()
-// {  
-//   top->eval();
-// #ifdef __GET_WAVE__
-//   static uint64_t sim_time = 0;
-//   sim_time++;
-//   tfp->dump(sim_time);
-// #endif
-// }
 
 // void single_cycle() 
 // {

@@ -99,6 +99,10 @@ case class Decoder() extends Component {
   val i_mret   = op_decode_h(U"111") & op_decode_l(U"0011") & f3_decode(U"000") & func7 === U"0011000" & rs2 === U"00010" & rs1 === U"00000" & rd === U"00000"
   val i_fence_i= op_decode_h(U"000") & op_decode_l(U"1111") & f3_decode(U"001");
 
+  when(i_ebreak){
+    println("ebreak!!!")
+  }
+
 // ***************************************** 立即数生成 *********************************************** //
   val immI = U((instr(31) #* 20) ## instr(31 downto 20))
   val immU = U(instr(31 downto 12) ## U(0, 12 bits))

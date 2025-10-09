@@ -10,7 +10,7 @@ case class CPU() extends Component {
   clockDomain.reset.setName("reset")
 
   val reg_pc   = Reg(UInt(32 bits)) init(U"32'h80000000")
-  val instr = Mem_rw(~io.reset, False, reg_pc, U"32'h0", U"4'h0")    // 只用于读取指令
+  val instr = Mem_rw(~clockDomain.reset, False, reg_pc, U"32'h0", U"4'h0")    // 只用于读取指令
   val decoder = Decoder() 
   val alu = ALU()
   val branch_cond = BranchCond()

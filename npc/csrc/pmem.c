@@ -1,5 +1,7 @@
 #include "pmem.h"
 
+static uint8_t pmem[CONFIG_MSIZE];
+
 static void out_of_bound(int addr, int rw) 
 {
   const char *a[2]={"read", "write"};
@@ -7,6 +9,9 @@ static void out_of_bound(int addr, int rw)
           a[rw], addr, PMEM_LEFT, PMEM_RIGHT);
   assert(0);
 }
+
+uint8_t* guest_to_host(paddr_t paddr) { return pmem + paddr - CONFIG_MBASE; }
+paddr_t host_to_guest(uint8_t *haddr) { return haddr - pmem + CONFIG_MBASE; }
 
 extern "C" int pmem_read(int raddr) {
   // 总是读取地址为`raddr & ~0x3u`的4字节返回

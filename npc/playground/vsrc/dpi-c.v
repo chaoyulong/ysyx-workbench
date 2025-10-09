@@ -50,7 +50,7 @@ module LSU_RW(
 endmodule
 
 module MyEbreak(
-  input i_ebreak;
+  input i_ebreak
 );
 
 always @(*) begin

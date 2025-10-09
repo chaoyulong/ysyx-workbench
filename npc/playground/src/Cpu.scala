@@ -9,8 +9,8 @@ case class CPU() extends Component {
   clockDomain.clock.setName("clock")  // 自定义时钟和复位信号名称，放在最顶层
   clockDomain.reset.setName("reset")
 
-  val inReset = RegInit(True)   // 创建一个寄存器来指示复位
-  inReset := False
+  val inReset = RegInit(False)   // 创建一个寄存器来指示复位
+  inReset := True
 
   val reg_pc   = Reg(UInt(32 bits)) init(U"32'h80000000")
   val instr = Mem_rw(~inReset, False, reg_pc, U"32'h0", U"4'h0")    // 只用于读取指令

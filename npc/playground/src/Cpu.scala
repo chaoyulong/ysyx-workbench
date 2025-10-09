@@ -10,7 +10,7 @@ case class CPU() extends Component {
   clockDomain.reset.setName("reset")
 
   val inReset = RegInit(True)   // 创建一个寄存器来指示复位
-  inReset := false
+  inReset := False
 
   val reg_pc   = Reg(UInt(32 bits)) init(U"32'h80000000")
   val instr = Mem_rw(~inReset, False, reg_pc, U"32'h0", U"4'h0")    // 只用于读取指令

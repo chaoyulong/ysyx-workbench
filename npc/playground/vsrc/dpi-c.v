@@ -14,8 +14,6 @@ module Mem_Rd(
       rdata <= 32'h0;
     end
     else begin
-      // $display("mem read at %h", addr);
-      rdata <= 32'h01c50513;
       rdata <= pmem_read(addr);
     end
   end
@@ -35,11 +33,10 @@ module Mem_RW(
   
   always @(*) begin
     if (valid) begin // 有读写请求时
-      // rdata = pmem_read(addr);
-      // if (wen) begin // 有写请求时
-      //   pmem_write(addr, wdata, {4'b0, wmask});
-      // end
-      rdata = 32'h01c50513;
+      rdata = pmem_read(addr);
+      if (wen) begin // 有写请求时
+        pmem_write(addr, wdata, {4'b0, wmask});
+      end
     end
     else begin
       rdata = 0;

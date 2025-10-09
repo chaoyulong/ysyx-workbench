@@ -33,9 +33,13 @@ extern "C" void pmem_write(uint32_t waddr, uint32_t wdata, uint8_t wmask) {
   // 如`wmask = 0x3`代表只写入最低2个字节, 内存中的其它字节保持不变
   if(in_pmem(waddr))
   {
-    paddr_t real_addr = ((paddr_t)waddr & (paddr_t)(~0x3u));
-    word_t old_data = host_read(guest_to_host(real_addr)) & ~wmask;    // 先读出以前数据再对对应位清除
-    word_t real_wdata = old_data + (wdata & wmask);
+    paddr_t real_addr = ((paddr_t)waddr & (paddr_t)(~0x3u));  // 地址对齐
+    word_t wmask32 = 0;
+    for (int i = 0; i < 4; i++) {
+        if (wmask & (1 << i)) wmask32 |= (0xFF << (8 * i));
+    }
+    word_t old_data = host_read(guest_to_host(real_addr)); 
+    word_t real_wdata = (old_data & ~wmask32) | (wdata & wmask32);
     host_write(guest_to_host(real_addr), real_wdata);
   }
   else

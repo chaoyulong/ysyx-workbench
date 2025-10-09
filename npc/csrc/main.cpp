@@ -83,8 +83,8 @@ void sim_exit()
     
 uint32_t test_operation(uint32_t rs1, uint32_t rs2, uint8_t alu_ctr, 
                         uint32_t expected, const char* description) {
-    top->io_rs1 = rs1;
-    top->io_rs2 = rs2;
+    top->io_alu_in1 = rs1;
+    top->io_alu_in2 = rs2;
     top->io_alu_ctr = alu_ctr;
     step_and_dump_wave();
     

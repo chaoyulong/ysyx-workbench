@@ -6,9 +6,8 @@ import scala.reflect.runtime.universe
 
 
 object Config {
-  val build_dir = sys.env.getOrElse("BUILD_DIR", ".")    // verilog文件生成位置
-  // val build_dir = sys.env.getOrElse("$BUILD_DIR", ".")    // verilog文件生成位置
-  val sim_dir = sys.env.getOrElse("SPINAL_SIM_DIR", "./build/simulations")  // 仿真文件生成位置
+  val build_dir:String = sys.env.getOrElse("BUILD_DIR", ".")    // verilog文件生成位置
+  val sim_dir:String = sys.env.getOrElse("SPINAL_SIM_DIR", "./build/simulations")  // 仿真文件生成位置
 
   def spinal = SpinalConfig(
     targetDirectory = build_dir,
@@ -35,8 +34,8 @@ object SpinalToVerilog extends App {
 
   val mirror = universe.runtimeMirror(getClass.getClassLoader)
   try {
-    val moduleSymbol:String = mirror.staticModule(fullName) // companion object
-    val module:String = mirror.reflectModule(moduleSymbol).instance
+    val moduleSymbol = mirror.staticModule(fullName) // companion object
+    val module = mirror.reflectModule(moduleSymbol).instance
 
     // 找到 companion 的 apply 方法（可能有参数或无参数）
     val applyMethod = module.getClass.getMethods.find(_.getName == "apply")

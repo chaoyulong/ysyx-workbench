@@ -88,7 +88,7 @@ uint32_t test_operation(uint32_t rs1, uint32_t rs2, uint8_t alu_ctr,
     top->io_alu_ctr = alu_ctr;
     step_and_dump_wave();
     
-    uint32_t result = top->io_alu_out;
+    uint32_t result = top->io_alu_result;
     bool less = top->io_less;
     bool zero = top->io_zero;
     

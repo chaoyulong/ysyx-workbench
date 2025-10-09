@@ -1,4 +1,4 @@
-#include "memory.h"
+#include "pmem.h"
 
 static void out_of_bound(int addr, int rw) 
 {

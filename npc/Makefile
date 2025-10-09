@@ -1,5 +1,5 @@
 # 最常修改的一个
-SPINAL_TOPNAME = ALU
+SPINAL_TOPNAME = CPU
 
 # verilator相关
 TOPNAME = $(SPINAL_TOPNAME)

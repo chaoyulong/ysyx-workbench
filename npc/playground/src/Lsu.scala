@@ -52,9 +52,9 @@ case class LSU_RW() extends BlackBox{
   // ------------------ 写操作 ------------------
   switch(addr_op) {
     // mem_addr[1:0] = 00
-    is(U"00010") { wdata_real := wdata;                                       wmask := "b1111".U } // SW
-    is(U"00001") { wdata_real := (U"16'h0" ## wdata(15 downto 0)).resize(32); wmask := "b0011".U } // SH
-    is(U"00000") { wdata_real := (U"24'h0" ## wdata(7 downto 0) ).resize(32); wmask := "b0001".U } // SB
+    is(U"00010") { wdata_real := wdata;                                       wmask := U"1111" } // SW
+    is(U"00001") { wdata_real := (U"16'h0" ## wdata(15 downto 0)).resize(32); wmask := U"0011" } // SH
+    is(U"00000") { wdata_real := (U"24'h0" ## wdata(7 downto 0) ).resize(32); wmask := U"0001" } // SB
 
     // mem_addr[1:0] = 01
     is(U"01001") { wdata_real := (U"8'h0"  ## wdata(15 downto 0) ## U"8'h0").resize(32);  wmask := U"0110" }

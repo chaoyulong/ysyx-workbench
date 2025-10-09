@@ -45,7 +45,7 @@ case class CPU() extends Component {
   val next_pc  = Mux(pc_asrc, imm, U"32'd4") + Mux(pc_bsrc, rs1, reg_pc)
 
   // val data_mem_rdata = Mem_rw(mem2reg | mem_wr, mem_wr, reg_pc, U"32'h0", U"4'h0")
-    val data_mem_rdata = Mem_rw(False, False, reg_pc, U"32'h0", U"4'h0")
+    val data_mem_rdata = LSU_RW(False, False, reg_pc, U"32'h0", U"4'h0")
 
   reg_file.io.addr_a := instr(19 downto 15)
   reg_file.io.addr_b := instr(24 downto 20)

@@ -21,29 +21,29 @@ module IFU_Rd(
 
 endmodule
 
-// module LSU_RW(
-//   input             clock,
-//   input             reset,
-//   input             valid,
-//   input             wen,
-//   input      [31:0] addr,
-//   input      [31:0] wdata,
-//   input      [3:0]  wmask,
-//   output reg [31:0] rdata
-// );
+module LSU_RW(
+  input             clock,
+  input             reset,
+  input             valid,
+  input             wen,
+  input      [31:0] addr,
+  input      [31:0] wdata,
+  input      [3:0]  wmask,
+  output reg [31:0] rdata
+);
   
-//   always @(*) begin
-//     if (valid) begin // 有读写请求时
-//       $display("mem read at %h", addr);
-//       // rdata = pmem_read(addr);
-//       // if (wen) begin // 有写请求时
-//       //   pmem_write(addr, wdata, {4'b0, wmask});
-//       // end
-//       rdata = 32'h01c50513;
-//     end
-//     else begin
-//       rdata = 0;
-//     end
-//   end
+  always @(*) begin
+    if (valid) begin // 有读写请求时
+      $display("mem read at %h", addr);
+      // rdata = pmem_read(addr);
+      // if (wen) begin // 有写请求时
+      //   pmem_write(addr, wdata, {4'b0, wmask});
+      // end
+      rdata = 32'h01c50513;
+    end
+    else begin
+      rdata = 0;
+    end
+  end
 
-// endmodule
+endmodule

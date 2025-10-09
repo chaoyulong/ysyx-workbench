@@ -40,7 +40,7 @@ void single_cycle()
 }
 
 static void reset(int n) {
-  top->reset = 1;
+  top->reset = 1; top->eval();
   while (n -- > 0) single_cycle();
   top->reset = 0;
 }

@@ -85,6 +85,7 @@ void sim_exit()
 
 int main(int argc, char** argv) 
 {
+  pmem_init();
   sim_init(argc, argv);
   reset(50);
   n_cycle(50);

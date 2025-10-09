@@ -28,34 +28,52 @@ object Config {
 }
 
 object SpinalToVerilog extends App {
+
+  // === 颜色 ANSI 转义码 ===
+  val RED    = "\u001b[31;1m"  // 红色加粗
+  val YELLOW = "\u001b[33;1m"  // 黄色加粗
+  val RESET  = "\u001b[0m"     // 重置
+
   // === 获取顶层模块名 ===
   val fullName = sys.env.get("SPINAL_TOPNAME").getOrElse {
     System.err.println(
-      "[Error] Missing environment variable: SPINAL_TOPNAME.\n" +
-      "Example: SPINAL_TOPNAME=playground.CPU mill -i playground.runMain playground.SpinalToVerilog "
+      s"${RED}[Error] Missing environment variable: SPINAL_TOPNAME.${RESET}\n" +
+      s"${YELLOW}[Info] Example:\n" +
+      "  SPINAL_TOPNAME=playground.CPU mill -i playground.runMain playground.SpinalToVerilog"
     )
     sys.exit(1)
     ""
   }
 
+  println(s"${YELLOW}[Info] Generating Verilog for top module: $fullName${RESET}")
+
   val mirror = universe.runtimeMirror(getClass.getClassLoader)
+
   try {
+    // === 反射查找顶层模块 ===
     val moduleSymbol = mirror.staticModule(fullName)
     val module = mirror.reflectModule(moduleSymbol).instance
 
-    // 找到 apply 方法
+    // === 找到 apply 方法 ===
     val applyMethod = module.getClass.getMethods.find(_.getName == "apply")
-      .getOrElse(throw new NoSuchMethodException(s"No apply() in companion object of $fullName"))
+      .getOrElse {
+        System.err.println(s"${RED}[Error] No apply() method in companion object of '$fullName'.${RESET}")
+        sys.exit(1)
+        null
+      }
 
-    // 解析参数
+    // === 解析参数 ===
     val args = sys.env.get("SPINAL_ARGS").map(_.split(",")).getOrElse(Array.empty[String])
     val params: Array[AnyRef] =
       if (applyMethod.getParameterCount == 0) Array.empty
       else {
-        if (args.length < applyMethod.getParameterCount)
-          throw new IllegalArgumentException(
-            s"[Error] Need ${applyMethod.getParameterCount} SPINAL_ARGS, got ${args.length}"
+        if (args.length < applyMethod.getParameterCount) {
+          System.err.println(
+            s"${RED}[Error] Need ${applyMethod.getParameterCount} SPINAL_ARGS, got ${args.length}.${RESET}\n" +
+            s"${YELLOW}[Info] Example: SPINAL_ARGS=4,true,1024"
           )
+          sys.exit(1)
+        }
 
         applyMethod.getParameterTypes.zipWithIndex.map {
           case (pt, i) =>
@@ -64,16 +82,22 @@ object SpinalToVerilog extends App {
             else if (pt == java.lang.Integer.TYPE) java.lang.Integer.valueOf(s)
             else if (pt == java.lang.Long.TYPE) java.lang.Long.valueOf(s)
             else if (pt == java.lang.Boolean.TYPE) java.lang.Boolean.valueOf(s)
-            else throw new IllegalArgumentException(s"Unsupported param type: $pt for top $fullName")
+            else throw new IllegalArgumentException(
+              s"${RED}[Error] Unsupported param type: $pt for top $fullName${RESET}"
+            )
         }.asInstanceOf[Array[AnyRef]]
       }
 
-      Config.spinal.generateVerilog (
-        applyMethod.invoke(module, params: _*).asInstanceOf[Component]
-      )
+    // === 生成 Verilog ===
+    Config.spinal.generateVerilog(
+      applyMethod.invoke(module, params: _*).asInstanceOf[Component]
+    )
+
+    println(s"${YELLOW}[Info] Verilog generation completed successfully for $fullName.${RESET}")
+
   } catch {
     case e: Throwable =>
-      System.err.println(s"[Error] Failed to generate HDL for '$fullName': ${e.getMessage}")
+      System.err.println(s"${RED}[Error] Failed to generate HDL for '$fullName': ${e.getMessage}${RESET}")
       e.printStackTrace()
       sys.exit(1)
   }

@@ -18,7 +18,7 @@ extern "C" uint32_t pmem_read(uint32_t raddr) {
   if(in_pmem(raddr))
   {
     paddr_t real_addr = ((paddr_t)raddr & (paddr_t)(~0x3u));
-    printf("mem read at %x, data = \n", raddr, host_read(guest_to_host(real_addr)));
+    printf("mem read at %x, data = %x\n", raddr, host_read(guest_to_host(real_addr)));
     return host_read(guest_to_host(real_addr));
   }
   else

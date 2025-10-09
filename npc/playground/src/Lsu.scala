@@ -19,7 +19,7 @@ case class LSU_RW() extends BlackBox{
   val wmask      = UInt(4 bits)
 
   // 合并 addr + MemOp 生成 5 位索引
-  val addr_op = (io.mem_addr(1 downto 0) ## io.mem_op).asUInt(5 bits)
+  val addr_op = (io.mem_addr(1 downto 0) ## io.mem_op).asUInt()
 
   // ------------------ 读操作 ------------------
   switch(addr_op) {

@@ -5,7 +5,7 @@ import spinal.core._
 
 case class MyEbreak() extends BlackBox{
   val io=new Bundle{
-    val i_ebreak = in Bool
+    val i_ebreak = in Bool()
   }
   noIoPrefix()
   addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/dpi-c.v")   
@@ -20,8 +20,8 @@ object IFU_Rd{
 }
 class IFU_Rd extends BlackBox{
   val io=new Bundle{
-    val clock = in Bool
-    val reset = in Bool
+    val clock = in Bool()
+    val reset = in Bool()
     val addr  = in UInt(32 bits)
     val rdata = out UInt(32 bits)
   }
@@ -44,10 +44,10 @@ object LSU_RW{
 }
 class LSU_RW extends BlackBox{
   val io=new Bundle{
-    val clock = in Bool
-    val reset = in Bool
-    val valid = in Bool
-    val wen   = in Bool
+    val clock = in Bool()
+    val reset = in Bool()
+    val valid = in Bool()
+    val wen   = in Bool()
     val addr  = in UInt(32 bits)
     val wdata = in UInt(32 bits)
     val wmask = in UInt(4 bits)

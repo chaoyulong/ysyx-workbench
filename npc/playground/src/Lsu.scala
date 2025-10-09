@@ -17,7 +17,17 @@ case class LSU_RW() extends BlackBox{
   val rdata_real = UInt(32 bits)
   val wdata_real = UInt(32 bits)
   val wmask      = UInt(4 bits)
-  val rdata = mem_rw.io.rdata
+  val rdata      = UInt(32 bits)
+
+  val mem_rw = Mem_RW()
+  mem_rw.io.valid := io.mem2reg | io.mem_wr
+  mem_rw.io.wen   := io.mem_wr
+  mem_rw.io.addr  := io.mem_addr
+  mem_rw.io.wdata := wdata_real
+  mem_rw.io.wmask := wmask
+  rdata := mem_rw.io.rdata
+
+  io.rdata := rdata_real
 
   // 合并 addr + MemOp 生成 5 位索引
   val addr_op = (io.mem_addr(1 downto 0) ## io.mem_op).asUInt
@@ -70,17 +80,6 @@ case class LSU_RW() extends BlackBox{
 
     default { wdata_real := U"32'h0"; wmask := U"4'b0" }
   }
-
-  val mem_rw = Mem_RW()
-
-  mem_rw.io.valid := io.mem2reg | io.mem_wr
-  mem_rw.io.wen   := io.mem_wr
-  mem_rw.io.addr  := io.mem_addr
-  mem_rw.io.wdata := wdata_real
-  mem_rw.io.wmask := wmask
-
-
-  io.rdata := rdata_real
 
 }
 

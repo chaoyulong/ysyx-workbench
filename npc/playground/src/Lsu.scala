@@ -22,7 +22,7 @@ case class LSU_RW() extends BlackBox{
   val addr_op = (io.mem_addr(1 downto 0) ## io.mem_op).asUInt(5 bits)
 
   // ------------------ 读操作 ------------------
-  switch(addrOp) {
+  switch(addr_op) {
     // mem_addr[1:0] = 00
     is(U"00010") { rdata_real := rdata }                                  // LW
     is(U"00001") { rdata_real := rdata(15 downto 0).asSInt.resize(32).asUInt } // LH
@@ -75,7 +75,7 @@ case class LSU_RW() extends BlackBox{
   mem_rw.io.valid := io.mem2reg | io.mem_wr
   mem_rw.io.wen   := io.mem_wr
   mem_rw.io.addr  := io.mem_addr
-  mem_rw.io.wdata := io.wdata_real
+  mem_rw.io.wdata := wdata_real
   mem_rw.io.wmask := wmask
   val rdata = mem_rw.io.rdata
 

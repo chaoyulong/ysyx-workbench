@@ -1,6 +1,12 @@
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
+
+// 让 #include 也能用宏替换生成
+#include STR( TOP_NAME.h )
+
 #include <verilated.h>
 #include <verilated_fst_c.h>
-#include "VALU.h"
+// #include "VCPU.h"
 #include <iostream>
 #include <iomanip>
 #include <cassert>
@@ -155,6 +161,7 @@ int main(int argc, char** argv)
         std::cout << "❌ 有 " << (total - passed) << " 个测试失败" << std::endl;
     }
 
+  // 若使用nvboard,运行就不会结束
 #ifdef __USE_NVBOARD__
   while(1) single_cycle();
 #endif

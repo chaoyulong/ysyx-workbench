@@ -1,3 +1,4 @@
+# 最常修改的一个
 SPINAL_TOPNAME = ALU
 
 # verilator相关
@@ -46,7 +47,7 @@ include $(NVBOARD_HOME)/scripts/nvboard.mk
 
 # verilator相关
 VSRCS += $(SPINAL_VFILE)
-VSRCS += $(shell find $(abspath playground/verilog) -name "*.v")
+VSRCS += $(shell find $(abspath playground/vsrc) -name "*.v")
 CSRCS = $(shell find $(abspath csrc) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
 INCFLAGS = $(addprefix -I, $(INC_PATH))
 CXXFLAGS += $(INCFLAGS) -DTOP_NAME="\"V$(TOPNAME)\""
@@ -56,7 +57,7 @@ IMG ?=
 
 # 只操作spinal的两条命令:verilog与test
 SPINAL_GEN_ENV := SPINAL_TOPNAME=$(SPINAL_PRJ).$(SPINAL_TOPNAME) BUILD_DIR=$(BUILD_DIR)
-SPINAL_SIM_ENV := BUILD_DIR=$(BUILD_DIR)
+SPINAL_SIM_ENV := SPINAL_SIM_DIR=$(BUILD_DIR)/simulations
 
 verilog:
 	$(call git_commit, "generate verilog")
@@ -116,7 +117,7 @@ wave: $(CSRCS) $(VSRCS)
 # 	mill -i mill.idea.GenIdea/idea
 
 clean:
-	-rm -rf $(BUILD_DIR)
+	-rm -rf $(BUILD_DIR) ./simulations ./*.v
 
 .PHONY: $(SPINAL_VFILE) test verilog run sim wave help reformat checkformat clean 
 

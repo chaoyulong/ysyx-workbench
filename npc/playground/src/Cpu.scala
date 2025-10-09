@@ -14,7 +14,7 @@ case class CPU() extends Component {
 
   val pc   = Reg(UInt(32 bits)) init(U"32'h80000000")
   // val instr = Mem_rw(inReset, False, reg_pc, U"32'h0", U"4'h0")    // 只用于读取指令
-  val instr = IFU_Rd(pc)
+  val instr = Mem_Rd(pc)
   val decoder = Decoder() 
   val alu = ALU()
   val branch_cond = BranchCond()
@@ -45,7 +45,7 @@ case class CPU() extends Component {
   val next_pc  = Mux(pc_asrc, imm, U"32'd4") + Mux(pc_bsrc, rs1, pc)
 
   // val data_mem_rdata = LSU_RW(mem2reg | mem_wr, mem_wr, alu_result, rs2, mem_op)
-  val data_mem_rdata = LSU_RW(mem2reg | mem_wr, mem_wr, alu_result, rs2, U"4'h0")
+  val data_mem_rdata = Mem_RW(mem2reg | mem_wr, mem_wr, alu_result, rs2, U"4'h0")
 
   reg_file.io.addr_a := instr(19 downto 15)
   reg_file.io.addr_b := instr(24 downto 20)

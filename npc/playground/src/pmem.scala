@@ -26,5 +26,5 @@ class Mem_rw extends BlackBox{
   }
   noIoPrefix()
   mapClockDomain(clock = io.clock,reset = io.reset)
-  addRTLPath(s"${sys.env("NPC_HOME")}/playground/verilog/memory.v")   
+  addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/pmem.v")   
 }

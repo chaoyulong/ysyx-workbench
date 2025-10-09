@@ -30,8 +30,8 @@ object Config {
 object SpinalToVerilog extends App {
 
   // === 颜色 ANSI 转义码 ===
-  val RED    = "\u001b[31"  
-  val YELLOW = "\u001b[33"  
+  val RED    = "\u001b[31m"  
+  val YELLOW = "\u001b[33m"  
   val RESET  = "\u001b[0m"     // 重置
 
   // === 获取顶层模块名 ===

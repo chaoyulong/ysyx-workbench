@@ -4,40 +4,6 @@ import spinal.core._
 import spinal.core.sim._
 import scala.reflect.runtime.universe
 
-// ============================================
-// 顶层名称解析
-// ============================================
-object TopNameResolver {
-
-  /** 获取顶层模块名称（从环境变量 SPINAL_TOPNAME 读取） */
-  def getTopName(): String = {
-    sys.env.get("SPINAL_TOPNAME") match {
-      case Some(name) if name.nonEmpty =>
-        println(s"[Config] Using top module name: $name")
-        name
-      case _ =>
-        System.err.println("[Error] Environment variable SPINAL_TOPNAME is not set!")
-        System.err.println("Usage example:")
-        System.err.println("  SPINAL_TOPNAME=CPU BUILD_DIR=./build mill -i playground.runMain playground.SpinalGenerateMain")
-        sys.exit(1)
-        ""
-    }
-  }
-
-  /** 根据模块名动态实例化顶层组件 */
-  def createTop(name: String): Component = {
-    name match {
-      case "CPU" => CPU(CPUConfig()) // 你的CPU定义，带参数的版本
-      // 这里可以按需扩展更多模块
-      // case "ALU" => ALU()
-      // case "CoreTop" => CoreTop()
-      case other =>
-        System.err.println(s"[Error] Unknown SPINAL_TOPNAME '$other'. Please check your module name.")
-        sys.exit(1)
-        null
-    }
-  }
-}
 
 object Config {
   val build_dir = sys.env.getOrElse("BUILD_DIR", ".")    // verilog文件生成位置

@@ -1,5 +1,27 @@
+import "DPI-C" function int pmem_read(input int raddr);
+import "DPI-C" function void pmem_write(input int waddr, input int wdata, input byte wmask);
 
-module Mem_rw(
+module IFU_Rd(
+  input             clock,
+  input             reset,
+  input      [31:0] addr,
+  output reg [31:0] rdata
+);
+
+  always @(posedge clock or posedge reset) begin
+    if (reset) begin // 有读写请求时
+      rdata <= 32'h0;
+    end
+    else begin
+      $display("mem read at %h", addr);
+      rdata <= 32'h01c50513;
+      rdata <= pmem_read(addr);
+    end
+  end
+
+endmodule
+
+module LSU_RW(
   input             clock,
   input             reset,
   input             valid,
@@ -9,9 +31,6 @@ module Mem_rw(
   input      [3:0]  wmask,
   output reg [31:0] rdata
 );
-
-  import "DPI-C" function int pmem_read(input int raddr);
-  import "DPI-C" function void pmem_write(input int waddr, input int wdata, input byte wmask);
   
   always @(*) begin
     if (valid) begin // 有读写请求时

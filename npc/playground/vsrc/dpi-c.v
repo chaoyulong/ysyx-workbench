@@ -2,7 +2,7 @@ import "DPI-C" function int pmem_read(input int raddr);
 import "DPI-C" function void pmem_write(input int waddr, input int wdata, input byte wmask);
 import "DPI-C" function void my_ebreak();
 
-module IFU_Rd(
+module Mem_Rd(
   input             clock,
   input             reset,
   input      [31:0] addr,
@@ -22,7 +22,7 @@ module IFU_Rd(
 
 endmodule
 
-module LSU_RW(
+module Mem_RW(
   input             clock,
   input             reset,
   input             valid,

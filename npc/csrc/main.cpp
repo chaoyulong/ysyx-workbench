@@ -6,10 +6,6 @@
 
 #include <verilated.h>
 #include <verilated_fst_c.h>
-// #include "VCPU.h"
-#include <iostream>
-#include <iomanip>
-#include <cassert>
 #ifdef __USE_NVBOARD__
 #include <nvboard.h>
 #endif

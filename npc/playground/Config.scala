@@ -4,10 +4,64 @@ import spinal.core._
 import spinal.core.sim._
 import scala.reflect.runtime.universe
 
+// ============================================
+// 顶层名称解析模块（支持反射加载）
+// ============================================
+object TopNameResolver {
+
+  /** 从环境变量中获取顶层模块名称 */
+  def getTopName(): String = {
+    sys.env.get("SPINAL_TOPNAME") match {
+      case Some(name) if name.nonEmpty =>
+        println(s"[Config] Using top module name: $name")
+        name
+      case _ =>
+        System.err.println("[Error] Environment variable SPINAL_TOPNAME is not set!")
+        System.err.println("Usage example:")
+        System.err.println("  SPINAL_TOPNAME=CPU BUILD_DIR=./build mill -i playground.runMain playground.SpinalGenerateMain")
+        sys.exit(1)
+        ""
+    }
+  }
+
+  /** 通过反射动态创建 Spinal 顶层组件实例 */
+  def createTop(name: String): Component = {
+    try {
+      // 完整类名（假设都在 playground 包内）
+      val fullName = if (name.contains(".")) name else s"playground.$name"
+
+      // 通过 Scala 反射机制加载模块
+      val mirror = ru.runtimeMirror(getClass.getClassLoader)
+      val moduleSymbol = mirror.staticModule(fullName)
+      val moduleMirror = mirror.reflectModule(moduleSymbol)
+      val obj = moduleMirror.instance
+
+      // 如果是 object，尝试调用 apply()，若是 case class 则直接实例化
+      obj match {
+        case clazz: Component => clazz
+        case _ =>
+          // 若是 object + apply() 结构，则尝试调用
+          val applyMethod = obj.getClass.getMethod("apply")
+          val result = applyMethod.invoke(obj)
+          result.asInstanceOf[Component]
+      }
+    } catch {
+      case e: ClassNotFoundException =>
+        System.err.println(s"[Error] Cannot find class or object for top '$name'. Expected '$name' or 'playground.$name'")
+        sys.exit(1)
+        null
+      case e: Exception =>
+        System.err.println(s"[Error] Failed to instantiate top module '$name': ${e.getMessage}")
+        e.printStackTrace()
+        sys.exit(1)
+        null
+    }
+  }
+}
 
 object Config {
   val build_dir:String = sys.env.getOrElse("BUILD_DIR", ".")    // verilog文件生成位置
-  val sim_dir:String = sys.env.getOrElse("SPINAL_SIM_DIR", "./build/simulations")  // 仿真文件生成位置
+  val sim_dir:String = sys.env.getOrElse("SPINAL_SIM_DIR", "./simulations")  // 仿真文件生成位置
 
   def spinal = SpinalConfig(
     targetDirectory = build_dir,
@@ -29,51 +83,9 @@ object Config {
 }
 
 object SpinalToVerilog extends App {
-  val fullName = sys.env.getOrElse("SPINAL_TOPNAME", "CPU")
-  println(s"[SpinalToVerilog] Generating Verilog for top module: $fullName")
-
-  val mirror = universe.runtimeMirror(getClass.getClassLoader)
-  try {
-    val moduleSymbol = mirror.staticModule(fullName) // companion object
-    val module = mirror.reflectModule(moduleSymbol).instance
-
-    // 找到 companion 的 apply 方法（可能有参数或无参数）
-    val applyMethod = module.getClass.getMethods.find(_.getName == "apply")
-      .getOrElse(throw new NoSuchMethodException(s"No apply() in companion object of $fullName"))
-
-    // **重点**：在 generateVerilog 的 by-name 块里实例化 component
-    Config.spinal.generateVerilog {
-      // 如果 apply 无参数，直接调用
-      if (applyMethod.getParameterCount == 0) {
-        applyMethod.invoke(module).asInstanceOf[Component]
-      } 
-      else {
-        // // 如果 apply 有参数，尝试从环境变量 SPINAL_ARGS 取 CSV 参数（简单示例）
-        // val rawArgs = sys.env.get("SPINAL_ARGS").map(_.split(",")).getOrElse(Array.empty[String])
-        // if (rawArgs.length < applyMethod.getParameterCount)
-        //   throw new IllegalArgumentException(s"Need ${applyMethod.getParameterCount} SPINAL_ARGS, got ${rawArgs.length}")
-
-        // val params: Array[AnyRef] = applyMethod.getParameterTypes.zipWithIndex.map {
-        //   case (pt, i) =>
-        //     val s = rawArgs(i)
-        //     // 支持简单的几种类型（按需扩展）
-        //     if (pt == classOf[java.lang.String]) s
-        //     else if (pt == java.lang.Integer.TYPE) java.lang.Integer.valueOf(s)
-        //     else if (pt == java.lang.Long.TYPE) java.lang.Long.valueOf(s)
-        //     else if (pt == java.lang.Boolean.TYPE) java.lang.Boolean.valueOf(s)
-        //     else throw new IllegalArgumentException(s"Unsupported param type: $pt for top $fullName. Consider providing a zero-arg wrapper object.")
-        // }.asInstanceOf[Array[AnyRef]]
-
-        // applyMethod.invoke(module, params: _*).asInstanceOf[Component]
-        ALU()
-      }
-    }
-  } catch {
-    case e: Throwable =>
-      System.err.println(s"Error while generating Verilog for '$fullName': ${e.getMessage}")
-      e.printStackTrace()
-      sys.exit(1)
-  }
+  val topName = TopNameResolver.getTopName()
+  val top = TopNameResolver.createTop(topName)
+  Config.spinal.generateVerilog(top)
   // Config.spinal.generateVerilog(CPU())
 }
 

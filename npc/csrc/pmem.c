@@ -45,10 +45,10 @@ extern "C" void pmem_write(uint32_t waddr, uint32_t wdata, uint8_t wmask) {
 }
 
 void pmem_init(){
-  *(word_t *)(pmem + sizeof(word_t) * 0) = 0x00000297,  // auipc t0,0
-  *(word_t *)(pmem + sizeof(word_t) * 1) = 0x00028823,  // sb  zero,16(t0)
-  *(word_t *)(pmem + sizeof(word_t) * 2) = 0x0102c503,  // lbu a0,16(t0)
-  *(word_t *)(pmem + sizeof(word_t) * 3) = 0x00100073,  // ebreak (used as nemu_trap)
-  *(word_t *)(pmem + sizeof(word_t) * 4) = 0xdeadbeef,  // some data
+  *(word_t *)(pmem + sizeof(word_t) * 0) = 0x00000297;  // auipc t0,0
+  *(word_t *)(pmem + sizeof(word_t) * 1) = 0x00028823;  // sb  zero,16(t0)
+  *(word_t *)(pmem + sizeof(word_t) * 2) = 0x0102c503;  // lbu a0,16(t0)
+  *(word_t *)(pmem + sizeof(word_t) * 3) = 0x00100073;  // ebreak (used as nemu_trap)
+  *(word_t *)(pmem + sizeof(word_t) * 4) = 0xdeadbeef;  // some data
 
 }

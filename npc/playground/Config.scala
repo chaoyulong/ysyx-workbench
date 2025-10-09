@@ -29,6 +29,9 @@ object Config {
 }
 
 object SpinalToVerilog extends App {
+  clockDomain.clock.setName("clock")
+  clockDomain.reset.setName("reset")
+
   val fullName = sys.env.getOrElse("SPINAL_TOPNAME", "CPU")
   println(s"[SpinalToVerilog] Generating Verilog for top module: $fullName")
 

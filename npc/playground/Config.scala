@@ -32,6 +32,7 @@ object SpinalToVerilog extends App {
   // === 颜色 ANSI 转义码 ===
   val RED    = "\u001b[31m"  
   val YELLOW = "\u001b[33m"  
+  val BLUE   = "\u001b[34m" 
   val RESET  = "\u001b[0m"     // 重置
 
   // === 获取顶层模块名 ===
@@ -44,11 +45,9 @@ object SpinalToVerilog extends App {
     sys.exit(1)
     ""
   }
-
-  println(s"${YELLOW}[Info] Generating Verilog for top module: $fullName${RESET}")
+  println(s"${BLUE}[Info] Generating Verilog for top module: $fullName${RESET}")
 
   val mirror = universe.runtimeMirror(getClass.getClassLoader)
-
   try {
     // === 反射查找顶层模块 ===
     val moduleSymbol = mirror.staticModule(fullName)

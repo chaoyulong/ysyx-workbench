@@ -54,18 +54,21 @@ LDFLAGS +=
 override ARGS ?=
 IMG ?=
 
-# 只操作spinal的两条命令:
+# 只操作spinal的两条命令:verilog与test
+SPINAL_GEN_ENV := SPINAL_TOPNAME=$(SPINAL_PRJ).$(SPINAL_TOPNAME) BUILD_DIR=$(BUILD_DIR)
+SPINAL_SIM_ENV := BUILD_DIR=$(BUILD_DIR)
+
 verilog:
 	$(call git_commit, "generate verilog")
-	mkdir -p $(BUILD_DIR)
-	SPINAL_TOPNAME=$(SPINAL_PRJ).$(SPINAL_TOPNAME) BUILD_DIR=$(BUILD_DIR)  mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog 
-
-$(SPINAL_VFILE): verilog
+	@mkdir -p $(BUILD_DIR)
+	@$(SPINAL_GEN_ENV) mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog 
 
 test:
-	SPINAL_SIM_DIR=$(SPINAL_SIM_DIR) mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalSim 
+	@$(SPINAL_SIM_ENV) mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalSim 
 	@gtkwave $(SPINAL_SIM_DIR)/$(SPINAL_TOPNAME)/test/wave.fst
 
+# 应该每次都重新生成一次verilog文件
+$(SPINAL_VFILE): verilog
 
 # 此函数用于verilator编译，nvboard和直接仿真所用文件不同，例如：
 # 		$(call build_target, $^, -D__USE_NVBOARD__),第一个变量为所需的文件，第二个变量为加入的宏定义
@@ -115,7 +118,7 @@ wave: $(CSRCS) $(VSRCS)
 clean:
 	-rm -rf $(BUILD_DIR)
 
-.PHONY: test verilog run sim wave help reformat checkformat clean
+.PHONY: $(SPINAL_VFILE) test verilog run sim wave help reformat checkformat clean 
 
 
 -include ../Makefile

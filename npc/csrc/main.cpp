@@ -30,25 +30,25 @@ static void step_and_dump_wave()
 #endif
 }
 
-// void single_cycle() 
-// {
-//   top->clk = 0; step_and_dump_wave();
-//   top->clk = 1; step_and_dump_wave();
-// #ifdef __USE_NVBOARD__
-//   nvboard_update();
-// #endif
-// }
+void single_cycle() 
+{
+  top->clock = 0; step_and_dump_wave();
+  top->clock = 1; step_and_dump_wave();
+#ifdef __USE_NVBOARD__
+  nvboard_update();
+#endif
+}
 
-// static void reset(int n) {
-//   top->reset = 1;
-//   while (n -- > 0) step_and_dump_wave();
-//   top->reset = 0;
-// }
+static void reset(int n) {
+  top->reset = 1;
+  while (n -- > 0) single_cycle();
+  top->reset = 0;
+}
 
-// void n_cycle(int n)
-// {
-//   while (n -- > 0) single_cycle();
-// }
+void n_cycle(int n)
+{
+  while (n -- > 0) single_cycle();
+}
 
 void sim_init(int argc, char *argv[])
 {
@@ -114,6 +114,8 @@ uint32_t test_operation(uint32_t rs1, uint32_t rs2, uint8_t alu_ctr,
 int main(int argc, char** argv) 
 {
   sim_init(argc, argv);
+  reset(50);
+  n_cycle(50);
 
   std::cout << "=== ALU Verilator 测试 ===" << std::endl;
       int passed = 0;

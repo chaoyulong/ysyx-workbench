@@ -42,7 +42,7 @@ class Mem_Rd extends BlackBox{
 //     memory.io.rdata
 //   }
 // }
-case class Mem_RW extends BlackBox{
+case class Mem_RW() extends BlackBox{
   val io=new Bundle{
     val clock = in Bool()
     val reset = in Bool()

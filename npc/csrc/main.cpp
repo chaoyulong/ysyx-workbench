@@ -14,6 +14,8 @@
 #include <nvboard.h>
 #endif
 
+#include "pmem.h"
+
 VerilatedContext* const contextp = new VerilatedContext;
 TOP_NAME* const top = new TOP_NAME{contextp};
 VerilatedFstC* tfp = new VerilatedFstC;

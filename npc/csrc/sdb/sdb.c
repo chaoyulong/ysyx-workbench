@@ -6,6 +6,7 @@
 #include "regfile.h"
 #include "pmem.h"
 #include "sdb.h"
+#include "watchpoint.h"
 
 static int is_batch_mode = false;
 

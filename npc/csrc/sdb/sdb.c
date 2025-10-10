@@ -226,7 +226,7 @@ static int cmd_w(char *args)
   return 0;
 #endif
   if(args == NULL)  return 0;
-  create_watchpoint(args);
+  // create_watchpoint(args);
   return 0;
 }
 
@@ -242,7 +242,7 @@ static int cmd_d(char *args)
   if(strspn(arg, "0123456789") == strlen(arg))  // 如果x之后的字符为纯数字
   {
     no = atoi(arg);
-    delete_watchpoint(no);
+    // delete_watchpoint(no);
   }
   return 0;
 }

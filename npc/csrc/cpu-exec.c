@@ -72,9 +72,9 @@ static void exec_once()
   }
   memset(p, ' ', 4);
   p += 4;
-  void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
-  if(cpu.instr != 0)
-    disassemble(p, 128 - (p - cpu.decode.log_buf), cpu.pc, (uint8_t *)&cpu.instr, 4);
+  // void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
+  // if(cpu.instr != 0)
+  //   disassemble(p, 128 - (p - cpu.decode.log_buf), cpu.pc, (uint8_t *)&cpu.instr, 4);
   // if(reg_updated) 
   {
     strcpy(cpu.decode.iringbuf[cpu.decode.iringbuf_end], cpu.decode.log_buf);

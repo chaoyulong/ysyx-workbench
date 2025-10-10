@@ -66,7 +66,7 @@ static void exec_once()
   char *p = cpu.decode.log_buf;
   p += snprintf(p, sizeof(cpu.decode.log_buf), "0x%08x:", cpu.pc);
   int i;
-  uint8_t *inst = (uint8_t *)&cpu.decode.instr;
+  uint8_t *inst = (uint8_t *)&cpu.instr;
   for (i = 3; i >= 0; i --) {
     p += snprintf(p, 4, " %02x", inst[i]);
   }

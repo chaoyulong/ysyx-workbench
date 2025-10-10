@@ -4,7 +4,7 @@
 #include STR(TOP_NAME.h)    // 自动生成
 
 extern TOP_NAME* top;
-VCPU___024root* rootp;
+// VCPU___024root* rootp;
 
 const char *regs[] = {
   "$0", "ra", "sp", "gp", "tp", "t0", "t1", "t2",

@@ -1,7 +1,7 @@
 #ifndef __config_h__
 #define __config_h__
 
-#define CONFIG_ITRACE=y
+#define CONFIG_ITRACE y
 #define __P_DEF_CONFIG_ITRACE
 
 #endif

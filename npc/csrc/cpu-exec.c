@@ -1,4 +1,5 @@
 #include "simulation.h"
+#include "regfile.h"
 #include "monitor.h"
 #include "cpu-exec.h"
 #include "log.h"

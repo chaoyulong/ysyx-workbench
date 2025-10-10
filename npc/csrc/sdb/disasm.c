@@ -14,7 +14,8 @@
 ***************************************************************************************/
 
 #include <dlfcn.h>
-#include "tools/capstone/repo/include/capstone/capstone.h"
+// #include "tools/capstone/repo/include/capstone/capstone.h"
+#include "capstone/capstone.h"
 #include "common.h"
 
 static size_t (*cs_disasm_dl)(csh handle, const uint8_t *code,

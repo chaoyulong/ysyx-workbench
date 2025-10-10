@@ -1,3 +1,6 @@
+extern "C" {
+#include "utils.h"
+}
 #include <cstdio>
 #include <readline/readline.h>
 #include <readline/history.h>

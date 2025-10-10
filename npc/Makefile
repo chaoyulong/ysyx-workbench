@@ -1,5 +1,6 @@
 # 最常修改的一个
 SPINAL_TOPNAME = CPU
+ISA = RISCV32_E
 
 # verilator相关
 TOPNAME = $(SPINAL_TOPNAME)
@@ -50,7 +51,7 @@ VSRCS += $(SPINAL_VFILE)
 VSRCS += $(shell find $(abspath playground/vsrc) -name "*.v")
 CSRCS = $(shell find $(abspath csrc) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
 INCFLAGS = $(addprefix -I, $(INC_PATH))
-CXXFLAGS += $(INCFLAGS) -DTOP_NAME="\"V$(TOPNAME)\""
+CXXFLAGS += $(INCFLAGS) -DTOP_NAME="\"V$(TOPNAME)\"" -D$__(ISA)__
 LDFLAGS +=
 override ARGS ?=
 IMG ?=

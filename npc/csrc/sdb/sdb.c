@@ -5,7 +5,7 @@
 #include "utils.h"
 #include "cpu-exec.h"
 #include "regfile.h"
-#include "memory.h"
+#include "pmem.h"
 #include "sdb.h"
 
 static int is_batch_mode = false;
@@ -153,7 +153,7 @@ static int cmd_info(char *args)
     arg = strtok(NULL, " ");  // 获取下一个字符
     if(arg == NULL)
     {
-      display_all_watchpoints();        // 打印所有监视点的值
+      // display_all_watchpoints();        // 打印所有监视点的值
     }
     else
     {

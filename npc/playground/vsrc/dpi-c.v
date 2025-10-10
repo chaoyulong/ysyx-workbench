@@ -59,11 +59,11 @@ endmodule
 
 module GetInstr(
   input [31:0] pc,
-  input [31:0] instr,
+  input [31:0] instr
 );
 
 always @(*) begin
-  get_instr(pc, instr)
+  get_instr(pc, instr);
 end
 
 endmodule

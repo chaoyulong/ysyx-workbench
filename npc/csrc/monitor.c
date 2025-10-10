@@ -117,12 +117,13 @@ static int parse_args(int argc, char *argv[])
 //   flash_init();
 // }
 void pmem_init();
+void cpu_state_init();
 
 void monitor_init(int argc, char *argv[]) 
 {
   parse_args(argc, argv);
   // init_log(log_file);
-  // init_cpu_state();
+  cpu_state_init();
   // init_mem();
   pmem_init();
   long img_size = load_img();

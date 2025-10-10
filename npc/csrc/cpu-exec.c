@@ -21,7 +21,23 @@ void cpu_reset(int n)
   reset(n);
 }
 
-void init_cpu_state()
+static void trace_and_difftest() 
+{
+  IFDEF(CONFIG_ITRACE, if(g_print_step) puts(cpu_code.log_buf));
+  IFDEF (CONFIG_ITRACE, /*if(reg_updated)*/ log_write("%s\n", cpu_code.log_buf)); 
+  IFDEF(CONFIG_FTRACE, void func_trace(); /*if(reg_updated)*/ func_trace());
+  IFDEF(CONFIG_DIFFTEST, void difftest_step(vaddr_t pc, vaddr_t npc); if(reg_updated && npc_state.state != NPC_END) {difftest_step(cpu.pc, cpu.pc_next); });
+
+#ifdef CONFIG_WATCHPOINT
+  if(watchpoint_update())
+  {
+    npc_state.state = NPC_STOP;
+    puts("\nhas changed");
+  }
+#endif
+}
+
+void cpu_state_init()
 {
   for(int i = 0; i < REG_NUM; i++)
   {

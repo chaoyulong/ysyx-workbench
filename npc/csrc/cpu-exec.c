@@ -74,7 +74,7 @@ static void exec_once()
   p += 4;
   void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
   // if(cpu.instr != 0)
-  //   disassemble(p, 128 - (p - cpu.decode.log_buf), cpu.pc, (uint8_t *)&cpu.instr, 4);
+    disassemble(p, 128 - (p - cpu.decode.log_buf), cpu.pc, (uint8_t *)&cpu.instr, 4);
     strcpy(cpu.decode.iringbuf[cpu.decode.iringbuf_end], cpu.decode.log_buf);
     cpu.decode.iringbuf_end++;
     if(cpu.decode.iringbuf_end > 15)  cpu.decode.iringbuf_end = 0;

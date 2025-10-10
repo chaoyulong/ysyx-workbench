@@ -3,7 +3,7 @@
 
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
-
+#include STR(TOP_NAME.h)    // 自动生成
 
 void single_cycle();
 void n_cycle(int n);

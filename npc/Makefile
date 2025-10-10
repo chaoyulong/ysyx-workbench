@@ -52,7 +52,7 @@ VSRCS += $(shell find $(abspath playground/vsrc) -name "*.v")
 CSRCS = $(shell find $(abspath csrc) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
 INCFLAGS = $(addprefix -I, $(INC_PATH))
 CXXFLAGS += $(INCFLAGS) -DTOP_NAME="\"V$(TOPNAME)\"" -D__$(ISA)__
-LDFLAGS +=
+LDFLAGS += -lreadline
 override ARGS ?=
 IMG ?=
 

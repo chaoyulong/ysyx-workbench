@@ -20,6 +20,9 @@ void cpu_reset(int n)
   reset(n);
 }
 
+#define CONFIG_ITRACE
+#define __P_DEF_CONFIG_ITRACE
+
 static void trace_and_difftest() 
 {
   IFDEF(CONFIG_ITRACE, puts(cpu.decode.log_buf));

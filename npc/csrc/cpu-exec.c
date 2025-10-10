@@ -23,21 +23,21 @@ void cpu_reset(int n)
 
 void init_cpu_state()
 {
-  // for(int i = 0; i < REG_NUM; i++)
-  // {
-  //   cpu.gpr[i] = 0;
-  // }
+  for(int i = 0; i < REG_NUM; i++)
+  {
+    cpu.gpr[i] = 0;
+  }
   cpu.pc = RESET_VECTOR;
   cpu.pc_next = RESET_VECTOR;
 }
 
 static void cpu_state_update()
 {
-  // cpu.pc_next = Rpc();
-  // for(int i = 0; i < REG_NUM; i++)
-  // {
-  //   cpu.gpr[i] = R(i);
-  // }
+  cpu.pc_next = Rpc();
+  for(int i = 0; i < REG_NUM; i++)
+  {
+    cpu.gpr[i] = R(i);
+  }
 }
 
 

@@ -10,12 +10,12 @@ extern "C" void my_ebreak(void){
 
 int main(int argc, char** argv) 
 {
-  init_monitor(argc, argv);
+  monitor_init(argc, argv);
   cpu_reset(50);
-  sdb_mainloop();
+  monitor_mainloop();
 #ifdef __USE_NVBOARD__
   while(1) single_cycle();  // 若使用nvboard,运行就不会结束
 #endif
-  sim_exit();
+  monitor_exit();
   return is_exit_status_bad();
 }

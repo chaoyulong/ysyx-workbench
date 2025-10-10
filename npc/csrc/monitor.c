@@ -117,7 +117,7 @@ static int parse_args(int argc, char *argv[])
 // }
 void pmem_init();
 
-void init_monitor(int argc, char *argv[]) 
+void monitor_init(int argc, char *argv[]) 
 {
   parse_args(argc, argv);
   // init_log(log_file);
@@ -131,7 +131,15 @@ void init_monitor(int argc, char *argv[])
   welcome();
 }
 
+void monitor_mainloop()
+{
+  sdb_mainloop();
+}
 
+void monitor_exit()
+{
+  sim_exit();
+}
 
 static void elf_get_func(char *filename) 
 {  

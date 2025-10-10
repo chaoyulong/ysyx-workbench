@@ -1,11 +1,7 @@
-extern "C" {
-#include "utils.h"
-}
 #include <cstdio>
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "macro.h"
-#include "utils.h"
 #include "cpu-exec.h"
 #include "regfile.h"
 #include "pmem.h"

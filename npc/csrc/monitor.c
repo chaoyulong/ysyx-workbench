@@ -70,7 +70,7 @@ static long load_img()
   return size;
 }
 
-// void sdb_set_batch_mode();
+void sdb_set_batch_mode();
 
 static void elf_get_func(char *filename);
 

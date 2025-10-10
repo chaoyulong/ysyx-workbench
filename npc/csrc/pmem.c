@@ -1,6 +1,6 @@
 #include "pmem.h"
 
-static uint8_t pmem[CONFIG_MSIZE];
+uint8_t pmem[CONFIG_MSIZE];
 
 static void out_of_bound(int addr, int rw) 
 {

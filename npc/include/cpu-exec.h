@@ -28,6 +28,7 @@ typedef struct cpu_state{
   word_t gpr[32];  
 #endif
   paddr_t pc;           // pc
+  paddr_t pc_o;         // 与指令同步的对应的pc,用于itrace
   word_t instr;         // 指令
 #ifdef CONFIG_ITRACE    
   Decode decode;

@@ -188,8 +188,8 @@ static void statistic()
   
 }
 
-extern "C" void get_instr(int pc, int instr)
+extern "C" void get_instr(int pc_o, int instr)
 {
-  cpu.pc = pc;
+  cpu.pc_o = pc_o;
   cpu.instr = instr;
 }

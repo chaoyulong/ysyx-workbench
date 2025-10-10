@@ -13,7 +13,7 @@ case class MyEbreak() extends BlackBox{
 
 case class GetInstr() extends BlackBox{
   val io = new Bundle{
-    val pc = in UInt(32 bits)
+    val pc_o = in UInt(32 bits)
     val instr = in UInt(32 bits)
   }
   noIoPrefix()

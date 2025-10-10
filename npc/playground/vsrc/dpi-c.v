@@ -1,7 +1,7 @@
 import "DPI-C" function int pmem_read(input int raddr);
 import "DPI-C" function void pmem_write(input int waddr, input int wdata, input byte wmask);
 import "DPI-C" function void my_ebreak();
-import "DPI-C" function void get_instr(int pc, int instr);
+import "DPI-C" function void get_instr(int pc_o, int instr);
 
 module Mem_Rd(
   input             clock,
@@ -58,12 +58,12 @@ end
 endmodule
 
 module GetInstr(
-  input [31:0] pc,
+  input [31:0] pc_o,
   input [31:0] instr
 );
 
 always @(*) begin
-  get_instr(pc, instr);
+  get_instr(pc_o, instr);
 end
 
 endmodule

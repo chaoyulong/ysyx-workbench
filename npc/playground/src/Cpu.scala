@@ -63,7 +63,7 @@ case class CPU() extends Component {
   pc_o := pc
 
   val get_instr = GetInstr()
-  get_instr.io.pc := pc_o
+  get_instr.io.pc_o := pc_o
   get_instr.io.instr := instr
 
   decoder.io.instr := instr

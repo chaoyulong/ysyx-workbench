@@ -23,7 +23,7 @@ void cpu_reset(int n)
 static void trace_and_difftest() 
 {
   IFDEF(CONFIG_ITRACE, puts(cpu.decode.log_buf));
-  IFDEF (CONFIG_ITRACE, /*if(reg_updated)*/ log_write("%s\n", cpu.decode.log_buf)); 
+  IFDEF (CONFIG_ITRACE,  log_write("%s\n", cpu.decode.log_buf)); 
   IFDEF(CONFIG_FTRACE, void func_trace(); /*if(reg_updated)*/ func_trace());
   // IFDEF(CONFIG_DIFFTEST, void difftest_step(vaddr_t pc, vaddr_t npc); if(reg_updated && npc_state.state != NPC_END) {difftest_step(cpu.pc, cpu.pc_next); });
 
@@ -72,15 +72,13 @@ static void exec_once()
   }
   memset(p, ' ', 4);
   p += 4;
+  puts(cpu.decode.log_buf);
   // void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
   // if(cpu.instr != 0)
   //   disassemble(p, 128 - (p - cpu.decode.log_buf), cpu.pc, (uint8_t *)&cpu.instr, 4);
-  // if(reg_updated) 
-  {
     strcpy(cpu.decode.iringbuf[cpu.decode.iringbuf_end], cpu.decode.log_buf);
     cpu.decode.iringbuf_end++;
     if(cpu.decode.iringbuf_end > 15)  cpu.decode.iringbuf_end = 0;
-  }
 #endif
 }
 

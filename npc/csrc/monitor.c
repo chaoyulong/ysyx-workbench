@@ -6,6 +6,7 @@
 #include "simulation.h"
 #include "pmem.h"
 #include "monitor.h"
+#include "sdb.h"
 
 static char *log_file = NULL;
 static char *img_file = NULL;

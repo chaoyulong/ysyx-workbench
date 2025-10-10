@@ -5,7 +5,7 @@
 #include "log.h"
 #include "pmem.h"
 
-#define MAX_INST_TO_PRINT 0    // 最大单步执行多少时打印反汇编
+#define MAX_INST_TO_PRINT 10    // 最大单步执行多少时打印反汇编
 
 uint64_t g_timer = 0;
 bool g_print_step = false;

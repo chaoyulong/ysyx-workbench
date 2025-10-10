@@ -190,5 +190,5 @@ static void statistic()
 extern "C" void get_instr(int pc, int instr)
 {
   cpu.pc = pc;
-  cpu.decode.instr = instr;
+  cpu.instr = instr;
 }

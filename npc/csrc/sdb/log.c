@@ -1,4 +1,5 @@
 #include "common.h"
+#include "log.h"
 
 // 打印Log
 extern uint64_t g_nr_guest_inst;

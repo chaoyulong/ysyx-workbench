@@ -38,6 +38,7 @@ static void cpu_state_update()
   {
     cpu.gpr[i] = gpr(i);
   }
+  isa_reg_display() 
 }
 
 

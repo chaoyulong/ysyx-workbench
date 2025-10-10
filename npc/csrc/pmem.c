@@ -35,6 +35,7 @@ extern "C" void pmem_write(uint32_t waddr, uint32_t wdata, uint8_t wmask) {
   if(in_pmem(waddr))
   {
     paddr_t real_addr = ((paddr_t)waddr & (paddr_t)(~0x3u));  // 地址对齐
+    printf("mem write at %x, data = %x\n", waddr, wdata);
     word_t wmask32 = 0;
     for (int i = 0; i < 4; i++) {
         if (wmask & (1 << i)) wmask32 |= (0xFF << (8 * i));

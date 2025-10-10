@@ -3,7 +3,7 @@
 #include "macro.h"
 #include "utils.h"
 #include "cpu-exec.h"
-#include "reg.h"
+#include "regfile.h"
 #include "memory.h"
 #include "sdb.h"
 

@@ -64,7 +64,7 @@ static void exec_once()
 
 #ifdef CONFIG_ITRACE
   char *p = cpu.decode.log_buf;
-  p += snprintf(p, sizeof(cpu.decode.log_buf), "0x%08x:", cpu.pc);
+  p += snprintf(p, sizeof(cpu.decode.log_buf), "0x%08x:", cpu.pc_o);
   int i;
   uint8_t *inst = (uint8_t *)&cpu.instr;
   for (i = 3; i >= 0; i --) {
@@ -72,7 +72,6 @@ static void exec_once()
   }
   memset(p, ' ', 4);
   p += 4;
-  puts(cpu.decode.log_buf);
   // void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
   // if(cpu.instr != 0)
   //   disassemble(p, 128 - (p - cpu.decode.log_buf), cpu.pc, (uint8_t *)&cpu.instr, 4);

@@ -5,6 +5,8 @@
 #include "log.h"
 #include "pmem.h"
 
+#define CONFIG_ITRACE
+
 #define MAX_INST_TO_PRINT 0    // 最大单步执行多少时打印反汇编
 
 uint64_t g_timer = 0;

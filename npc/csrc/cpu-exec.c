@@ -191,7 +191,7 @@ void iringbuf_printf(void)
   puts("-- ring buf:");
   for(i = 0; i < 16; i++)
   {
-    if(cpu_code.iringbuf[i][3] != '\0')
+    if(cpu.decode.iringbuf[i][3] != '\0')
     {
       if(i == buf_last)
         printf("-->%s\n", cpu.decode.iringbuf[i]); 

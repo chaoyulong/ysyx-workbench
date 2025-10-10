@@ -4,14 +4,8 @@
 #include "common.h"
 #include "log.h"
 #include "simulation.h"
-// #include <unistd.h> 
-// #include "monitor.h"
-// #include "memory.h"
-// #include "utils.h"
-// #include "macro.h"
-// #include "v_sim.h"
-// #include "sdb.h"
-// #include "cpu-exec.h"
+#include "pmem.h"
+#include "monitor.h"
 
 static char *log_file = NULL;
 static char *img_file = NULL;

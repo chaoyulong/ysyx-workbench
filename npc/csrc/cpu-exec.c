@@ -75,39 +75,12 @@ static void exec_once()
   void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
   disassemble(p, cpu.decode.logbuf + sizeof(cpu.decode.logbuf) - p, cpu.pc, (uint8_t *)&cpu.instr, 4);
       
-    strcpy(cpu.decode.iringbuf[cpu.decode.iringbuf_end], cpu.decode.log_buf);
-    cpu.decode.iringbuf_end++;
-    if(cpu.decode.iringbuf_end > 15)  cpu.decode.iringbuf_end = 0;
+  strcpy(cpu.decode.iringbuf[cpu.decode.iringbuf_end], cpu.decode.log_buf);
+  cpu.decode.iringbuf_end++;
+  if(cpu.decode.iringbuf_end > 15)  cpu.decode.iringbuf_end = 0;
 #endif
 }
 
-static void exec_once(Decode *s, vaddr_t pc) {
-  s->pc = pc;
-  s->snpc = pc;
-  isa_exec_once(s);
-  cpu.pc = s->dnpc;
-#ifdef CONFIG_ITRACE
-  char *p = s->logbuf;
-  p += snprintf(p, sizeof(s->logbuf), FMT_WORD ":", s->pc);
-  int ilen = s->snpc - s->pc;
-  int i;
-  uint8_t *inst = (uint8_t *)&s->isa.inst;
-
-  for (i = ilen - 1; i >= 0; i --) {
-    p += snprintf(p, 4, " %02x", inst[i]);
-  }
-  int ilen_max = MUXDEF(CONFIG_ISA_x86, 8, 4);
-  int space_len = ilen_max - ilen;
-  if (space_len < 0) space_len = 0;
-  space_len = space_len * 3 + 1;
-  memset(p, ' ', space_len);
-  p += space_len;
-
-  void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
-  disassemble(p, s->logbuf + sizeof(s->logbuf) - p,
-      MUXDEF(CONFIG_ISA_x86, s->snpc, s->pc), (uint8_t *)&s->isa.inst, ilen);
-#endif
-}
 
 
 static void execute(uint64_t n) 

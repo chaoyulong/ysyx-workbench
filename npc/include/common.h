@@ -11,6 +11,7 @@
 #include <stdio.h>
 
 #include "macro.h"
+#include "config.h"
 
 typedef uint32_t word_t;
 typedef int32_t  sword_t;

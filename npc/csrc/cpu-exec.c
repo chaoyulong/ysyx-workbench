@@ -71,7 +71,7 @@ static void execute(uint64_t n)
     exec_once();
     g_nr_guest_cycle++;
 
-    trace_and_difftest();
+    // trace_and_difftest();
     if (npc_state.state != NPC_RUNNING) 
       break;
   }

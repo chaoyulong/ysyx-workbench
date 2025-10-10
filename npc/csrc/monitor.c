@@ -133,7 +133,7 @@ void init_monitor(int argc, char *argv[])
   long img_size = load_img();
   // init_difftest(diff_so_file, img_size, difftest_port);
   // init_sdb();
-  init_sim(argc, argv);
+  sim_init(argc, argv);
   welcome();
 }
 

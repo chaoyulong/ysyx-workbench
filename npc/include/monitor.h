@@ -19,7 +19,7 @@ typedef struct _fun_list
   struct _fun_list *next;
 }fun_list;
 
-void get_time(void);
+uint64_t get_time(void);
 
 void init_monitor(int argc, char *argv[]);
 

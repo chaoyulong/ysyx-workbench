@@ -181,8 +181,26 @@ static void statistic()
   else Log("Finish running in less than 1 us and can not calculate the simulation frequency");  
   // 性能计数器打印
   // Log("Instructions per cycle = %1.4f inst/cycle", (float)g_nr_guest_inst/(float)g_nr_guest_cycle);
-  
 }
+
+#ifdef CONFIG_ITRACE
+void iringbuf_printf(void)
+{
+  int i;
+  int buf_last = cpu_code.iringbuf_end - 1 < 0 ? 15 : cpu_code.iringbuf_end - 1;
+  puts("-- ring buf:");
+  for(i = 0; i < 16; i++)
+  {
+    if(cpu_code.iringbuf[i][3] != '\0')
+    {
+      if(i == buf_last)
+        printf("-->%s\n", cpu_code.iringbuf[i]); 
+      else
+        printf("   %s\n", cpu_code.iringbuf[i]);
+    }
+  }
+}
+#endif
 
 extern "C" void get_instr(int pc_o, int instr)
 {

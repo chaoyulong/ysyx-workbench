@@ -36,7 +36,7 @@ static void cpu_state_update()
   cpu.pc_next = Rpc();
   for(int i = 0; i < REG_NUM; i++)
   {
-    cpu.gpr[i] = R(i);
+    cpu.gpr[i] = gpr(i);
   }
 }
 

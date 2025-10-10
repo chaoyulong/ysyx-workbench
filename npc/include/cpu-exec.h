@@ -13,14 +13,13 @@ typedef struct {
 
 extern NPCState npc_state;
 
-typedef struct decode{
-  word_t instr;
 #ifdef CONFIG_ITRACE
+typedef struct decode{
   char log_buf[128];
   char iringbuf[16][128]; 
   int iringbuf_end = 0;
-#endif
 }Decode;
+#endif
 
 typedef struct cpu_state{
 #ifdef __RISCV32_E__
@@ -31,7 +30,7 @@ typedef struct cpu_state{
   paddr_t pc;           // pc
   word_t instr;         // 指令
 #ifdef CONFIG_ITRACE    
-  Decode decode
+  Decode decode;
 #endif
 }CPU_state;
 extern CPU_state cpu;

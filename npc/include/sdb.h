@@ -4,7 +4,7 @@
 #include "common.h"
 
 word_t expr(char *e, bool *success);
-void init_wp_pool(void);
+
 void create_watchpoint(char* arg);  // 创建一个监视点
 void delete_watchpoint(int no);   // 删除一个监视点
 void display_all_watchpoints(void);    // 查看所有的监视点

@@ -29,7 +29,7 @@ void init_cpu_state()
 
 static void cpu_state_update()
 {
-  // cpu.pc_next = Rpc;
+  // cpu.pc_next = Rpc();
   // for(int i = 0; i < REG_NUM; i++)
   // {
   //   cpu.gpr[i] = R(i);

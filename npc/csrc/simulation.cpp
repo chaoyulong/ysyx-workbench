@@ -1,8 +1,7 @@
-#define STR_HELPER(x) #x
-#define STR(x) STR_HELPER(x)
-
 #include <verilated.h>
 #include <verilated_fst_c.h>
+
+#include "simulation.h"
 #include STR(TOP_NAME.h)    // 自动生成
 #ifdef __USE_NVBOARD__
 #include <nvboard.h>

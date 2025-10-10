@@ -11,8 +11,7 @@ int main(int argc, char** argv)
 {
   init_monitor(argc, argv);
   cpu_reset(50);
-  // sdb_mainloop();
-  cpu_exec(-1);
+  sdb_mainloop();
 #ifdef __USE_NVBOARD__
   while(1) single_cycle();  // 若使用nvboard,运行就不会结束
 #endif

@@ -237,7 +237,6 @@ static uint32_t eval(int p, int q)
      * For now this token should be a number.
      * Return the value of the number.
      */
-    // printf("in 1\n");
 
     switch(tokens[p].type)
     {
@@ -277,12 +276,10 @@ static uint32_t eval(int p, int q)
     /* The expression is surrounded by a matched pair of parentheses.
      * If that is the case, just throw away the parentheses.
      */
-    // printf("in 2\n");
     return eval(p + 1, q - 1);
   }
   else 
   {
-    // printf("in 3\n");
     op = -1;
     for(int i = p; i <= q; i++)         // op = the position of 主运算符 in the token expression;
     {

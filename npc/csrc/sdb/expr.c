@@ -2,9 +2,9 @@
  * Type 'man regex' for more information about POSIX regex functions.
  */
 #include <regex.h>
-#include "memory.h"
+#include "pmem.h"
 #include "macro.h"
-#include "reg.h"
+#include "regfile.h"
 /*
   表达式求值
 */

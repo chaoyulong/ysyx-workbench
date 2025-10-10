@@ -13,6 +13,8 @@ uint64_t g_nr_guest_inst = 0;     // 运行了多少条指令
 uint64_t g_nr_guest_cycle = 0;    // 运行了多少周期
 
 NPCState npc_state = { .state = NPC_STOP };
+Decode cpu_code;
+CPU_state cpu;
 
 void cpu_reset(int n)
 {

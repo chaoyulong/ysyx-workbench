@@ -13,6 +13,7 @@ case class CPU() extends Component {
   inReset := True
 
   val pc   = Reg(UInt(32 bits)) init(U"32'h80000000")
+  val pc_o = Reg(UInt(32 bits)) init(U"32'h80000000")   // 目前单周期，用于sdb中指令与pc同步
   val instr = Mem_Rd(pc)  // 读取指令
   val decoder = Decoder() 
   val alu = ALU()
@@ -59,6 +60,11 @@ case class CPU() extends Component {
   reg_file.io.reg_wr := reg_wr
 
   pc := next_pc
+  pc_o := pc
+
+  val get_instr = GetInstr()
+  get_instr.io.pc := pc_o
+  get_instr.io.instr := instr
 
   decoder.io.instr := instr
 

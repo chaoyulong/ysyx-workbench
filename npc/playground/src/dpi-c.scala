@@ -11,6 +11,16 @@ case class MyEbreak() extends BlackBox{
   addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/dpi-c.v")   
 }
 
+case class GetInstr() extends BlackBox{
+  val io = new Bundle{
+    val pc = in UInt(32 bits)
+    val instr = in UInt(32 bits)
+  }
+  noIoPrefix()
+  addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/dpi-c.v")   
+}
+
+
 object Mem_Rd{
   def apply(addr:UInt): UInt ={
     val memory = new Mem_Rd()

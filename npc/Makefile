@@ -56,6 +56,14 @@ LDFLAGS += -lreadline
 override ARGS ?=
 IMG ?=
 
+#rules for disassemble
+LIBCAPSTONE = tools/capstone/repo/libcapstone.so.5
+INC_PATH +=  $(abspath tools/capstone/repo/include)
+CXXFLAGS += -DCONFIG_ISA_riscv
+$(abspath csrc/disasm.c): $(LIBCAPSTONE)
+$(LIBCAPSTONE):
+	$(MAKE) -C tools/capstone
+
 # 只操作spinal的两条命令:verilog与test
 SPINAL_GEN_ENV := SPINAL_TOPNAME=$(SPINAL_PRJ).$(SPINAL_TOPNAME) BUILD_DIR=$(BUILD_DIR)
 SPINAL_SIM_ENV := SPINAL_SIM_DIR=$(BUILD_DIR)/simulations

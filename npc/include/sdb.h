@@ -3,6 +3,7 @@
 
 #include "common.h"
 
+void disasm_init();
 word_t expr(char *e, bool *success);
 
 void create_watchpoint(char* arg);  // 创建一个监视点

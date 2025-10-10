@@ -24,7 +24,7 @@ static void (*cs_free_dl)(cs_insn *insn, size_t count);
 
 static csh handle;
 
-void init_disasm() {
+void disasm_init() {
   void *dl_handle;
   dl_handle = dlopen("tools/capstone/repo/libcapstone.so.5", RTLD_LAZY);
   assert(dl_handle);

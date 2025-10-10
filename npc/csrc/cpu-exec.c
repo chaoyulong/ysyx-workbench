@@ -22,9 +22,6 @@ void cpu_reset(int n)
 
 static void trace_and_difftest() 
 {
-  #ifdef CONFIG_ITRACE
-  puts(cpu.decode.log_buf);
-  #endif
   IFDEF(CONFIG_ITRACE, puts(cpu.decode.log_buf));
   IFDEF (CONFIG_ITRACE,  log_write("%s\n", cpu.decode.log_buf)); 
   IFDEF(CONFIG_FTRACE, void func_trace(); /*if(reg_updated)*/ func_trace());

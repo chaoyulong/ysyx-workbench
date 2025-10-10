@@ -255,6 +255,7 @@ void sdb_mainloop()
 {
   if (is_batch_mode) 
   {
+    printf("in there\n");
     cmd_c(NULL);
     return;
   }

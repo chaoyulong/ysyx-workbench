@@ -3,7 +3,7 @@
 #include "regfile.h"
 #include STR(TOP_NAME.h)    // 自动生成
 
-extern VysyxSoCFull* top;
+extern TOP_NAME* top;
 VCPU___024root* rootp;
 
 const char *regs[] = {

@@ -187,7 +187,7 @@ static void statistic()
 void iringbuf_printf(void)
 {
   int i;
-  int buf_last = cpu.decode.iringbuf_end - 1 < 0 ? 15 : cpu_code.iringbuf_end - 1;
+  int buf_last = cpu.decode.iringbuf_end - 1 < 0 ? 15 : cpu.decode.iringbuf_end - 1;
   puts("-- ring buf:");
   for(i = 0; i < 16; i++)
   {

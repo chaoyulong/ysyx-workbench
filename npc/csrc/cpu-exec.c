@@ -194,9 +194,9 @@ void iringbuf_printf(void)
     if(cpu_code.iringbuf[i][3] != '\0')
     {
       if(i == buf_last)
-        printf("-->%s\n", cpu_code.iringbuf[i]); 
+        printf("-->%s\n", cpu.decode.iringbuf[i]); 
       else
-        printf("   %s\n", cpu_code.iringbuf[i]);
+        printf("   %s\n", cpu.decode.iringbuf[i]);
     }
   }
 }

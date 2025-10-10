@@ -73,7 +73,7 @@ static void exec_once()
   memset(p, ' ', 4);
   p += 4;
   void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
-  disassemble(p, cpu.decode.logbuf + sizeof(cpu.decode.logbuf) - p, cpu.pc, (uint8_t *)&cpu.instr, 4);
+  disassemble(p, cpu.decode.log_buf + sizeof(cpu.decode.log_buf) - p, cpu.pc, (uint8_t *)&cpu.instr, 4);
       
   strcpy(cpu.decode.iringbuf[cpu.decode.iringbuf_end], cpu.decode.log_buf);
   cpu.decode.iringbuf_end++;

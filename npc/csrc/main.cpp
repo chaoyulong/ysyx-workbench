@@ -4,10 +4,6 @@
 #include "cpu-exec.h"
 #include "sdb.h"
 
-extern "C" void my_ebreak(void){
-  npc_state.state = NPC_END;
-}
-
 int main(int argc, char** argv) 
 {
   monitor_init(argc, argv);

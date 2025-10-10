@@ -73,3 +73,7 @@ void sim_exit()
   nvboard_quit();
 #endif
 }
+
+extern "C" void my_ebreak(void){
+  npc_state.state = NPC_END;
+}

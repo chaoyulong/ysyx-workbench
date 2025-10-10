@@ -13,7 +13,6 @@ uint64_t g_nr_guest_inst = 0;     // 运行了多少条指令
 uint64_t g_nr_guest_cycle = 0;    // 运行了多少周期
 
 NPCState npc_state = { .state = NPC_STOP };
-Decode cpu_code;
 CPU_state cpu;
 
 void cpu_reset(int n)
@@ -23,10 +22,10 @@ void cpu_reset(int n)
 
 static void trace_and_difftest() 
 {
-  IFDEF(CONFIG_ITRACE, if(g_print_step) puts(cpu_code.log_buf));
-  IFDEF (CONFIG_ITRACE, /*if(reg_updated)*/ log_write("%s\n", cpu_code.log_buf)); 
+  IFDEF(CONFIG_ITRACE, if(g_print_step) puts(cpu.decode.log_buf));
+  IFDEF (CONFIG_ITRACE, /*if(reg_updated)*/ log_write("%s\n", cpu.decode.log_buf)); 
   IFDEF(CONFIG_FTRACE, void func_trace(); /*if(reg_updated)*/ func_trace());
-  IFDEF(CONFIG_DIFFTEST, void difftest_step(vaddr_t pc, vaddr_t npc); if(reg_updated && npc_state.state != NPC_END) {difftest_step(cpu.pc, cpu.pc_next); });
+  // IFDEF(CONFIG_DIFFTEST, void difftest_step(vaddr_t pc, vaddr_t npc); if(reg_updated && npc_state.state != NPC_END) {difftest_step(cpu.pc, cpu.pc_next); });
 
 #ifdef CONFIG_WATCHPOINT
   if(watchpoint_update())
@@ -44,7 +43,7 @@ void cpu_state_init()
     cpu.gpr[i] = 0;
   }
   cpu.pc = RESET_VECTOR;
-  cpu.pc_next = RESET_VECTOR;
+  // cpu.pc_next = RESET_VECTOR;
 }
 
 static void cpu_state_update()
@@ -55,7 +54,6 @@ static void cpu_state_update()
   {
     cpu.gpr[i] = gpr(i);
   }
-  isa_reg_display();
 }
 
 
@@ -65,23 +63,23 @@ static void exec_once()
   cpu_state_update();
 
 #ifdef CONFIG_ITRACE
-  char *p = cpu_code.log_buf;
-  p += snprintf(p, sizeof(cpu_code.log_buf), "0x%08x:", cpu.pc);
+  char *p = cpu.decode.log_buf;
+  p += snprintf(p, sizeof(cpu.decode.log_buf), "0x%08x:", cpu.pc);
   int i;
-  uint8_t *inst = (uint8_t *)&cpu_code.instr;
+  uint8_t *inst = (uint8_t *)&cpu.decode.instr;
   for (i = 3; i >= 0; i --) {
     p += snprintf(p, 4, " %02x", inst[i]);
   }
   memset(p, ' ', 4);
   p += 4;
   void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
-  if(cpu_code.instr != 0)
-    disassemble(p, 128 - (p - cpu_code.log_buf), cpu.pc, (uint8_t *)&cpu_code.instr, 4);
+  if(cpu.decode.instr != 0)
+    disassemble(p, 128 - (p - cpu.decode.log_buf), cpu.pc, (uint8_t *)&cpu.decode.instr, 4);
   // if(reg_updated) 
   {
-    strcpy(cpu_code.iringbuf[cpu_code.iringbuf_end], cpu_code.log_buf);
-    cpu_code.iringbuf_end++;
-    if(cpu_code.iringbuf_end > 15)  cpu_code.iringbuf_end = 0;
+    strcpy(cpu.decode.iringbuf[cpu.decode.iringbuf_end], cpu.decode.log_buf);
+    cpu.decode.iringbuf_end++;
+    if(cpu.decode.iringbuf_end > 15)  cpu.decode.iringbuf_end = 0;
   }
 #endif
 }
@@ -93,7 +91,7 @@ static void execute(uint64_t n)
     exec_once();
     g_nr_guest_cycle++;
 
-    // trace_and_difftest();
+    trace_and_difftest();
     if (npc_state.state != NPC_RUNNING) 
       break;
   }
@@ -187,4 +185,10 @@ static void statistic()
   // 性能计数器打印
   // Log("Instructions per cycle = %1.4f inst/cycle", (float)g_nr_guest_inst/(float)g_nr_guest_cycle);
   
+}
+
+extern "C" void get_instr(int pc, int instr)
+{
+  cpu.pc = pc;
+  cpu.decode.instr = instr;
 }

@@ -13,17 +13,6 @@ typedef struct {
 
 extern NPCState npc_state;
 
-typedef struct cpu_state{
-#ifdef __RISCV32_E__
-  word_t gpr[16];  
-#else
-  word_t gpr[32];  
-#endif
-  // paddr_t pc_next;  // 前两个变量的顺序不要修改
-  paddr_t pc;
-}CPU_state;
-extern CPU_state cpu;
-
 typedef struct decode{
   word_t instr;
 #ifdef CONFIG_ITRACE
@@ -32,6 +21,20 @@ typedef struct decode{
   int iringbuf_end = 0;
 #endif
 }Decode;
+
+typedef struct cpu_state{
+#ifdef __RISCV32_E__
+  word_t gpr[16];       // 寄存器
+#else
+  word_t gpr[32];  
+#endif
+  paddr_t pc;           // pc
+  word_t instr;         // 指令
+#ifdef CONFIG_ITRACE    
+  Decode decode
+#endif
+}CPU_state;
+extern CPU_state cpu;
 
 void cpu_state_init();
 int is_exit_status_bad();

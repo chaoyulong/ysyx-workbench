@@ -1,4 +1,6 @@
+package playground
 
+import spinal.core._
 
 case class ysyx_23060082_IDU() extends Component {
   val io = new Bundle {

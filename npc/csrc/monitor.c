@@ -123,7 +123,8 @@ void disasm_init();
 void monitor_init(int argc, char *argv[]) 
 {
   parse_args(argc, argv);
-  disasm_init();
+
+  IFDEF(CONFIG_ITRACE, disasm_init());
   // init_log(log_file);
   cpu_state_init();
   // init_mem();

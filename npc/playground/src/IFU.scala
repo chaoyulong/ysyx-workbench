@@ -1,6 +1,7 @@
 package playground
 
 import spinal.core._
+import spinal.lib._       // 使用spinal的模块库
 
 
 case class ysyx_23060082_IFU() extends Component {

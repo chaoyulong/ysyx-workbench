@@ -19,5 +19,5 @@ int main(int argc, char** argv)
   cpu_reset(50);
   n_cycle(50);
   monitor_exit();
-  retuen 0;
+  return 0;
 }

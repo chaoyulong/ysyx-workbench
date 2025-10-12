@@ -12,6 +12,7 @@ case class ysyx_23060082_IDU() extends Component {
   val idu_pc  = Reg(UInt(32 bits)) init(0)
   val decoder = Decoder()
   decoder.instr := U"32'h00000013"          	//nop
+  idu_pc := idu_pc
   // 接收数据
   when(io.input.fire) {
     idu_pc := io.input.payload.pc

@@ -19,7 +19,7 @@ extern "C" uint32_t pmem_read(uint32_t raddr) {
   {
     paddr_t real_addr = ((paddr_t)raddr & (paddr_t)(~0x3u));
       // printf("pc = %x, code = %08x, count = %d\n", pc, *((uint32_t *)code), count);
-    printf("mem read at %x, data = %x\n", raddr, host_read(guest_to_host(real_addr)));
+    // printf("mem read at %x, data = %x\n", raddr, host_read(guest_to_host(real_addr)));
     return host_read(guest_to_host(real_addr));
   }
   else
@@ -35,7 +35,7 @@ extern "C" void pmem_write(uint32_t waddr, uint32_t wdata, uint8_t wmask) {
   if(in_pmem(waddr))
   {
     paddr_t real_addr = ((paddr_t)waddr & (paddr_t)(~0x3u));  // 地址对齐
-    printf("mem write at %x, data = %x\n", waddr, wdata);
+    // printf("mem write at %x, data = %x\n", waddr, wdata);
     word_t wmask32 = 0;
     for (int i = 0; i < 4; i++) {
         if (wmask & (1 << i)) wmask32 |= (0xFF << (8 * i));

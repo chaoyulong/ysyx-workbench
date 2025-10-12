@@ -16,6 +16,7 @@ int main(int argc, char** argv)
 //   return is_exit_status_bad();
 
   sim_init(argc, argv);
+  pmem_init();
   cpu_reset(50);
   n_cycle(50);
   monitor_exit();

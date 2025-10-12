@@ -12,7 +12,7 @@ case class ysyx_23060082_IDU() extends Component {
   val decoder = Decoder()
   // 接收数据
   when(io.input.fire) {
-    decoder.instr := input.payload.instr
+    decoder.instr := io.input.payload.instr
   }
 
   io.input.ready := io.input.valid

@@ -21,6 +21,8 @@ case class ysyx_23060082_IFU() extends Component {
 
   io.output.valid := True
 
+  pc_reg := pc_reg + U"32'h4"
+
   // when(io.input.fire) {   // 当 valid && ready 时，说明成功发送
   //   io.output.valid := True
   // } elsewhen(io.output.fire) {

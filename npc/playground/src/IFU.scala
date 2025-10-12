@@ -14,7 +14,7 @@ case class ysyx_23060082_IFU() extends Component {
   val pc_reg   = Reg(UInt(32 bits)) init(U"32'h80000000")
   val instr = Mem_Rd(pc_reg)  // 读取指令
 
-  io.input.ready := io.input.valid
+  // io.input.ready := io.input.valid
 
   io.output.payload.pc    := pc_reg
   io.output.payload.instr := instr

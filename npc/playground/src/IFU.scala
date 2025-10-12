@@ -6,7 +6,7 @@ import spinal.core._
 case class ysyx_23060082_IFU() extends Component {
   val io = new Bundle {
     // val input  = slave(Stream(Lsu2Ifu_data))
-    val output = master(Stream(Ifu2Idu_data))    
+    val output = master Stream(Ifu2Idu_data)  
   }
 
 

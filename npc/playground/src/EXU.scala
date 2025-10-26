@@ -24,6 +24,10 @@ case class ysyx_23060082_EXU() extends Component {
     U"01" -> io.from_Idu.ctrl.imm,
     default -> U"32'h4"
   )
+
+  branch_cond.io.branch := io.from_Idu.ctrl.branch
+  branch_cond.io.less   := alu.io.less
+  branch_cond.io.zero   := alu.io.zero
 }
 
 /*    Branch      跳转类型
@@ -119,16 +123,16 @@ case class ysyx_23060082_ALU() extends Component {
 
   io.less := less
   io.zero := adder.io.zero
-  switch(io.alu_ctr(0 to 2)){
-    is(U"3'b000") {io.alu_result := result_adder}
-    is(U"3'b001") {io.alu_result := result_shift}
-    is(U"3'b010") {io.alu_result := result_slt}
-    is(U"3'b011") {io.alu_result := result_lui}
-    is(U"3'b100") {io.alu_result := result_xor}
-    is(U"3'b101") {io.alu_result := result_shift}
-    is(U"3'b110") {io.alu_result := result_or}
-    is(U"3'b111") {io.alu_result := result_and}
-  }
+  io.alu_result := io.alu_ctr(0 to 2).mux(
+    U"3'b000" -> io.alu_result := result_adder,
+    U"3'b001" -> io.alu_result := result_shift,
+    U"3'b010" -> io.alu_result := result_slt  ,
+    U"3'b011" -> io.alu_result := result_lui  ,
+    U"3'b100" -> io.alu_result := result_xor  ,
+    U"3'b101" -> io.alu_result := result_shift,
+    U"3'b110" -> io.alu_result := result_or   ,
+    U"3'b111" -> io.alu_result := result_and  ,
+  )
 }
 
 case class Adder() extends Component {

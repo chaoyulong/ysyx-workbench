@@ -14,11 +14,10 @@ case class Ctrl() extends Bundle {   // 控制信号
     val imm      = out UInt(32 bits)  // 立即数
 }
 
-
 case class Decoder() extends Component {
   val io = new Bundle {
     val instr    = in  UInt(32 bits)
-    val ctrl = out Ctrl()
+    val ctrl = out(Ctrl)
   }
 
   val instr = io.ctrl

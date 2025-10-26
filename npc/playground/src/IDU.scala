@@ -29,15 +29,13 @@ case class ysyx_23060082_IDU() extends Component {
     // val idu_read_rf = Rf_read()
   }
 
-  val idu_pc  = from_Ifu.pc
+  val idu_pc  = io.from_Ifu.pc
   val decoder = Decoder()
 
+  decoder.instr := io.from_Ifu.instr         
 
-
-  decoder.instr := from_Ifu.instr         
-
-  io.idu_read_rf.read_addr_1 := from_Ifu.instr(19 downto 15)
-  io.idu_read_rf.read_addr_2 := from_Ifu.instr(24 downto 20)  
+  io.idu_read_rf.read_addr_1 := io.from_Ifu.instr(19 downto 15)
+  io.idu_read_rf.read_addr_2 := io.from_Ifu.instr(24 downto 20)  
   val read_data_1 = io.idu_read_rf.read_data_1
   val read_data_2 = io.idu_read_rf.read_data_2
   // io.idu_read_rf.addr_w := instr(11 downto 7)

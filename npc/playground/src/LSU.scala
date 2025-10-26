@@ -2,6 +2,28 @@ package playground
 
 import spinal.core._
 
+import spinal.core._
+import spinal.lib._    // 使用spinal的模块库
+
+case class Lsu2Wbu_data() extends Bundle {
+  val pc            = UInt(32 bits)
+  val pc_next       = UInt(32 bits)
+  val mem_data_out  = UInt(32 bits)
+  val alu_data_out  = UInt(32 bits) 
+  val rf_ctrl       = RfCtrl()      // 其中的mem2reg信号会作为读内存信号被用到
+}
+
+case class ysyx_23060082_LSU() extends Component {
+  val io = new Bundle {
+    val from_Exu  = slave Stream(Exu2Lsu_data())
+    val to_Lsu = master Stream(Lsu2Wbu_data()) 
+  }
+
+  
+}
+
+
+
 case class LSU_RW() extends Component{
   val io = new Bundle{
     val mem2reg  = in Bool()

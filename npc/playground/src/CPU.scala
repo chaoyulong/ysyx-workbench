@@ -15,8 +15,10 @@ case class CPU() extends Component {
   val ifu = ysyx_23060082_IFU()
   val idu = ysyx_23060082_IDU()
   val exu = ysyx_23060082_EXU()
+  val lsu = ysyx_23060082_LSU()
   ifu.io.to_Idu >-> idu.io.from_Ifu   // 
   idu.io.to_Exu >-> exu.io.from_Idu
+  exu.io.to_Lsu >-> lsi.io.from_Exu
 
   reg_file.io.read_addr_1 <> idu.io.rf_read_addr_1
   reg_file.io.read_addr_2 <> idu.io.rf_read_addr_2

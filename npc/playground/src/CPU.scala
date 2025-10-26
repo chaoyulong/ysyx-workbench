@@ -18,7 +18,7 @@ case class CPU() extends Component {
   ifu.io.to_Idu >-> idu.io.from_Ifu   // 
   idu.io.to_Exu >-> exu.io.from_Idu
 
-  reg_file <> idu
+  reg_file.io <> idu.io
   // reg_file.io.read_addr_1 <> idu.io.rf_read_addr_1
   // reg_file.io.read_addr_2 <> idu.io.rf_read_addr_2
   // reg_file.io.read_data_1 <> idu.io.rf_read_data_1

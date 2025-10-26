@@ -124,14 +124,14 @@ case class ysyx_23060082_ALU() extends Component {
   io.less := less
   io.zero := adder.io.zero
   io.alu_result := io.alu_ctr(0 to 2).mux(
-    U"3'b000" -> io.alu_result := result_adder,
-    U"3'b001" -> io.alu_result := result_shift,
-    U"3'b010" -> io.alu_result := result_slt  ,
-    U"3'b011" -> io.alu_result := result_lui  ,
-    U"3'b100" -> io.alu_result := result_xor  ,
-    U"3'b101" -> io.alu_result := result_shift,
-    U"3'b110" -> io.alu_result := result_or   ,
-    U"3'b111" -> io.alu_result := result_and  ,
+    U"3'b000" -> result_adder,
+    U"3'b001" -> result_shift,
+    U"3'b010" -> result_slt  ,
+    U"3'b011" -> result_lui  ,
+    U"3'b100" -> result_xor  ,
+    U"3'b101" -> result_shift,
+    U"3'b110" -> result_or   ,
+    U"3'b111" -> result_and  ,
   )
 }
 

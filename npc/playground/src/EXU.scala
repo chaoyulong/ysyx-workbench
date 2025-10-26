@@ -22,15 +22,15 @@ case class ysyx_23060082_EXU() extends Component {
   val alu = ysyx_23060082_ALU()
   val branch_cond = ysyx_23060082_BranchCond()
 
-  alu.io.alu_ctr := io.from_Idu.ctrl.alu_ctr
-  alu.io.alu_in1 := Mux(io.from_Idu.ctrl.alu_asrc, io.from_Idu.rf_read_data_1, io.from_Idu.pc)
-  alu.io.alu_in2 := io.from_Idu.ctrl.alu_bsrc.mux(
+  alu.io.alu_ctr := io.from_Idu.ctrl.alu_si.alu_ctr
+  alu.io.alu_in1 := Mux(io.from_Idu.ctrl.alu_si.alu_asrc, io.from_Idu.rf_read_data_1, io.from_Idu.pc)
+  alu.io.alu_in2 := io.from_Idu.ctrl.alu_si.alu_bsrc.mux(
     U"00" -> io.from_Idu.rf_read_data_2,
     U"01" -> io.from_Idu.imm,
     default -> U"32'h4"
   )
 
-  branch_cond.io.branch := io.from_Idu.ctrl.branch
+  branch_cond.io.branch := io.from_Idu.ctrl.alu_si.branch
   branch_cond.io.less   := alu.io.less
   branch_cond.io.zero   := alu.io.zero
 

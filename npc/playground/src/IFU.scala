@@ -19,8 +19,8 @@ case class ysyx_23060082_IFU() extends Component {
 
   // io.input.ready := io.input.valid
 
-  io.to_Idu.payload.pc    := pc_reg
-  io.to_Idu.payload.instr := instr
+  io.to_Idu.pc    := pc_reg
+  io.to_Idu.instr := instr
 
   io.to_Idu.valid := True
 

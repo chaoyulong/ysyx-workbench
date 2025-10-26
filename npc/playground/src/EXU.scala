@@ -3,6 +3,11 @@ package playground
 import spinal.core._
 import spinal.lib._    // 使用spinal的模块库
 
+case class Exu2Lsu_data() extends Bundle {
+  val pc      = UInt(32 bits)
+  val pc_next = UInt(32 bits)
+}
+
 case class ysyx_23060082_EXU() extends Component {
   val io = new Bundle {
     val from_Idu  = slave Stream(Idu2Exu_data())
@@ -11,6 +16,14 @@ case class ysyx_23060082_EXU() extends Component {
 
   val alu = ysyx_23060082_ALU()
   val branch_cond = ysyx_23060082_BranchCond()
+
+  alu.io.alu_ctr := io.from_Idu.ctrl.alu_ctr
+  alu.io.alu_in1 := Mux(io.from_Idu.ctrl.alu_asrc, rs1, pc)
+  alu.io.alu_in2 := alu_bsrc.mux(
+    U"00" -> rs2,
+    U"01" -> imm,
+    default -> U"32'h4"
+  )
 }
 
 /*    Branch      跳转类型

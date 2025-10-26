@@ -29,11 +29,11 @@ case class ysyx_23060082_IDU() extends Component {
     // val idu_read_rf = Rf_read()
   }
 
-  // val instr
   val instr = UInt(32 bits)
   val idu_pc  = Reg(UInt(32 bits)) init(0)
   val decoder = Decoder()
 
+  instr := U"32'h0"
   decoder.instr := instr         
   idu_pc := idu_pc
   // 接收数据

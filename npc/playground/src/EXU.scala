@@ -4,8 +4,9 @@ import spinal.core._
 import spinal.lib._    // 使用spinal的模块库
 
 case class Exu2Lsu_data() extends Bundle {
-  val pc      = UInt(32 bits)
-  val pc_next = UInt(32 bits)
+  val pc          = UInt(32 bits)
+  val pc_next     = UInt(32 bits)
+  val alu_result  = UInt(32 bits)
 }
 
 case class ysyx_23060082_EXU() extends Component {
@@ -29,7 +30,12 @@ case class ysyx_23060082_EXU() extends Component {
   branch_cond.io.less   := alu.io.less
   branch_cond.io.zero   := alu.io.zero
 
-  io.to_Lsu.pc_next := Mux(branch_cond.io.pc_asrc, io.from_Idu.imm, U"32'd4") + Mux(branch_cond.io.pc_bsrc, io.from_Idu.rf_read_data_1, io.from_Idu.pc)
+  val pc_data_a = Mux(branch_cond.io.pc_asrc, io.from_Idu.imm, U"32'd4")
+  val pc_data_b = Mux(branch_cond.io.pc_bsrc, io.from_Idu.rf_read_data_1, io.from_Idu.pc)
+
+  io.to_Lsu.pc          := io.from_Idu.pc
+  io.to_Lsu.pc_next     := pc_data_a + pc_data_b
+  io.to_Lsu.alu_result  := alu.alu_result
 }
 
 /*    Branch      跳转类型

@@ -24,11 +24,10 @@ case class ysyx_23060082_IDU() extends Component {
     val rf_read_data_2 = in  UInt(32 bits)
   }
 
-  val idu_pc  = io.from_Ifu.pc
   val decoder = Decoder()
-  decoder.instr := io.from_Ifu.instr         
+  val instr = instr
+  decoder.instr := instr         
 // ***************************************** 立即数生成 *********************************************** //
-  val instr = io.from_Ifu.instr
   val immU = U(instr(31 downto 12) ## U(0, 12 bits))
   val immJ = U((instr(31) #* 12) ## instr(19 downto 12) ## instr(20) ## instr(30 downto 21)## U(0, 1 bits))
   val immI = U((instr(31) #* 20) ## instr(31 downto 20))
@@ -40,13 +39,14 @@ case class ysyx_23060082_IDU() extends Component {
   val imm_values = Vec(immU, immJ, immI, immS, immB)
   io.to_Exu.imm := Mux(has_type, MuxOH(decoder.io.instr_type(5 downto 1), imm_values), U"32'h0")
 // *****************************************  *********************************************** //
-  io.rf_read_addr_1 := io.from_Ifu.instr(19 downto 15)
-  io.rf_read_addr_2 := io.from_Ifu.instr(24 downto 20)  
+  io.rf_read_addr_1 := instr(19 downto 15)
+  io.rf_read_addr_2 := instr(24 downto 20)  
 
-  io.to_Exu.rf_read_data_1 := io.rf_read_data_1
-  io.to_Exu.rf_read_data_2 := io.rf_read_data_2
-  io.to_Exu.ctrl           := decoder.io.ctrl
-  io.to_Exu.rf_write_addr  := io.from_Ifu.instr(11 downto 7)
+  io.to_Exu.pc              := io.from_Ifu.pc
+  io.to_Exu.rf_read_data_1  := io.rf_read_data_1
+  io.to_Exu.rf_read_data_2  := io.rf_read_data_2
+  io.to_Exu.ctrl            := decoder.io.ctrl
+  io.to_Exu.rf_write_addr   := instr(11 downto 7)
 
   io.from_Ifu.ready := io.from_Ifu.valid
   

@@ -12,3 +12,8 @@ case class Ifu2Idu_data() extends Bundle {
   val pc    = UInt(32 bits)
   val instr = UInt(32 bits)
 }
+
+case class Idu2Exu_data() extends Bundle {
+  val pc    = UInt(32 bits)
+  val instr = UInt(32 bits)
+}

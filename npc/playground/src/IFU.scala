@@ -10,7 +10,6 @@ case class ysyx_23060082_IFU() extends Component {
     val to_Idu    = master Stream(Ifu2Idu_data())  
   }
 
-
   val pc_reg   = Reg(UInt(32 bits)) init(U"32'h80000000")
   val instr = Mem_Rd(pc_reg)  // 读取指令
 

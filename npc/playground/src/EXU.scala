@@ -44,7 +44,7 @@ case class ysyx_23060082_EXU() extends Component {
   io.to_Lsu.pc_next     := pc_data_a + pc_data_b
   io.to_Lsu.alu_result  := alu.io.alu_result
   io.to_Lsu.rf_write_addr := io.from_Idu.rf_write_addr
-  reg_wr
+
 }
 
 /*    Branch      跳转类型

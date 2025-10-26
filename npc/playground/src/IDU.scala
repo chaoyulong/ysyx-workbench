@@ -41,7 +41,7 @@ case class ysyx_23060082_IDU() extends Component {
     B"001000" -> immI,
     B"000100" -> immS,
     B"000010" -> immB,
-    B"000001" -> U"32'h0"
+    default -> U"32'h0"
   )
   // io.ctrl.imm := Mux(type_U, immU,
   //         Mux(type_J, immJ,

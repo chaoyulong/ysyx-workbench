@@ -26,7 +26,11 @@ case class ysyx_23060082_IDU() extends Component {
   val io = new Bundle {
     val from_Ifu  = slave Stream(Ifu2Idu_data())
     val to_Exu = master Stream(Idu2Exu_data()) 
-    val idu_read_rf = Rf_read()
+
+    val rf_read_addr_1 = UInt(5 bits)
+    val rf_read_addr_2 = UInt(5 bits)
+    val rf_read_data_1 = UInt(32 bits)
+    val rf_read_data_2 = UInt(32 bits)
   }
 
   val idu_pc  = io.from_Ifu.pc
@@ -34,10 +38,10 @@ case class ysyx_23060082_IDU() extends Component {
 
   decoder.instr := io.from_Ifu.instr         
 
-  io.idu_read_rf.read_addr_1 := io.from_Ifu.instr(19 downto 15)
-  io.idu_read_rf.read_addr_2 := io.from_Ifu.instr(24 downto 20)  
-  val read_data_1 = io.idu_read_rf.read_data_1
-  val read_data_2 = io.idu_read_rf.read_data_2
+  io.rf_read_addr_1 := io.from_Ifu.instr(19 downto 15)
+  io.rf_read_addr_2 := io.from_Ifu.instr(24 downto 20)  
+  val read_data_1 = io.rf_read_data_1
+  val read_data_2 = io.rf_read_data_2
   // io.idu_read_rf.addr_w := instr(11 downto 7)
 
   io.from_Ifu.ready := io.from_Ifu.valid

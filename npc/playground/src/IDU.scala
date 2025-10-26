@@ -35,19 +35,10 @@ case class ysyx_23060082_IDU() extends Component {
   val immS = U((instr(31) #* 20) ## instr(31 downto 25) ## instr(11 downto 7))
   val immB = U((instr(31) #* 20) ## instr(7) ## instr(30 downto 25) ## instr(11 downto 8) ## U(0, 1 bits))
 
-  io.to_Exu.imm := decoder.io.instr_type.mux(
-    B"100000" -> immU,
-    B"010000" -> immJ,
-    B"001000" -> immI,
-    B"000100" -> immS,
-    B"000010" -> immB,
-    default -> U"32'h0"
-  )
-  // io.ctrl.imm := Mux(type_U, immU,
-  //         Mux(type_J, immJ,
-  //         Mux(type_I, immI,
-  //         Mux(type_S, immS,
-  //         Mux(type_B, immB, U(0, 32 bits))))))
+  // 独热码选择器
+  val has_type = decoder.io.instr_type(5 downto 1).orR
+  val imm_values = Vec(immU, immJ, immI, immS, immB)
+  io.to_Exu.imm := Mux(hasType, MuxOH(decoder.io.instr_type(5 downto 1), imm_values), U"32'h0")
 // *****************************************  *********************************************** //
   io.rf_read_addr_1 := io.from_Ifu.instr(19 downto 15)
   io.rf_read_addr_2 := io.from_Ifu.instr(24 downto 20)  

@@ -36,11 +36,11 @@ case class ysyx_23060082_IDU() extends Component {
 
   io.to_Exu.imm := decoder.instr_type.mux(
     B"100000" -> immU,
-    B"100000" -> immJ,
-    B"100000" -> immI,
-    B"100000" -> immS,
-    B"100000" -> immB,
-    B"100000" -> U"32'h0"
+    B"010000" -> immJ,
+    B"001000" -> immI,
+    B"000100" -> immS,
+    B"000010" -> immB,
+    B"000001" -> U"32'h0"
   )
   // io.ctrl.imm := Mux(type_U, immU,
   //         Mux(type_J, immJ,

@@ -112,7 +112,7 @@ case class Decoder() extends Component {
   val type_B = (i_beq | i_bne | i_blt | i_bge | i_bltu | i_bgeu)
   val type_R = (i_add | i_sub | i_xor | i_or | i_and | i_sll | i_srl | i_sra | i_slt | i_sltu)
 
-  io.instr_type = type_U ## type_J ## type_I ## type_S ## type_B ## type_R
+  io.instr_type := type_U ## type_J ## type_I ## type_S ## type_B ## type_R
 // **************************************** 控制信号生成 ********************************************** // 
   val my_ebreak = MyEbreak()
   my_ebreak.io.i_ebreak := i_ebreak

@@ -35,7 +35,7 @@ case class ysyx_23060082_IDU() extends Component {
   val immS = U((instr(31) #* 20) ## instr(31 downto 25) ## instr(11 downto 7))
   val immB = U((instr(31) #* 20) ## instr(7) ## instr(30 downto 25) ## instr(11 downto 8) ## U(0, 1 bits))
 
-  io.to_Exu.imm := decoder.instr_type.mux(
+  io.to_Exu.imm := decoder.io.instr_type.mux(
     B"100000" -> immU,
     B"010000" -> immJ,
     B"001000" -> immI,

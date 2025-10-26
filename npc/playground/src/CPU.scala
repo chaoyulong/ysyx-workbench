@@ -13,7 +13,7 @@ case class CPU() extends Component {
 
   val ifu = ysyx_23060082_IFU()
   val idu = ysyx_23060082_IDU()
-  ifu.io.output >-> idu.io.input   // 通过 m2sPipe 将 y 连接到 x
+  ifu.io.to_Idu >-> idu.io.from_Ifu   // 通过 m2sPipe 将 y 连接到 x
 
   // val pc   = Reg(UInt(32 bits)) init(U"32'h80000000")
   // val pc_o = Reg(UInt(32 bits)) init(U"32'h80000000")   // 目前单周期，用于sdb中指令与pc同步

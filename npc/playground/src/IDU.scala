@@ -45,7 +45,7 @@ case class ysyx_23060082_IDU() extends Component {
   io.to_Exu.rf_read_data_1  := io.rf_read_data_1
   io.to_Exu.rf_read_data_2  := io.rf_read_data_2
   io.to_Exu.ctrl            := decoder.io.ctrl
-  io.to_Exu.rf_write_addr   := instr(11 downto 7)
+  io.to_Exu.ctrl.rf_si.rf_write_addr := instr(11 downto 7)
 
   io.from_Ifu.ready := io.from_Ifu.valid
   

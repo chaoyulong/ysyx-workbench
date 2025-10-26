@@ -38,7 +38,7 @@ case class ysyx_23060082_IDU() extends Component {
   // 独热码选择器
   val has_type = decoder.io.instr_type(5 downto 1).orR
   val imm_values = Vec(immU, immJ, immI, immS, immB)
-  io.to_Exu.imm := Mux(hasType, MuxOH(decoder.io.instr_type(5 downto 1), imm_values), U"32'h0")
+  io.to_Exu.imm := Mux(has_type, MuxOH(decoder.io.instr_type(5 downto 1), imm_values), U"32'h0")
 // *****************************************  *********************************************** //
   io.rf_read_addr_1 := io.from_Ifu.instr(19 downto 15)
   io.rf_read_addr_2 := io.from_Ifu.instr(24 downto 20)  

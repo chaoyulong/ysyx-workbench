@@ -27,10 +27,10 @@ case class ysyx_23060082_IDU() extends Component {
     val from_Ifu  = slave Stream(Ifu2Idu_data())
     val to_Exu = master Stream(Idu2Exu_data()) 
 
-    val rf_read_addr_1 = UInt(5 bits)
-    val rf_read_addr_2 = UInt(5 bits)
-    val rf_read_data_1 = UInt(32 bits)
-    val rf_read_data_2 = UInt(32 bits)
+    val rf_read_addr_1 = out UInt(5 bits)
+    val rf_read_addr_2 = out UInt(5 bits)
+    val rf_read_data_1 = in  UInt(32 bits)
+    val rf_read_data_2 = in  UInt(32 bits)
   }
 
   val idu_pc  = io.from_Ifu.pc

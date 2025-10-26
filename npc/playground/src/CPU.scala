@@ -11,9 +11,15 @@ case class CPU() extends Component {
   clockDomain.clock.setName("clock")  // 自定义时钟和复位信号名称，放在最顶层
   clockDomain.reset.setName("reset")
 
+  val reg_file = RegFile()
   val ifu = ysyx_23060082_IFU()
   val idu = ysyx_23060082_IDU()
-  ifu.io.to_Idu >-> idu.io.from_Ifu   // 通过 m2sPipe 将 y 连接到 x
+  val exu = ysyx_23060082_EXU()
+  ifu.io.to_Idu >-> idu.io.from_Ifu   // 
+  idu.io.to_Exu >-> exu.io.from_Idu
+
+
+  reg_file.io.
 
   // val pc   = Reg(UInt(32 bits)) init(U"32'h80000000")
   // val pc_o = Reg(UInt(32 bits)) init(U"32'h80000000")   // 目前单周期，用于sdb中指令与pc同步
@@ -87,56 +93,24 @@ case class CPU() extends Component {
 
 case class RegFile() extends Component {
   val io = new Bundle {
-    val addr_a = in UInt(5 bits)
-    val addr_b = in UInt(5 bits)
-    val addr_w = in UInt(5 bits)
-    val wdata  = in UInt(32 bits)
-    val reg_wr = in Bool()
+    val read_addr_1 = in UInt(5 bits)
+    val read_addr_2 = in UInt(5 bits)
+    val write_addr  = in UInt(5 bits)
+    val write_data  = in UInt(32 bits)
+    val write_en    = in Bool()
 
-    val rs1 = out UInt(32 bits)
-    val rs2 = out UInt(32 bits)
+    val read_data_1 = out UInt(32 bits)
+    val read_data_2 = out UInt(32 bits)
   }
 
-  val rf = Vec(RegInit(U"32'h0"), 16)    // riscv32e,有16个通用寄存器
-  when(io.reg_wr){
-    rf(io.addr_w(0 to 3)) := io.wdata
+  val rf = Vec(Reg(UInt(32 bits)),16)    // riscv32e,有16个通用寄存器
+  when(io.write_en){
+    rf(io.write_addr(0 to 3)) := io.write_data
   }
   rf(U"4'h0") := U"32'h0"
   
-  io.rs1 := rf(io.addr_a(0 to 3))
-  io.rs2 := rf(io.addr_b(0 to 3)) 
+  io.read_data_1 := rf(io.read_addr_1(0 to 3))
+  io.read_data_2 := rf(io.read_addr_2(0 to 3)) 
 }
 
-/*    Branch      跳转类型
-  -------------------------------------
-      000         非跳转指令
-      001         无条件跳转PC目标
-      010         无条件跳转通用寄存器目标
-      100         条件分支，等于
-      101         条件分支，不等于
-      110         条件分支，小于
-      111         条件分支，大于等于
-*/
-case class BranchCond() extends Component {
-  val io = new Bundle {
-    val branch = in UInt(3 bits)
-    val less   = in Bool()
-    val zero   = in Bool()
 
-    val pc_asrc= out Bool()
-    val pc_bsrc= out Bool()
-  }
-
-  val branch_decoder = Decoder_3_8()
-  branch_decoder.io.input := io.branch
-  val decode = branch_decoder.io.output  
-
-  io.pc_asrc := Mux(decode(U"001") | decode(U"010"), True,
-                Mux(decode(U"100"),  io.zero,
-                Mux(decode(U"101"), ~io.zero,
-                Mux(decode(U"110"),  io.less,
-                Mux(decode(U"111"), ~io.less,
-                False)))))
-
-  io.pc_bsrc := decode(U"010")
-}

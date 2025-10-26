@@ -1,6 +1,52 @@
 package playground
 
 import spinal.core._
+import spinal.lib._    // 使用spinal的模块库
+
+case class ysyx_23060082_EXU() extends Component {
+  val io = new Bundle {
+    val from_Idu  = slave Stream(Idu2Exu_data())
+    // val to_Lsu = master Stream() 
+  }
+
+  val alu = ysyx_23060082_ALU()
+  val branch_cond = ysyx_23060082_BranchCond()
+}
+
+/*    Branch      跳转类型
+  -------------------------------------
+      000         非跳转指令
+      001         无条件跳转PC目标
+      010         无条件跳转通用寄存器目标
+      100         条件分支，等于
+      101         条件分支，不等于
+      110         条件分支，小于
+      111         条件分支，大于等于
+*/
+case class ysyx_23060082_BranchCond() extends Component {
+  val io = new Bundle {
+    val branch = in UInt(3 bits)
+    val less   = in Bool()
+    val zero   = in Bool()
+
+    val pc_asrc= out Bool()
+    val pc_bsrc= out Bool()
+  }
+
+  val branch_decoder = Decoder_3_8()
+  branch_decoder.io.input := io.branch
+  val decode = branch_decoder.io.output  
+
+  io.pc_asrc := Mux(decode(U"001") | decode(U"010"), True,
+                Mux(decode(U"100"),  io.zero,
+                Mux(decode(U"101"), ~io.zero,
+                Mux(decode(U"110"),  io.less,
+                Mux(decode(U"111"), ~io.less,
+                False)))))
+
+  io.pc_bsrc := decode(U"010")
+}
+
 /*              控制信号ALUctr的含义
     -----------------------------------------------
     ALUctr[3]   ALUctr[2:0]     ALU操作
@@ -16,7 +62,7 @@ import spinal.core._
     x           110             选择逻辑或输出
     x           111             选择逻辑与输出
 */
-case class ALU() extends Component {
+case class ysyx_23060082_ALU() extends Component {
   val io = new Bundle {
     val alu_in1 = in UInt(32 bits)
     val alu_in2 = in UInt(32 bits)  
@@ -46,7 +92,6 @@ case class ALU() extends Component {
   shifter.io.l_r := l_r
   shifter.io.a_l := a_l
   val result_shift = shifter.io.shift
-
 
   val less_0 = overflow ^ result_adder(31)
   val less_1 = carry ^ sub_add

@@ -26,7 +26,7 @@ case class ysyx_23060082_IDU() extends Component {
   val io = new Bundle {
     val from_Ifu  = slave Stream(Ifu2Idu_data())
     val to_Exu = master Stream(Idu2Exu_data()) 
-    // val idu_read_rf = Rf_read()
+    val idu_read_rf = Rf_read()
   }
 
   // val instr

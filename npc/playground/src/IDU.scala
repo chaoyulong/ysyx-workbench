@@ -12,13 +12,6 @@ case class Idu2Exu_data() extends Bundle {
   val rf_read_data_2 =  UInt(32 bits)
 }
 
-case class Rf_read() extends Bundle {
-  val read_addr_1 = UInt(5 bits)
-  val read_addr_2 = UInt(5 bits)
-  val read_data_1 = UInt(32 bits)
-  val read_data_2 = UInt(32 bits)
-}
-
 case class ysyx_23060082_IDU() extends Component {
   val io = new Bundle {
     val from_Ifu  = slave Stream(Ifu2Idu_data())

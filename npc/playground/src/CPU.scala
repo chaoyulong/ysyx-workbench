@@ -19,8 +19,10 @@ case class CPU() extends Component {
   idu.io.to_Exu >-> exu.io.from_Idu
 
 
-  reg_file.io.
-
+  reg_file.io.read_addr_1 := idu.io.read_addr_1
+  reg_file.io.read_addr_2 := idu.io.read_addr_2
+  reg_file.io.read_data_1 := idu.io.read_data_1
+  reg_file.io.read_data_2 := idu.io.read_data_2
   // val pc   = Reg(UInt(32 bits)) init(U"32'h80000000")
   // val pc_o = Reg(UInt(32 bits)) init(U"32'h80000000")   // 目前单周期，用于sdb中指令与pc同步
   // val instr = Mem_Rd(pc)  // 读取指令

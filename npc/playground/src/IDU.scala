@@ -7,7 +7,6 @@ case class Idu2Exu_data() extends Bundle {
   val pc    = UInt(32 bits)
 
   val ctrl = Ctrl()
-  val rf_write_addr  = UInt(5 bits)
   val imm            = UInt(32 bits)
   val rf_read_data_1 = UInt(32 bits)
   val rf_read_data_2 = UInt(32 bits)
@@ -24,8 +23,8 @@ case class ysyx_23060082_IDU() extends Component {
     val rf_read_data_2 = in  UInt(32 bits)
   }
 
-  val decoder = Decoder()
   val instr = io.from_Ifu.instr
+  val decoder = Decoder()
   decoder.instr := instr         
 // ***************************************** 立即数生成 *********************************************** //
   val immU = U(instr(31 downto 12) ## U(0, 12 bits))

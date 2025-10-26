@@ -2,15 +2,28 @@ package playground
 
 import spinal.core._
 
+case class RfCtrl() extends Bundle {   // WBU中消耗的控制信号
+  val reg_wr        =  Bool()  // 控制是否对寄存器rd进行写回，为1时写回寄存器。
+  val rf_write_addr = UInt(5 bits)
+}
+
+case class AluCtrl() extends Bundle {   // EXU中消耗的控制信号
+  val alu_asrc = Bool() // 选择ALU输入端A的来源。为0时选择rs1，为1时选择PC。
+  val alu_bsrc = UInt(2 bits)  // 选择ALU输入端B的来源。为00时选择rs2，为01时选择imm，为10时选择常数4（用于跳转时计算返回地址PC+4）
+  val alu_ctr  = UInt(4 bits)  // 选择ALU执行的操作
+  val branch   = UInt(3 bits)  // 说明分支和跳转的种类，用于生成最终的分支控制信号
+}
+
+case class MemCtrl() extends Bundle {   // LSU中消耗的控制信号
+  val mem2reg  = Bool()  // 选择写入寄存器的内容，为1时为存储器，为0时为alu
+  val mem_wr   = Bool()  // 为1时写入存储器
+  val mem_op   = UInt(3 bits)  // 控制数据存储器读写格式，为010时为4字节读写，为001时为2字节读写带符号扩展，为000时为1字节读写带符号扩展，为101时为2字节读写无符号扩展，为100时为1字节读写无符号扩展
+}
+
 case class Ctrl() extends Bundle {   // 控制信号
-  val reg_wr   = out Bool()  // 控制是否对寄存器rd进行写回，为1时写回寄存器。
-  val alu_asrc = out Bool() // 选择ALU输入端A的来源。为0时选择rs1，为1时选择PC。
-  val alu_bsrc = out UInt(2 bits)  // 选择ALU输入端B的来源。为00时选择rs2，为01时选择imm，为10时选择常数4（用于跳转时计算返回地址PC+4）
-  val alu_ctr  = out UInt(4 bits)  // 选择ALU执行的操作
-  val branch   = out UInt(3 bits)  // 说明分支和跳转的种类，用于生成最终的分支控制信号
-  val mem2reg  = out Bool()  // 选择写入寄存器的内容，为1时为存储器，为0时为alu
-  val mem_wr   = out Bool()  // 为1时写入存储器
-  val mem_op   = out UInt(3 bits)  // 控制数据存储器读写格式，为010时为4字节读写，为001时为2字节读写带符号扩展，为000时为1字节读写带符号扩展，为101时为2字节读写无符号扩展，为100时为1字节读写无符号扩展
+  val rf_si  = out RfCtrl()
+  val alu_si = out AluCtrl()
+  val mem_si = out MemCtrl()
 }
 
 case class Decoder() extends Component {
@@ -116,36 +129,36 @@ case class Decoder() extends Component {
   val my_ebreak = MyEbreak()
   my_ebreak.io.i_ebreak := i_ebreak
 
-  io.ctrl.reg_wr := (i_lui|i_auipc|i_jal|i_jalr|i_csrrw| i_csrrs|
-              i_addi|i_slti|i_sltiu|i_xori|i_ori|i_andi|i_slli|i_srli|i_srai|
-              i_add|i_sub|i_xor|i_or|i_and|i_sll|i_srl|i_sra|i_slt|i_sltu|
-              i_lb|i_lh|i_lw|i_lbu|i_lhu)
-  io.ctrl.alu_asrc := (i_auipc | i_jal | i_jalr)                                     // 0：选通rdata1，1：选通PC。
-  io.ctrl.alu_bsrc := Mux(i_jal | i_jalr, U"10",                                  // 选通4，用于跳转
-                 Mux(i_add|i_sub|i_xor|i_or|i_and|i_sll|i_srl|i_sra|i_slt|
-                 i_sltu|i_beq|i_bne|i_blt|i_bge|i_bltu|i_bgeu, U"00",       // 选通rdata2
-                 U"01" ))                                                        // 选通imm
-  io.ctrl.alu_ctr := Mux(i_and | i_andi, U"0111",                                 // 选择逻辑与输出
-                Mux(i_or  | i_ori , U"0110",                                 // 选择逻辑或输出
-                Mux(i_sra | i_srai, U"1101",                                 // 选择移位器输出，算术右移
-                Mux(i_srl | i_srli, U"0101",                                // 选择移位器输出，逻辑右移
-                Mux(i_xor | i_xori, U"0100",                                 // 选择异或输出
-                Mux(i_lui         , U"0011",                                         // 选择ALU输入B的结果直接输出
-                Mux(i_sltu| i_sltiu| i_bltu| i_bgeu, U"1010",              // 做减法，选择无符号小于置位结果输出, Less按无符号结果设置
-                Mux(i_slt | i_slti | i_beq | i_bne | i_blt | i_bge, U"0010",  // 做减法，选择带符号小于置位结果输出, Less按带符号结果设置
-                Mux(i_sll | i_slli, U"0001",                               // 选择移位器输出，左移
-                Mux(i_sub         , U"1000",                                          // 选择加法器输出，做减法
-                U"0000"  ))))))))))                                                    // 选择加法器输出，做加法
-  io.ctrl.branch :=  Mux(i_jal , U"001",                                            // 无条件跳转PC目标
+  io.ctrl.rf_si.reg_wr := (i_lui|i_auipc|i_jal|i_jalr|i_csrrw| i_csrrs|
+                            i_addi|i_slti|i_sltiu|i_xori|i_ori|i_andi|i_slli|i_srli|i_srai|
+                            i_add|i_sub|i_xor|i_or|i_and|i_sll|i_srl|i_sra|i_slt|i_sltu|
+                            i_lb|i_lh|i_lw|i_lbu|i_lhu)
+  io.ctrl.alu_si.alu_asrc := (i_auipc | i_jal | i_jalr)                                     // 0：选通rdata1，1：选通PC。
+  io.ctrl.alu_si.alu_bsrc := Mux(i_jal | i_jalr, U"10",                                  // 选通4，用于跳转
+                              Mux(i_add|i_sub|i_xor|i_or|i_and|i_sll|i_srl|i_sra|i_slt|
+                              i_sltu|i_beq|i_bne|i_blt|i_bge|i_bltu|i_bgeu, U"00",       // 选通rdata2
+                              U"01" ))                                                        // 选通imm
+  io.ctrl.alu_si.alu_ctr := Mux(i_and | i_andi, U"0111",                                 // 选择逻辑与输出
+                            Mux(i_or  | i_ori , U"0110",                                 // 选择逻辑或输出
+                            Mux(i_sra | i_srai, U"1101",                                 // 选择移位器输出，算术右移
+                            Mux(i_srl | i_srli, U"0101",                                // 选择移位器输出，逻辑右移
+                            Mux(i_xor | i_xori, U"0100",                                 // 选择异或输出
+                            Mux(i_lui         , U"0011",                                         // 选择ALU输入B的结果直接输出
+                            Mux(i_sltu| i_sltiu| i_bltu| i_bgeu, U"1010",              // 做减法，选择无符号小于置位结果输出, Less按无符号结果设置
+                            Mux(i_slt | i_slti | i_beq | i_bne | i_blt | i_bge, U"0010",  // 做减法，选择带符号小于置位结果输出, Less按带符号结果设置
+                            Mux(i_sll | i_slli, U"0001",                               // 选择移位器输出，左移
+                            Mux(i_sub         , U"1000",                                          // 选择加法器输出，做减法
+                            U"0000"  ))))))))))                                                    // 选择加法器输出，做加法
+  io.ctrl.alu_si.branch :=  Mux(i_jal , U"001",                                            // 无条件跳转PC目标
                 Mux(i_jalr, U"010",                                            // 无条件跳转寄存器目标
                 Mux(i_beq , U"100",                                            // 条件分支，等于
                 Mux(i_bne , U"101",                                             // 条件分支，不等于
                 Mux(i_blt | i_bltu, U"110",                                  // 条件分支，小于
                 Mux(i_bge | i_bgeu, U"111",                                  // 条件分支，大于等于
                 U"000"))))))
-  io.ctrl.mem2reg  := (i_lb | i_lh | i_lw | i_lbu | i_lhu)
-  io.ctrl.mem_wr  := (i_sb | i_sh | i_sw)
-  io.ctrl.mem_op  := func3  
+  io.ctrl.mem_si.mem2reg  := (i_lb | i_lh | i_lw | i_lbu | i_lhu)
+  io.ctrl.mem_si.mem_wr  := (i_sb | i_sh | i_sw)
+  io.ctrl.mem_si.mem_op  := func3  
 }
 
 

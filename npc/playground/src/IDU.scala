@@ -8,6 +8,7 @@ case class Idu2Exu_data() extends Bundle {
 
   val ctrl = Ctrl()
   val rf_write_addr  = UInt(5 bits)
+  val imm            = UInt(32 bits)
   val rf_read_data_1 = UInt(32 bits)
   val rf_read_data_2 = UInt(32 bits)
 }
@@ -26,7 +27,27 @@ case class ysyx_23060082_IDU() extends Component {
   val idu_pc  = io.from_Ifu.pc
   val decoder = Decoder()
   decoder.instr := io.from_Ifu.instr         
+// ***************************************** 立即数生成 *********************************************** //
+  val immU = U(instr(31 downto 12) ## U(0, 12 bits))
+  val immJ = U((instr(31) #* 12) ## instr(19 downto 12) ## instr(20) ## instr(30 downto 21)## U(0, 1 bits))
+  val immI = U((instr(31) #* 20) ## instr(31 downto 20))
+  val immS = U((instr(31) #* 20) ## instr(31 downto 25) ## instr(11 downto 7))
+  val immB = U((instr(31) #* 20) ## instr(7) ## instr(30 downto 25) ## instr(11 downto 8) ## U(0, 1 bits))
 
+  io.to_Exu.imm := decoder.instr_type.mux(
+    B"100000" -> immU,
+    B"100000" -> immJ,
+    B"100000" -> immI,
+    B"100000" -> immS,
+    B"100000" -> immB,
+    B"100000" -> U"32'h0"
+  )
+  // io.ctrl.imm := Mux(type_U, immU,
+  //         Mux(type_J, immJ,
+  //         Mux(type_I, immI,
+  //         Mux(type_S, immS,
+  //         Mux(type_B, immB, U(0, 32 bits))))))
+// *****************************************  *********************************************** //
   io.rf_read_addr_1 := io.from_Ifu.instr(19 downto 15)
   io.rf_read_addr_2 := io.from_Ifu.instr(24 downto 20)  
 

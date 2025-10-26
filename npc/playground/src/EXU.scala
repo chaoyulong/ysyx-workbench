@@ -11,7 +11,7 @@ case class Exu2Lsu_data() extends Bundle {
 case class ysyx_23060082_EXU() extends Component {
   val io = new Bundle {
     val from_Idu  = slave Stream(Idu2Exu_data())
-    // val to_Lsu = master Stream() 
+    val to_Lsu    = master Stream(Exu2Lsu_data()) 
   }
 
   val alu = ysyx_23060082_ALU()
@@ -28,6 +28,8 @@ case class ysyx_23060082_EXU() extends Component {
   branch_cond.io.branch := io.from_Idu.ctrl.branch
   branch_cond.io.less   := alu.io.less
   branch_cond.io.zero   := alu.io.zero
+
+  to_Lsu.pc_next := Mux(branch_cond.io.pc_asrc, io.from_Idu.imm, U"32'd4") + Mux(branch_cond.io.pc_bsrc, io.from_Idu.rf_read_data_1, io.from_Idu.pc)
 }
 
 /*    Branch      跳转类型

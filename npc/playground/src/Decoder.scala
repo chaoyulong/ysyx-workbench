@@ -44,7 +44,8 @@ case class Decoder() extends Component {
 
   val func7_is_0 = ~(func7.orR)
   val func7_40_is_0 = ~(func7(4 downto 0).orR) 
-  // val func7_61_is_0 = ~(func7(6 downto 1).orR) 
+
+  io.ctrl.rf_si.rf_write_addr := instr(11 downto 7)   // 为了写起来简洁，写寄存器地址在此赋值
 
 // ****************************************** 指令通用部分译码 ************************************************ //    
   val op_decoder0 = Decoder_4_16()

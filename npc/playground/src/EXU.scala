@@ -9,7 +9,7 @@ case class Exu2Lsu_data() extends Bundle {
   val rf_ctrl       = RfCtrl()    // 直通数据，在EXU中无作用
   val mem_ctrl      = MemCtrl()   // 直通数据，在EXU中无作用
 
-  val rf_read_data_2 = UInt(32 bits)  // 在EXU及后续模块中均有作用
+  val rf_read_data_2 = UInt(32 bits)  // 从寄存器中读取的数据2,在EXU及后续模块中均有作用
   val alu_result    = UInt(32 bits)
 }
 

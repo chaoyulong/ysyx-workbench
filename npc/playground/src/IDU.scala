@@ -28,6 +28,7 @@ case class ysyx_23060082_IDU() extends Component {
   val decoder = Decoder()
   decoder.instr := io.from_Ifu.instr         
 // ***************************************** 立即数生成 *********************************************** //
+  val instr = io.from_Ifu.instr
   val immU = U(instr(31 downto 12) ## U(0, 12 bits))
   val immJ = U((instr(31) #* 12) ## instr(19 downto 12) ## instr(20) ## instr(30 downto 21)## U(0, 1 bits))
   val immI = U((instr(31) #* 20) ## instr(31 downto 20))

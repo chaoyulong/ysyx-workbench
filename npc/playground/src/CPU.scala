@@ -107,13 +107,13 @@ case class RegFile() extends Component {
   }
 
   val rf = Vec(Reg(UInt(32 bits)),16)    // riscv32e,有16个通用寄存器
-  when(io.write_en){
-    rf(io.write_addr(0 to 3)) := io.write_data
+  when(io.rf_write_en){
+    rf(io.rf_write_addr(0 to 3)) := io.write_data
   }
   rf(U"4'h0") := U"32'h0"
   
-  io.read_data_1 := rf(io.read_addr_1(0 to 3))
-  io.read_data_2 := rf(io.read_addr_2(0 to 3)) 
+  io.rf_read_data_1 := rf(io.rf_read_addr_1(0 to 3))
+  io.rf_read_data_2 := rf(io.rf_read_addr_2(0 to 3)) 
 }
 
 

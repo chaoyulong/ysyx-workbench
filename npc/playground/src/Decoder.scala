@@ -21,9 +21,9 @@ case class MemCtrl() extends Bundle {   // LSU中消耗的控制信号
 }
 
 case class Ctrl() extends Bundle {   // 控制信号
-  val rf_si  = out RfCtrl()
-  val alu_si = out AluCtrl()
-  val mem_si = out MemCtrl()
+  val rf_si  = out(RfCtrl())
+  val alu_si = out(AluCtrl())
+  val mem_si = out(MemCtrl())
 }
 
 case class Decoder() extends Component {

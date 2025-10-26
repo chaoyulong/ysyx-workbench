@@ -5,7 +5,7 @@ import spinal.lib._    // 使用spinal的模块库
 
 case class ysyx_23060082_IDU() extends Component {
   val io = new Bundle {
-    val input  = slave Stream(Ifu2Idu_data())
+    val from_Ifu  = slave Stream(Ifu2Idu_data())
     // val output = master(Stream(Ifu2Idu_data))    
   }
 
@@ -15,11 +15,11 @@ case class ysyx_23060082_IDU() extends Component {
   decoder.instr := U"32'h0"         
   idu_pc := idu_pc
   // 接收数据
-  when(io.input.fire) {
-    idu_pc := io.input.payload.pc
-    decoder.instr := io.input.payload.instr
+  when(io.from_Ifu.fire) {
+    idu_pc := io.from_Ifu.payload.pc
+    decoder.instr := io.from_Ifu.payload.instr
   }
 
-  io.input.ready := io.input.valid
+  io.from_Ifu.ready := io.from_Ifu.valid
   
 }

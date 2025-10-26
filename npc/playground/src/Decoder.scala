@@ -21,7 +21,7 @@ case class Decoder() extends Component {
     val ctrl = out Ctrl()
   }
 
-  val instr = io.instr
+  val instr = io.ctrl
 
   val op   = instr( 6 downto  0)     
   val func3= instr(14 downto 12)
@@ -118,7 +118,7 @@ case class Decoder() extends Component {
   val type_B = (i_beq | i_bne | i_blt | i_bge | i_bltu | i_bgeu)
   val type_R = (i_add | i_sub | i_xor | i_or | i_and | i_sll | i_srl | i_sra | i_slt | i_sltu)
 
-  io.instr.imm := Mux(type_U, immU,
+  io.ctrl.imm := Mux(type_U, immU,
             Mux(type_J, immJ,
             Mux(type_I, immI,
             Mux(type_S, immS,
@@ -128,16 +128,16 @@ case class Decoder() extends Component {
   val my_ebreak = MyEbreak()
   my_ebreak.io.i_ebreak := i_ebreak
 
-  io.instr.reg_wr := (i_lui|i_auipc|i_jal|i_jalr|i_csrrw| i_csrrs|
+  io.ctrl.reg_wr := (i_lui|i_auipc|i_jal|i_jalr|i_csrrw| i_csrrs|
               i_addi|i_slti|i_sltiu|i_xori|i_ori|i_andi|i_slli|i_srli|i_srai|
               i_add|i_sub|i_xor|i_or|i_and|i_sll|i_srl|i_sra|i_slt|i_sltu|
               i_lb|i_lh|i_lw|i_lbu|i_lhu)
   io.ctrl.alu_asrc := (i_auipc | i_jal | i_jalr)                                     // 0：选通rdata1，1：选通PC。
-  io.instr.alu_bsrc := Mux(i_jal | i_jalr, U"10",                                  // 选通4，用于跳转
+  io.ctrl.alu_bsrc := Mux(i_jal | i_jalr, U"10",                                  // 选通4，用于跳转
                  Mux(i_add|i_sub|i_xor|i_or|i_and|i_sll|i_srl|i_sra|i_slt|
                  i_sltu|i_beq|i_bne|i_blt|i_bge|i_bltu|i_bgeu, U"00",       // 选通rdata2
                  U"01" ))                                                        // 选通imm
-  io.instr.alu_ctr := Mux(i_and | i_andi, U"0111",                                 // 选择逻辑与输出
+  io.ctrl.alu_ctr := Mux(i_and | i_andi, U"0111",                                 // 选择逻辑与输出
                 Mux(i_or  | i_ori , U"0110",                                 // 选择逻辑或输出
                 Mux(i_sra | i_srai, U"1101",                                 // 选择移位器输出，算术右移
                 Mux(i_srl | i_srli, U"0101",                                // 选择移位器输出，逻辑右移
@@ -148,16 +148,16 @@ case class Decoder() extends Component {
                 Mux(i_sll | i_slli, U"0001",                               // 选择移位器输出，左移
                 Mux(i_sub         , U"1000",                                          // 选择加法器输出，做减法
                 U"0000"  ))))))))))                                                    // 选择加法器输出，做加法
-  io.instr.branch :=  Mux(i_jal , U"001",                                            // 无条件跳转PC目标
+  io.ctrl.branch :=  Mux(i_jal , U"001",                                            // 无条件跳转PC目标
                 Mux(i_jalr, U"010",                                            // 无条件跳转寄存器目标
                 Mux(i_beq , U"100",                                            // 条件分支，等于
                 Mux(i_bne , U"101",                                             // 条件分支，不等于
                 Mux(i_blt | i_bltu, U"110",                                  // 条件分支，小于
                 Mux(i_bge | i_bgeu, U"111",                                  // 条件分支，大于等于
                 U"000"))))))
-  io.instr.mem2reg  := (i_lb | i_lh | i_lw | i_lbu | i_lhu)
-  io.instr.mem_wr  := (i_sb | i_sh | i_sw)
-  io.instr.mem_op  := func3  
+  io.ctrl.mem2reg  := (i_lb | i_lh | i_lw | i_lbu | i_lhu)
+  io.ctrl.mem_wr  := (i_sb | i_sh | i_sw)
+  io.ctrl.mem_op  := func3  
 }
 
 

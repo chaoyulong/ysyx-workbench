@@ -18,11 +18,12 @@ case class CPU() extends Component {
   ifu.io.to_Idu >-> idu.io.from_Ifu   // 
   idu.io.to_Exu >-> exu.io.from_Idu
 
+  reg_file <> idu
+  // reg_file.io.read_addr_1 <> idu.io.rf_read_addr_1
+  // reg_file.io.read_addr_2 <> idu.io.rf_read_addr_2
+  // reg_file.io.read_data_1 <> idu.io.rf_read_data_1
+  // reg_file.io.read_data_2 <> idu.io.rf_read_data_2
 
-  reg_file.io.read_addr_1 <> idu.io.rf_read_addr_1
-  reg_file.io.read_addr_2 <> idu.io.rf_read_addr_2
-  reg_file.io.read_data_1 <> idu.io.rf_read_data_1
-  reg_file.io.read_data_2 <> idu.io.rf_read_data_2
   // val pc   = Reg(UInt(32 bits)) init(U"32'h80000000")
   // val pc_o = Reg(UInt(32 bits)) init(U"32'h80000000")   // 目前单周期，用于sdb中指令与pc同步
   // val instr = Mem_Rd(pc)  // 读取指令
@@ -95,14 +96,14 @@ case class CPU() extends Component {
 
 case class RegFile() extends Component {
   val io = new Bundle {
-    val read_addr_1 = in UInt(5 bits)
-    val read_addr_2 = in UInt(5 bits)
-    val write_addr  = in UInt(5 bits)
-    val write_data  = in UInt(32 bits)
-    val write_en    = in Bool()
+    val rf_read_addr_1 = in UInt(5 bits)
+    val rf_read_addr_2 = in UInt(5 bits)
+    val rf_write_addr  = in UInt(5 bits)
+    val rf_write_data  = in UInt(32 bits)
+    val rf_write_en    = in Bool()
 
-    val read_data_1 = out UInt(32 bits)
-    val read_data_2 = out UInt(32 bits)
+    val rf_read_data_1 = out UInt(32 bits)
+    val rf_read_data_2 = out UInt(32 bits)
   }
 
   val rf = Vec(Reg(UInt(32 bits)),16)    // riscv32e,有16个通用寄存器

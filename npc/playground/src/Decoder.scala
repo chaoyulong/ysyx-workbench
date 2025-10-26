@@ -20,7 +20,7 @@ case class Decoder() extends Component {
     val ctrl = out(Ctrl())
   }
 
-  val instr = io.ctrl
+  val instr = io.instr
 
   val op   = instr( 6 downto  0)     
   val func3= instr(14 downto 12)

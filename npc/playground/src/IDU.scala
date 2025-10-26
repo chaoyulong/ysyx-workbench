@@ -15,25 +15,21 @@ case class Decoder_out() extends Bundle {
   val imm      = UInt(32 bits)  // 立即数
 }
 
-case class rf_read() extends Bundle {
+case class Rf_read() extends Bundle {
   val read_addr_1 = UInt(5 bits)
   val read_addr_2 = UInt(5 bits)
   val read_data_1 = UInt(32 bits)
   val read_data_2 = UInt(32 bits)
-
-  override def asMaster(): Unit = {
-    out(read_addr_1, read_addr_2)
-    in(read_data_1, read_data_2)
-  }
 }
 
 case class ysyx_23060082_IDU() extends Component {
   val io = new Bundle {
     val from_Ifu  = slave Stream(Ifu2Idu_data())
     val to_Exu = master Stream(Idu2Exu_data()) 
-    val Idu_read_rf = master rf_read()
+    val idu_read_rf = Rf_read()
   }
 
+  // val instr
   val idu_pc  = Reg(UInt(32 bits)) init(0)
   val decoder = Decoder()
 
@@ -44,6 +40,10 @@ case class ysyx_23060082_IDU() extends Component {
     idu_pc := io.from_Ifu.payload.pc
     decoder.instr := io.from_Ifu.payload.instr
   }
+
+  // io.idu_read_rf.read_addr_1 := instr(19 downto 15)
+  // io.idu_read_rf.read_addr_2 := instr(24 downto 20)
+  // io.idu_read_rf.addr_w := instr(11 downto 7)
 
   io.from_Ifu.ready := io.from_Ifu.valid
   

@@ -19,15 +19,19 @@ case class ysyx_23060082_LSU() extends Component {
     val to_Wbu = master Stream(Lsu2Wbu_data()) 
   }
 
+  val rdata_real  = UInt(32 bits)    // 真正读出的数据
+  val wdata_real  = UInt(32 bits)    // 真正写入的数据  
+  val wmask       = UInt( 4 bits)
 
   val mem_rw = Mem_RW()
   val rdata = mem_rw.io.rdata
+
 
   mem_rw.io.valid := io.from_Exu.rf_ctrl.mem2reg | io.from_Exu.mem_ctrl.mem_wr
   mem_rw.io.wen   := io.from_Exu.mem_ctrl.mem_wr
   mem_rw.io.addr  := io.from_Exu.alu_result
   mem_rw.io.wdata := io.from_Exu.rf_read_data_2
-    val wmask = in UInt(4 bits)
+    
 
 
 

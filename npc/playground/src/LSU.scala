@@ -82,8 +82,8 @@ case class ysyx_23060082_LSU() extends Component {
   // }
 
 
-  io.to_Wbu.pc          := io.from_Exu.pc
-  io.to_Wbu.pc_next     := io.from_Exu.pc_next
+  // io.to_Wbu.pc          := io.from_Exu.pc
+  // io.to_Wbu.pc_next     := io.from_Exu.pc_next
 
   io.from_Exu.ready := io.from_Exu.valid
 

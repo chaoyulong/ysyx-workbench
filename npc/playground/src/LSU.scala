@@ -16,7 +16,7 @@ case class Lsu2Wbu_data() extends Bundle {
 case class ysyx_23060082_LSU() extends Component {
   val io = new Bundle {
     val from_Exu  = slave Stream(Exu2Lsu_data())
-    // val to_Wbu = master Stream(Lsu2Wbu_data()) 
+    val to_Wbu    = master Stream(Lsu2Wbu_data()) 
   }
 
   val mem_addr    = io.from_Exu.alu_result    // alu的输出结果就是访存地址
@@ -28,17 +28,14 @@ case class ysyx_23060082_LSU() extends Component {
   val wdata_real  = UInt(32 bits)    // 真正写入的数据  
   val addr_real   = (mem_addr(31 downto 2) ## U"2'h0").asUInt   // 真实地址要对齐
 
-  val mem_rw = Mem_RW()
-  rdata := mem_rw.io.rdata
   wdata := io.from_Exu.rf_read_data_2 // 写数据为寄存器2的数据
-  
-
+  val mem_rw = Mem_RW()
   mem_rw.io.valid := io.from_Exu.rf_ctrl.mem2reg | io.from_Exu.mem_ctrl.mem_wr
   mem_rw.io.wen   := io.from_Exu.mem_ctrl.mem_wr
   mem_rw.io.addr  := addr_real
   mem_rw.io.wdata := wdata_real
   mem_rw.io.wmask := wmask
-
+  rdata := mem_rw.io.rdata
 
   // 合并 addr + MemOp 生成 5 位索引
   val addr_op = (mem_addr(1 downto 0) ## io.from_Exu.mem_ctrl.mem_op)
@@ -69,18 +66,16 @@ case class ysyx_23060082_LSU() extends Component {
   wdata_real := addr_op.mux(
     // mem_addr[1:0] = 00
     B"00010" -> wdata.asBits                             ,// SW
-    B"00001" -> U"16'h0" ## wdata(15 downto 0)    ,// SH
-    B"00000" -> U"24'h0" ## wdata(7 downto 0)     ,// SB
+    B"00001" -> U"16'h0" ## wdata(15 downto 0)           ,// SH
+    B"00000" -> U"24'h0" ## wdata( 7 downto 0)           ,// SB
     // mem_addr[1:0] = 01
     B"01001" -> U"8'h0"  ## wdata(15 downto 0) ## U"8'h0",
-    B"01000" -> U"16'h0" ## wdata(7 downto 0)  ## U"8'h0",
+    B"01000" -> U"16'h0" ## wdata( 7 downto 0) ## U"8'h0",
     // mem_addr[1:0] = 10
-    B"10001" -> wdata(15 downto 0) ## U"16'h0"        ,
-    B"10000" -> U"8'h0" ## wdata(7 downto 0) ## U"16'h0",
-
+    B"10001" -> wdata(15 downto 0) ## U"16'h0"           ,
+    B"10000" -> U"8'h0" ## wdata(7 downto 0) ## U"16'h0" ,
     // mem_addr[1:0] = 11
-    B"11000" -> wdata(7 downto 0) ## U"24'h0",
-
+    B"11000" -> wdata(7 downto 0) ## U"24'h0"             ,
     default  -> B"32'h0"
   ).asUInt
 
@@ -97,14 +92,17 @@ case class ysyx_23060082_LSU() extends Component {
     B"10000" -> U"0100" ,
     // mem_addr[1:0] = 11
     B"11000" -> U"1000" ,
-    default  -> U"4'h0"
+    default  -> U"0000"
   )
 
-  // io.to_Wbu.pc          := io.from_Exu.pc
-  // io.to_Wbu.pc_next     := io.from_Exu.pc_next
+  io.to_Wbu.pc          := io.from_Exu.pc
+  io.to_Wbu.pc_next     := io.from_Exu.pc_next
+  io.to_Wbu.mem_data_out:= rdata_real
+  io.to_Wbu.alu_data_out:= io.from_Exu.alu_result
+  io.to_Wbu.rf_ctrl     := io.from_Exu.rf_ctrl    
 
   io.from_Exu.ready := io.from_Exu.valid
-
+  io.to_Wbu.valid   := io.from_Lsu.valid
 }
 
 

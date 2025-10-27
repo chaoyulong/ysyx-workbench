@@ -102,7 +102,7 @@ case class ysyx_23060082_LSU() extends Component {
   io.to_Wbu.rf_ctrl     := io.from_Exu.rf_ctrl    
 
   io.from_Exu.ready := io.from_Exu.valid
-  io.to_Wbu.valid   := io.from_Lsu.valid
+  io.to_Wbu.valid   := io.from_Exu.valid
 }
 
 

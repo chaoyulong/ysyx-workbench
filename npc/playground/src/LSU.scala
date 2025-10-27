@@ -21,8 +21,8 @@ case class ysyx_23060082_LSU() extends Component {
 
   val mem_addr    = io.from_Exu.alu_result    // alu的输出结果就是访存地址
   val rdata_real  = UInt(32 bits)    // 真正读出的数据
-  val wdata_real  = UInt(32 bits)    // 真正写入的数据  
-  val wmask       = UInt( 4 bits)
+  // val wdata_real  = UInt(32 bits)    // 真正写入的数据  
+  // val wmask       = UInt( 4 bits)
 
   val mem_rw = Mem_RW()
   val rdata = mem_rw.io.rdata

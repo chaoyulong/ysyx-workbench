@@ -25,8 +25,8 @@ case class CPU() extends Component {
   reg_file.io.read_data_1 <> idu.io.rf_read_data_1
   reg_file.io.read_data_2 <> idu.io.rf_read_data_2
 
-  reg_file.io.write_addr  <>  U"0"
-  reg_file.io.write_data  <>  U"0"
+  reg_file.io.write_addr  <>  U"5'h0"
+  reg_file.io.write_data  <>  U"32'h0"
   reg_file.io.write_en    <> False
 
   // val pc   = Reg(UInt(32 bits)) init(U"32'h80000000")

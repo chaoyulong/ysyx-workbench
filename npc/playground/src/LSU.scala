@@ -16,7 +16,7 @@ case class Lsu2Wbu_data() extends Bundle {
 case class ysyx_23060082_LSU() extends Component {
   val io = new Bundle {
     val from_Exu  = slave Stream(Exu2Lsu_data())
-    val to_Wbu = master Stream(Lsu2Wbu_data()) 
+    // val to_Wbu = master Stream(Lsu2Wbu_data()) 
   }
 
   val mem_addr    = io.from_Exu.alu_result    // alu的输出结果就是访存地址
@@ -84,6 +84,8 @@ case class ysyx_23060082_LSU() extends Component {
 
   io.to_Wbu.pc          := io.from_Exu.pc
   io.to_Wbu.pc_next     := io.from_Exu.pc_next
+
+  io.from_Exu.ready := io.from_Exu.valid
 
 }
 

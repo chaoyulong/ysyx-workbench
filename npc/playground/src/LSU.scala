@@ -45,9 +45,8 @@ case class ysyx_23060082_LSU() extends Component {
   val addr_op = (mem_addr(1 downto 0) ## io.from_Exu.mem_ctrl.mem_op)
 
   // ------------------ 读操作 ------------------
-  rdata_real := addr_op.mux(
-    B"00010" -> rdata                                       ,   // LW
-
+  rdata_real := (addr_op.mux(
+    B"00010" -> rdata                                ,   // LW
     B"00001" -> rdata(15 downto  0).asSInt.resize(32),   // LH
     B"00000" -> rdata( 7 downto  0).asSInt.resize(32),   // LB
     B"00101" -> rdata(15 downto  0).resize(32)       ,   // LHU
@@ -66,7 +65,7 @@ case class ysyx_23060082_LSU() extends Component {
     B"11000" -> rdata(31 downto 24).asSInt.resize(32),
     B"11100" -> rdata(31 downto 24).resize(32)       ,
     default  -> U"32'h0"
-  ).asUInt
+  )).asUInt
   // ------------------ 写操作 ------------------
   // switch(addr_op) {
   //   // mem_addr[1:0] = 00
@@ -87,7 +86,7 @@ case class ysyx_23060082_LSU() extends Component {
 
   //   default { wdata_real := U"32'h0"; wmask := U"4'b0" }
   // }
-  wdata_real := addr_op.mux(
+  wdata_real := (addr_op.mux(
     // mem_addr[1:0] = 00
     B"00010" -> wdata                             ,// SW
     B"00001" -> U"16'h0" ## wdata(15 downto 0)    ,// SH
@@ -103,9 +102,9 @@ case class ysyx_23060082_LSU() extends Component {
     B"11000" -> wdata(7 downto 0) ## U"24'h0",
 
     default  -> U"32'h0"
-  ).asUInt
+  )).asUInt
 
-  wmask := addr_op.mux(
+  wmask := (addr_op.mux(
     // mem_addr[1:0] = 00
     B"00010" -> U"1111" ,   // SW
     B"00001" -> U"0011" ,   // SH
@@ -119,7 +118,7 @@ case class ysyx_23060082_LSU() extends Component {
     // mem_addr[1:0] = 11
     B"11000" -> U"1000" ,
     default  -> U"4'h0"
-  ).asUInt
+  )).asUInt
 
   // io.to_Wbu.pc          := io.from_Exu.pc
   // io.to_Wbu.pc_next     := io.from_Exu.pc_next

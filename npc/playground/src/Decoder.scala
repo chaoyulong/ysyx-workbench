@@ -133,11 +133,10 @@ case class Decoder() extends Component {
                 Mux(i_blt | i_bltu, U"110",                                  // 条件分支，小于
                 Mux(i_bge | i_bgeu, U"111",                                  // 条件分支，大于等于
                 U"000"))))))
-  io.ctrl.mem_si.mem2reg  := (i_lb | i_lh | i_lw | i_lbu | i_lhu)
+  io.ctrl.rf_si.mem2reg  := (i_lb | i_lh | i_lw | i_lbu | i_lhu)
   io.ctrl.mem_si.mem_wr  := (i_sb | i_sh | i_sw)
   io.ctrl.mem_si.mem_op  := func3  
 }
-
 
 case class Decoder_4_16() extends Component {   // 4-16译码器
   val io = new Bundle {

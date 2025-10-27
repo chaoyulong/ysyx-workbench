@@ -71,5 +71,6 @@ case class ysyx_23060082_IDU() extends Component {
   io.to_Exu.ctrl            := decoder.io.ctrl
 
   io.from_Ifu.ready := io.from_Ifu.valid
+  io.to_Exu.valid := io.from_Ifu.valid
   
 }

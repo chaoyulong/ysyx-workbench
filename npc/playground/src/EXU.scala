@@ -43,6 +43,9 @@ case class ysyx_23060082_EXU() extends Component {
   io.to_Lsu.rf_read_data_2 := io.from_Idu.rf_read_data_2
   io.to_Lsu.rf_ctrl  := io.from_Idu.ctrl.rf_si      // 直通数据，在EXU中无作用
   io.to_Lsu.mem_ctrl  := io.from_Idu.ctrl.mem_si    // 直通数据，在EXU中无作用
+
+  io.from_Idu.ready := io.from_Idu.valid
+  io.to_Lsu.valid := io.from_Idu.valid
 }
 
 /*    Branch      跳转类型

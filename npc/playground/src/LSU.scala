@@ -63,25 +63,25 @@ case class ysyx_23060082_LSU() extends Component {
     default  -> U"32'h0"
   )
   // ------------------ 写操作 ------------------
-  switch(addr_op) {
-    // mem_addr[1:0] = 00
-    is(U"00010") { wdata_real := wdata;                                       wmask := U"1111" } // SW
-    is(U"00001") { wdata_real := (U"16'h0" ## wdata(15 downto 0)).asUInt; wmask := U"0011" } // SH
-    is(U"00000") { wdata_real := (U"24'h0" ## wdata(7 downto 0) ).asUInt; wmask := U"0001" } // SB
+  // switch(addr_op) {
+  //   // mem_addr[1:0] = 00
+  //   is(U"00010") { wdata_real := wdata;                                       wmask := U"1111" } // SW
+  //   is(U"00001") { wdata_real := (U"16'h0" ## wdata(15 downto 0)).asUInt; wmask := U"0011" } // SH
+  //   is(U"00000") { wdata_real := (U"24'h0" ## wdata(7 downto 0) ).asUInt; wmask := U"0001" } // SB
 
-    // mem_addr[1:0] = 01
-    is(U"01001") { wdata_real := (U"8'h0"  ## wdata(15 downto 0) ## U"8'h0").asUInt;  wmask := U"0110" }
-    is(U"01000") { wdata_real := (U"16'h0" ## wdata(7 downto 0)  ## U"8'h0").asUInt;  wmask := U"0010" }
+  //   // mem_addr[1:0] = 01
+  //   is(U"01001") { wdata_real := (U"8'h0"  ## wdata(15 downto 0) ## U"8'h0").asUInt;  wmask := U"0110" }
+  //   is(U"01000") { wdata_real := (U"16'h0" ## wdata(7 downto 0)  ## U"8'h0").asUInt;  wmask := U"0010" }
 
-    // mem_addr[1:0] = 10
-    is(U"10001") { wdata_real := (wdata(15 downto 0) ## U"16'h0").asUInt;             wmask := U"1100" }
-    is(U"10000") { wdata_real := (U"8'h0" ## wdata(7 downto 0) ## U"16'h0").asUInt;   wmask := U"0100" }
+  //   // mem_addr[1:0] = 10
+  //   is(U"10001") { wdata_real := (wdata(15 downto 0) ## U"16'h0").asUInt;             wmask := U"1100" }
+  //   is(U"10000") { wdata_real := (U"8'h0" ## wdata(7 downto 0) ## U"16'h0").asUInt;   wmask := U"0100" }
 
-    // mem_addr[1:0] = 11
-    is(U"11000") { wdata_real := (wdata(7 downto 0) ## U"24'h0").asUInt;              wmask := U"1000" }
+  //   // mem_addr[1:0] = 11
+  //   is(U"11000") { wdata_real := (wdata(7 downto 0) ## U"24'h0").asUInt;              wmask := U"1000" }
 
-    default { wdata_real := U"32'h0"; wmask := U"4'b0" }
-  }
+  //   default { wdata_real := U"32'h0"; wmask := U"4'b0" }
+  // }
 
 
   // io.to_Wbu.pc          := io.from_Exu.pc

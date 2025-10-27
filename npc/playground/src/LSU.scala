@@ -101,7 +101,7 @@ case class ysyx_23060082_LSU() extends Component {
     // mem_addr[1:0] = 11
     B"11000" -> wdata(7 downto 0) ## U"24'h0",
 
-    default  -> "32'h0"
+    default  -> B"32'h0"
   ).asUInt
 
   wmask := addr_op.mux(

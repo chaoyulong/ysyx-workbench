@@ -89,9 +89,9 @@ case class ysyx_23060082_LSU() extends Component {
   // }
   wdata_real := addr_op.mux(
     // mem_addr[1:0] = 00
-    B"00010" -> wdata;                           // SW
-    B"00001" -> U"16'h0" ## wdata(15 downto 0) // SH
-    B"00000" -> U"24'h0" ## wdata(7 downto 0)  // SB
+    B"00010" -> wdata                             ,// SW
+    B"00001" -> U"16'h0" ## wdata(15 downto 0)    ,// SH
+    B"00000" -> U"24'h0" ## wdata(7 downto 0)     ,// SB
     // mem_addr[1:0] = 01
     B"01001" -> U"8'h0"  ## wdata(15 downto 0) ## U"8'h0",
     B"01000" -> U"16'h0" ## wdata(7 downto 0)  ## U"8'h0",

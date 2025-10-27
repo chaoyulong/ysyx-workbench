@@ -86,7 +86,7 @@ case class ysyx_23060082_LSU() extends Component {
 
   //   default { wdata_real := U"32'h0"; wmask := U"4'b0" }
   // }
-  wdata_real := (addr_op.mux(
+  wdata_real := addr_op.mux(
     // mem_addr[1:0] = 00
     B"00010" -> wdata.asBits                             ,// SW
     B"00001" -> U"16'h0" ## wdata(15 downto 0)    ,// SH
@@ -101,8 +101,8 @@ case class ysyx_23060082_LSU() extends Component {
     // mem_addr[1:0] = 11
     B"11000" -> wdata(7 downto 0) ## U"24'h0",
 
-    default  -> B"32'h0"
-  )).asUInt
+    default  -> "32'h0"
+  ).asUInt
 
   wmask := addr_op.mux(
     // mem_addr[1:0] = 00

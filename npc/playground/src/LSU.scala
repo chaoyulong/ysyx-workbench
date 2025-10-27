@@ -26,7 +26,7 @@ case class ysyx_23060082_LSU() extends Component {
 
   val mem_rw = Mem_RW()
   val rdata = mem_rw.io.rdata
-  mem_rw.io.wmask = U"4'h0"
+  mem_rw.io.wmask := U"4'h0"
 
   mem_rw.io.valid := io.from_Exu.rf_ctrl.mem2reg | io.from_Exu.mem_ctrl.mem_wr
   mem_rw.io.wen   := io.from_Exu.mem_ctrl.mem_wr

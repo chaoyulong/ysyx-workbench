@@ -104,7 +104,7 @@ case class ysyx_23060082_LSU() extends Component {
     default  -> U"32'h0"
   )).asUInt
 
-  wmask := (addr_op.mux(
+  wmask := addr_op.mux(
     // mem_addr[1:0] = 00
     B"00010" -> U"1111" ,   // SW
     B"00001" -> U"0011" ,   // SH
@@ -118,7 +118,7 @@ case class ysyx_23060082_LSU() extends Component {
     // mem_addr[1:0] = 11
     B"11000" -> U"1000" ,
     default  -> U"4'h0"
-  )).asUInt
+  )
 
   // io.to_Wbu.pc          := io.from_Exu.pc
   // io.to_Wbu.pc_next     := io.from_Exu.pc_next

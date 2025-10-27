@@ -19,6 +19,7 @@ case class ysyx_23060082_LSU() extends Component {
     val to_Wbu = master Stream(Lsu2Wbu_data()) 
   }
 
+  val mem_addr    = io.from_Exu.alu_result    // alu的输出结果就是访存地址
   val rdata_real  = UInt(32 bits)    // 真正读出的数据
   val wdata_real  = UInt(32 bits)    // 真正写入的数据  
   val wmask       = UInt( 4 bits)
@@ -36,7 +37,7 @@ case class ysyx_23060082_LSU() extends Component {
 
 
   // 合并 addr + MemOp 生成 5 位索引
-  val addr_op = (io.from_Exu.mem_ctrl.mem_addr(1 downto 0) ## io.from_Exu.mem_ctrl.mem_op)
+  val addr_op = (mem_addr(1 downto 0) ## io.from_Exu.mem_ctrl.mem_op)
 
   // ------------------ 读操作 ------------------
   rdata_real := addr_op.mux(

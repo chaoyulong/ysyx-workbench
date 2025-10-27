@@ -45,8 +45,8 @@ case class ysyx_23060082_LSU() extends Component {
 
     B"00001" -> rdata(15 downto  0).asSInt.resize(32).asUInt,   // LH
     B"00000" -> rdata( 7 downto  0).asSInt.resize(32).asUInt,   // LB
-    B"00101" -> rdata(15 downto  0).asUSInt.resize(32)              ,   // LHU
-    B"00100" -> rdata( 7 downto  0).asUSInt.resize(32)              ,   // LBU
+    B"00101" -> rdata(15 downto  0).asUInt.resize(32)              ,   // LHU
+    B"00100" -> rdata( 7 downto  0).asUInt.resize(32)              ,   // LBU
     // mem_addr[1:0] = 01
     B"01001" -> rdata(23 downto  8).asSInt.resize(32).asUInt,
     B"01000" -> rdata(15 downto  8).asSInt.resize(32).asUInt,

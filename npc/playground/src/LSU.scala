@@ -58,7 +58,8 @@ case class ysyx_23060082_LSU() extends Component {
     B"10100" -> rdata(23 downto 16).resize(32)              ,
     // mem_addr[1:0] = 11
     B"11000" -> rdata(31 downto 24).asSInt.resize(32).asUInt,
-    B"11100" -> rdata(31 downto 24).resize(32)              
+    B"11100" -> rdata(31 downto 24).resize(32)              ,
+    default  -> U"32'h0"
   )
   // ------------------ 写操作 ------------------
   // switch(addr_op) {

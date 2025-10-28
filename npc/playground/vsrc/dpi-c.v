@@ -15,7 +15,7 @@ module Mem_Rd(
       rdata <= 32'h0;
     end
     else begin
-      if(addr == 32'h0) $display("ifu addr is 0")
+      if(addr == 32'h0) $display("ifu addr is 0");
       rdata <= pmem_read(addr);
     end
   end

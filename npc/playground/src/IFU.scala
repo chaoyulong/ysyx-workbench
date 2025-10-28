@@ -10,7 +10,7 @@ case class Ifu2Idu_data() extends Bundle {
 
 case class ysyx_23060082_IFU() extends Component {
   val io = new Bundle {
-    val from_Lsu  = slave  Stream(Lsu2Ifu_data())
+    val from_Wbu  = slave  Stream(Lsu2Ifu_data())
     val to_Idu    = master Stream(Ifu2Idu_data())  
   }
 

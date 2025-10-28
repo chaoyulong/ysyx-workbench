@@ -20,7 +20,7 @@ case class ysyx_23060082_WBU() extends Component {
   io.to_Ifu.pc_next := io.from_Lsu.pc_next
   io.rf_write_addr  := io.from_Lsu.rf_ctrl.rf_write_addr
   io.rf_write_en    := io.from_Lsu.rf_ctrl.reg_wr
-  io.rf_write_data  := Mux(io.from_Lsu.rf_ctrl.mem2reg, io.from_Lsu.mem_data_out, alu_data_out)
+  io.rf_write_data  := Mux(io.from_Lsu.rf_ctrl.mem2reg, io.from_Lsu.mem_data_out, io.from_Lsu.alu_data_out)
 
 
   io.from_Lsu.ready := io.from_Lsu.valid

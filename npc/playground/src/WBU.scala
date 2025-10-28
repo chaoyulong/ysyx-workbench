@@ -9,7 +9,7 @@ case class Wbu2Ifu_data() extends Bundle {
 
 case class ysyx_23060082_WBU() extends Component {
   val io = new Bundle {
-    val from_Lsu  = slave Stream(Exu2Lsu_data())
+    val from_Lsu  = slave Stream(Lsu2Wbu_data())
     val to_Ifu    = master Stream(Wbu2Ifu_data()) 
 
     val rf_write_addr  = out UInt(5 bits)

@@ -104,7 +104,7 @@ run: $(CSRCS) $(VSRCS) $(NVBOARD_ARCHIVE) $(SRC_AUTO_BIND)
 
 # 用于单步执行
 sim: $(CSRCS) $(VSRCS)
-	@$(call build_target, $^, )
+	@$(call build_target, $^, -D__GET_WAVE__)
 
 # 运行并记录波形
 wave: $(CSRCS) $(VSRCS)

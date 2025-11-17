@@ -116,7 +116,7 @@ case class ysyx_23060082_LSU() extends Component {
   io.to_Wbu.rf_ctrl     := io.from_Exu.rf_ctrl    
 
   io.from_Exu.ready := io.from_Exu.valid
-  io.to_Wbu.valid   := io.from_Exu.valid
-  // io.to_Wbu.valid   := rw_end | ~(io.from_Exu.rf_ctrl.mem2reg | io.from_Exu.mem_ctrl.mem_wr)  // 不是访存指令或已经读完
+  // io.to_Wbu.valid   := io.from_Exu.valid
+  io.to_Wbu.valid   := rw_end | ~(io.from_Exu.rf_ctrl.mem2reg | io.from_Exu.mem_ctrl.mem_wr)  // 不是访存指令或已经读完
 }
 

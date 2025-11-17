@@ -48,31 +48,31 @@ module Mem_RW(
   output reg [31:0] rdata
 );
 
-  // always @(posedge clock or posedge reset) begin
-  //   if (reset) begin 
-  //     rdata <= 32'h0;
-  //   end
-  //   else if(valid) begin
-  //     if(wen) begin   // 写
-  //       pmem_write(addr, wdata, {4'b0, wmask});
-  //     end
-  //     else begin
-  //       rdata <= pmem_read(addr);
-  //     end
-  //   end
-  // end
+  always @(posedge clock or posedge reset) begin
+    if (reset) begin 
+      rdata <= 32'h0;
+    end
+    else if(valid) begin
+      if(wen) begin   // 写
+        pmem_write(addr, wdata, {4'b0, wmask});
+      end
+      else begin
+        rdata <= pmem_read(addr);
+      end
+    end
+  end
 
-  // always @(posedge clock or posedge reset) begin
-  //   if (reset) begin 
-  //     rw_end <= 1'b0;
-  //   end
-  //   else if(valid) begin
-  //     rw_end <= 1'b1;
-  //   end
-  //   else begin
-  //     rw_end <= 1'b0;
-  //   end 
-  // end
+  always @(posedge clock or posedge reset) begin
+    if (reset) begin 
+      rw_end <= 1'b0;
+    end
+    else if(valid) begin
+      rw_end <= 1'b1;
+    end
+    else begin
+      rw_end <= 1'b0;
+    end 
+  end
   
 endmodule
 

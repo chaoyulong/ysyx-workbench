@@ -18,7 +18,7 @@ case class ysyx_23060082_LSU() extends Component {
   }
 
   val mem_addr    = io.from_Exu.alu_result    // alu的输出结果就是访存地址
-
+  val rw_valid    = io.from_Exu.rf_ctrl.mem2reg | io.from_Exu.mem_ctrl.mem_wr
   val wmask       = UInt( 4 bits)
   val rdata       = Reg(UInt(32 bits)) init(0)   
   val lsu_end     = Reg(Bool())       // lsu结束标志
@@ -35,6 +35,13 @@ case class ysyx_23060082_LSU() extends Component {
   mem_rw.io.wdata := wdata_real
   mem_rw.io.wmask := wmask
   // rdata := mem_rw.io.rdata
+
+  when(io.from_Exu.fire & rw_valid){  // 握手成功时判断是否需要访存
+    mem_rw.io.valid := True
+  } otherwise{
+    mem_rw.io.valid := False
+  }
+
   when(io.from_Exu.rf_ctrl.mem2reg & mem_rw.io.rw_end){ // 是读内存指令并且已读完
     rdata := mem_rw.io.rdata
   } elsewhen(io.to_Wbu.fire){ // 握手完成后置0
@@ -45,7 +52,9 @@ case class ysyx_23060082_LSU() extends Component {
 
 // rw_end | ~(io.from_Exu.rf_ctrl.mem2reg | io.from_Exu.mem_ctrl.mem_wr)  // 不是访存指令或已经读完
 
-  when(mem_rw.io.rw_end | ~(io.from_Exu.rf_ctrl.mem2reg | io.from_Exu.mem_ctrl.mem_wr)){     // 读取完成后valid置1
+  when(io.from_Exu.fire & ~rw_valid){    // 不需要访存
+    lsu_end := True
+  }when(mem_rw.io.rw_end & rw_valid){     // 需要访存并且访存完成
     lsu_end := True
   } elsewhen(io.to_Wbu.fire){ // 握手完成后置0
     lsu_end := False

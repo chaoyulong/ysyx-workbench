@@ -62,6 +62,7 @@ case class Mem_RW() extends BlackBox{
     val addr  = in UInt(32 bits)
     val wdata = in UInt(32 bits)
     val wmask = in UInt(4 bits)
+    val rw_end = out Bool()
     val rdata = out UInt(32 bits)
   }
   noIoPrefix()

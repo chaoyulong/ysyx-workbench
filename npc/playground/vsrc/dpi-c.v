@@ -44,21 +44,36 @@ module Mem_RW(
   input      [31:0] addr,
   input      [31:0] wdata,
   input      [3:0]  wmask,
+  output reg        rw_end,
   output reg [31:0] rdata
 );
-  
-  // always @(*) begin
-  //   if (valid & ~reset) begin // 有读写请求时
-  //     rdata = pmem_read(addr);
-  //     if (wen) begin // 有写请求时
-  //       pmem_write(addr, wdata, {4'b0, wmask});
-  //     end
-  //   end
-  //   else begin
-  //     rdata = 0;
-  //   end
-  // end
 
+  always @(posedge clock or posedge reset) begin
+    if (reset) begin 
+      rdata <= 32'h0;
+    end
+    else if(valid) begin
+      if(wen) begin   // 写
+        pmem_write(addr, wdata, {4'b0, wmask});
+      end
+      else begin
+        rdata <= pmem_read(addr);
+      end
+    end
+  end
+
+  always @(posedge clock or posedge reset) begin
+    if (reset) begin 
+      rw_end <= 1'b0;
+    end
+    else if(valid) begin
+      rw_end <= 1'b1;
+    end
+    else begin
+      rw_end <= 1'b0;
+    end 
+  end
+  
 endmodule
 
 module MyEbreak(

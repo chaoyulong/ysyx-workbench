@@ -20,7 +20,8 @@ case class ysyx_23060082_LSU() extends Component {
   val mem_addr    = io.from_Exu.alu_result    // alu的输出结果就是访存地址
 
   val wmask       = UInt( 4 bits)
-  val rdata       = UInt(32 bits)    
+  val rdata       = Reg(UInt(32 bits)) init(0)   
+  val read_end    = Reg(Bool())
   val wdata       = UInt(32 bits)     
   val rdata_real  = UInt(32 bits)    // 真正读出的数据
   val wdata_real  = UInt(32 bits)    // 真正写入的数据  
@@ -33,7 +34,17 @@ case class ysyx_23060082_LSU() extends Component {
   mem_rw.io.addr  := addr_real
   mem_rw.io.wdata := wdata_real
   mem_rw.io.wmask := wmask
-  rdata := mem_rw.io.rdata
+  // rdata := mem_rw.io.rdata
+  when(mem_rw.io.rw_end){     // 读取完成后valid置1
+    rdata := mem_rw.io.rdata
+    read_end := True
+  } elsewhen(io.to_Wbu.fire){ // 握手完成后置0
+    rdata := U"32'h0"
+    read_end := False
+  } otherwise{
+    rdata := rdata
+    read_end := read_end
+  }
 
   // 合并 addr + MemOp 生成 5 位索引
   val addr_op = (mem_addr(1 downto 0) ## io.from_Exu.mem_ctrl.mem_op)
@@ -100,6 +111,6 @@ case class ysyx_23060082_LSU() extends Component {
   io.to_Wbu.rf_ctrl     := io.from_Exu.rf_ctrl    
 
   io.from_Exu.ready := io.from_Exu.valid
-  io.to_Wbu.valid   := io.from_Exu.valid
+  io.to_Wbu.valid   := read_end
 }
 

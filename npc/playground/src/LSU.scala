@@ -54,7 +54,7 @@ case class ysyx_23060082_LSU() extends Component {
 
   when(io.from_Exu.fire & ~rw_valid){    // 不需要访存
     lsu_end := True
-  }when(mem_rw.io.rw_end & rw_valid){     // 需要访存并且访存完成
+  } elsewhen(mem_rw.io.rw_end & rw_valid){     // 需要访存并且访存完成
     lsu_end := True
   } elsewhen(io.to_Wbu.fire){ // 握手完成后置0
     lsu_end := False

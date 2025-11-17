@@ -33,7 +33,7 @@ case class Mem_Rd() extends BlackBox{
     val reset = in Bool()
     val rd_en = in Bool()
     val addr  = in UInt(32 bits)
-    val rd_en = out Bool() 
+    val rd_end = out Bool() 
     val rdata = out UInt(32 bits)
   }
   noIoPrefix()

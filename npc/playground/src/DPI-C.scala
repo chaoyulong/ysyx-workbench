@@ -27,7 +27,7 @@ case class GetInstr() extends BlackBox{
 //     memory.io.rdata
 //   }
 // }
-case class Mem_Rd extends BlackBox{
+case class Mem_Rd() extends BlackBox{
   val io=new Bundle{
     val clock = in Bool()
     val reset = in Bool()

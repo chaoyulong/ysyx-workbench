@@ -6,17 +6,31 @@ import "DPI-C" function void get_instr(int pc_o, int instr);
 module Mem_Rd(
   input             clock,
   input             reset,
+  input             rd_en,
   input      [31:0] addr,
+  output reg        rd_end
   output reg [31:0] rdata
 );
 
   always @(posedge clock or posedge reset) begin
-    if (reset) begin // 有读写请求时
+    if (reset) begin 
       rdata <= 32'h0;
     end
-    else begin
+    else if(rd_en) begin
       rdata <= pmem_read(addr);
     end
+  end
+
+  always @(posedge clock or posedge reset) begin
+    if (reset) begin 
+      rd_end <= 1'b0;
+    end
+    else if(rd_en) begin
+      rd_end <= 1'b1;
+    end
+    else begin
+      rd_end <= 1'b0;
+    end 
   end
 
 endmodule

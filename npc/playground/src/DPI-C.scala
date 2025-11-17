@@ -20,19 +20,20 @@ case class GetInstr() extends BlackBox{
   addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/dpi-c.v")   
 }
 
-
-object Mem_Rd{
-  def apply(addr:UInt): UInt ={
-    val memory = new Mem_Rd()
-    memory.io.addr  <> addr 
-    memory.io.rdata
-  }
-}
-class Mem_Rd extends BlackBox{
+// object Mem_Rd{
+//   def apply(addr:UInt): UInt ={
+//     val memory = new Mem_Rd()
+//     memory.io.addr  <> addr 
+//     memory.io.rdata
+//   }
+// }
+case class Mem_Rd extends BlackBox{
   val io=new Bundle{
     val clock = in Bool()
     val reset = in Bool()
+    val rd_en = in Bool()
     val addr  = in UInt(32 bits)
+    val rd_en = out Bool() 
     val rdata = out UInt(32 bits)
   }
   noIoPrefix()

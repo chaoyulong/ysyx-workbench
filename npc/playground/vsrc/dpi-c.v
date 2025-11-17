@@ -6,7 +6,7 @@ import "DPI-C" function void get_instr(int pc_o, int instr);
 module Mem_Rd(
   input             clock,
   input             reset,
-  input             rd_en,
+  input             rd_req,
   input      [31:0] addr,
   output reg        rd_end,
   output reg [31:0] rdata
@@ -16,7 +16,7 @@ module Mem_Rd(
     if (reset) begin 
       rdata <= 32'h0;
     end
-    else if(rd_en) begin
+    else if(rd_req) begin
       $display("read at addr = 0x%8x", addr);
       rdata <= pmem_read(addr);
     end
@@ -26,7 +26,7 @@ module Mem_Rd(
     if (reset) begin 
       rd_end <= 1'b0;
     end
-    else if(rd_en) begin
+    else if(rd_req) begin
       rd_end <= 1'b1;
     end
     else begin

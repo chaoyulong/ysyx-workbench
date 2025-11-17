@@ -31,7 +31,7 @@ case class Mem_Rd() extends BlackBox{
   val io=new Bundle{
     val clock = in Bool()
     val reset = in Bool()
-    val rd_en = in Bool()
+    val rd_req = in Bool()
     val addr  = in UInt(32 bits)
     val rd_end = out Bool() 
     val rdata = out UInt(32 bits)

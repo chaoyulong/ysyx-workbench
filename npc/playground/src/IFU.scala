@@ -34,7 +34,7 @@ case class ysyx_23060082_IFU() extends Component {
 
   val instr_reg = Reg(UInt(32 bits))  // 缓存指令的寄存器
   val mem_rd = Mem_Rd()
-  mem_rd.io.rd_en := read_req
+  mem_rd.io.rd_req := read_req
   mem_rd.io.addr  := read_addr
 
   when(mem_rd.io.rd_end){

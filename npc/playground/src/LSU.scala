@@ -21,7 +21,7 @@ case class ysyx_23060082_LSU() extends Component {
 
   val wmask       = UInt( 4 bits)
   val rdata       = Reg(UInt(32 bits)) init(0)   
-  val rw_end      = Reg(Bool())
+  val lsu_end     = Reg(Bool())       // lsu结束标志
   val wdata       = UInt(32 bits)     
   val rdata_real  = UInt(32 bits)    // 真正读出的数据
   val wdata_real  = UInt(32 bits)    // 真正写入的数据  
@@ -43,12 +43,14 @@ case class ysyx_23060082_LSU() extends Component {
     rdata := rdata
   }
 
-  when(mem_rw.io.rw_end){     // 读取完成后valid置1
-    rw_end := True
+// rw_end | ~(io.from_Exu.rf_ctrl.mem2reg | io.from_Exu.mem_ctrl.mem_wr)  // 不是访存指令或已经读完
+
+  when(mem_rw.io.rw_end | (io.from_Exu.rf_ctrl.mem2reg | io.from_Exu.mem_ctrl.mem_wr)){     // 读取完成后valid置1
+    lsu_end := True
   } elsewhen(io.to_Wbu.fire){ // 握手完成后置0
-    rw_end := False
+    lsu_end := False
   } otherwise{
-    rw_end := rw_end
+    lsu_end := lsu_end
   }
 
   // 合并 addr + MemOp 生成 5 位索引
@@ -117,6 +119,6 @@ case class ysyx_23060082_LSU() extends Component {
 
   io.from_Exu.ready := io.from_Exu.valid
   // io.to_Wbu.valid   := io.from_Exu.valid
-  io.to_Wbu.valid   := rw_end | ~(io.from_Exu.rf_ctrl.mem2reg | io.from_Exu.mem_ctrl.mem_wr)  // 不是访存指令或已经读完
+  io.to_Wbu.valid   := lsu_end
 }
 

@@ -56,12 +56,15 @@ case class ysyx_23060082_IFU() extends Component {
   // ------------------ 传递到下一级的数据 ------------------ //
   io.to_Idu.pc    := pc_reg
   io.to_Idu.instr := instr_reg
+  val read_end = Reg(Bool())
 
   when(mem_rd.io.rd_end){     // 读取完成后valid置1
-    io.to_Idu.valid := True
+    read_end := True
   } elsewhen(io.to_Idu.fire){ // 握手完成后置0
-    io.to_Idu.valid := False
+    read_end := False
   } otherwise{
-    io.to_Idu.valid := io.to_Idu.valid
+    read_end := read_end
   }
+  io.to_Idu.valid := read_end
+
 }

@@ -8,7 +8,7 @@ module Mem_Rd(
   input             reset,
   input             rd_en,
   input      [31:0] addr,
-  output reg        rd_end
+  output reg        rd_end,
   output reg [31:0] rdata
 );
 

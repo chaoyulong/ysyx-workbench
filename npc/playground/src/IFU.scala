@@ -14,10 +14,10 @@ case class ysyx_23060082_IFU() extends Component {
     val to_Idu    = master Stream(Ifu2Idu_data())  
   }
 
+  // ------------------ PC寄存器 ------------------ //
   val pc_reg   = Reg(UInt(32 bits)) init(U"32'h80000000")
-  // val instr = Mem_Rd(pc_reg)  // 读取指令
 
-  // ------------------ 用于确定复位结束 ------------------
+  // ------------------ 用于确定复位结束 ------------------ //
   val rst_reg_1 = Reg(Bool()) init(False)   // 用于确定复位结束
   val rst_reg_2 = Reg(Bool()) init(False)
   rst_reg_1 := True
@@ -55,7 +55,7 @@ case class ysyx_23060082_IFU() extends Component {
 
   // ------------------ 传递到下一级的数据 ------------------ //
   io.to_Idu.pc    := pc_reg
-  io.to_Idu.instr := instr
+  io.to_Idu.instr := instr_reg
 
   when(mem_rd.io.rd_end){     // 读取完成后valid置1
     io.to_Idu.valid := True

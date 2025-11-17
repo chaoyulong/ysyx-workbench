@@ -18,7 +18,7 @@ int main(int argc, char** argv)
   sim_init(argc, argv);
   pmem_init();
   cpu_reset(50);
-  n_cycle(50);
+  n_cycle(500);
   monitor_exit();
   return 0;
 }

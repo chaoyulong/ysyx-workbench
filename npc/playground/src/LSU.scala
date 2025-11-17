@@ -45,7 +45,7 @@ case class ysyx_23060082_LSU() extends Component {
 
 // rw_end | ~(io.from_Exu.rf_ctrl.mem2reg | io.from_Exu.mem_ctrl.mem_wr)  // 不是访存指令或已经读完
 
-  when(mem_rw.io.rw_end | (io.from_Exu.rf_ctrl.mem2reg | io.from_Exu.mem_ctrl.mem_wr)){     // 读取完成后valid置1
+  when(mem_rw.io.rw_end | ~(io.from_Exu.rf_ctrl.mem2reg | io.from_Exu.mem_ctrl.mem_wr)){     // 读取完成后valid置1
     lsu_end := True
   } elsewhen(io.to_Wbu.fire){ // 握手完成后置0
     lsu_end := False

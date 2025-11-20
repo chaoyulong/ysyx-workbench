@@ -3,30 +3,6 @@ package playground
 import spinal.core._
 import spinal.lib._
 
-def pipelineConnect[T <: Data, T2 <: Data](
-  prevOut: Stream[T],     // 前一级的输出
-  thisIn:  Stream[T],     // 这一级的输入  
-  thisOut: Stream[T2]     // 这一级的输出  
-) = {
-
-  val prevFire = prevOut.valid && thisIn.ready                // 握手成功
-  val thisFire = thisOut.valid && thisOut.ready               // 当前级与下一级握手成功，当前级的数据就没用了，可以用来接收数据
-  val payloadReg = RegNextWhen(io.prevOut.payload, prevFire)  // 握手成功更新寄存器
-  val validReg = RegInit(False)
-  
-  
-  when(prevFire) {    // 有效状态
-    validReg := True
-  }.elsewhen(thisFire) {
-    validReg := False
-  }
-  
-  // 连接下一级
-  thisIn.payload := payloadReg
-  thisIn.valid := prevOut.valid   // 上级有效信号直通
-  
-  prevOut.ready := !validReg || thisFire   // 输入就绪：当寄存器为空或数据已被下游接收
-}
 
 
 // case class pipelineConnect[T <: Data, T2 <: Data](dataType: HardType[T], dataType2: HardType[T2]) extends Component {

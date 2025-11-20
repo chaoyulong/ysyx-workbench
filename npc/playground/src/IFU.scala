@@ -51,7 +51,7 @@ case class ysyx_23060082_IFU() extends Component {
   } otherwise{
     pc_reg := pc_reg
   }
-  io.input.ready := io.input.valid 
+  // io.input.ready := io.input.valid 
 
 
   val read_end = Reg(Bool())

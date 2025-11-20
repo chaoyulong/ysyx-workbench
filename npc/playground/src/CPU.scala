@@ -33,7 +33,7 @@ case class CPU() extends Component {
     }
     
     thisIn.payload := payloadReg  // 接入到当前级
-    thisIn.valid := dataValid     // 每一级的有效状态为数据有效状态
+    thisIn.valid := validReg     // 每一级的有效状态为数据有效状态
     
     prevOut.ready := !validReg || thisFire   // 当数据无效，或者下游握手成功即将无效，此时ready置1,表示可以接收新的数据
   }

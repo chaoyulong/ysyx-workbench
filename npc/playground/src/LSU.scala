@@ -13,12 +13,12 @@ case class Lsu2Wbu_data() extends Bundle {
 
 case class ysyx_23060082_LSU() extends Component {
   val io = new Bundle {
-    val from_Exu  = slave Stream(Exu2Lsu_data())
-    val to_Wbu    = master Stream(Lsu2Wbu_data()) 
+    val input  = slave Stream(Exu2Lsu_data())
+    val output    = master Stream(Lsu2Wbu_data()) 
   }
 
-  val mem_addr    = io.from_Exu.alu_result    // alu的输出结果就是访存地址
-  val rw_valid    = io.from_Exu.rf_ctrl.mem2reg | io.from_Exu.mem_ctrl.mem_wr
+  val mem_addr    = io.input.alu_result    // alu的输出结果就是访存地址
+  val rw_valid    = io.input.rf_ctrl.mem2reg | io.input.mem_ctrl.mem_wr
   val wmask       = UInt( 4 bits)
   val rdata       = Reg(UInt(32 bits)) init(0)   
   val lsu_end     = Reg(Bool())       // lsu结束标志
@@ -27,43 +27,43 @@ case class ysyx_23060082_LSU() extends Component {
   val wdata_real  = UInt(32 bits)    // 真正写入的数据  
   val addr_real   = (mem_addr(31 downto 2) ## U"2'h0").asUInt   // 真实地址要对齐
 
-  wdata := io.from_Exu.rf_read_data_2 // 写数据为寄存器2的数据
+  wdata := io.input.rf_read_data_2 // 写数据为寄存器2的数据
   val mem_rw = Mem_RW()
-  mem_rw.io.valid := io.from_Exu.rf_ctrl.mem2reg | io.from_Exu.mem_ctrl.mem_wr
-  mem_rw.io.wen   := io.from_Exu.mem_ctrl.mem_wr
+  mem_rw.io.valid := io.input.rf_ctrl.mem2reg | io.input.mem_ctrl.mem_wr
+  mem_rw.io.wen   := io.input.mem_ctrl.mem_wr
   mem_rw.io.addr  := addr_real
   mem_rw.io.wdata := wdata_real
   mem_rw.io.wmask := wmask
   // rdata := mem_rw.io.rdata
 
-  when(io.from_Exu.fire & rw_valid){  // 握手成功时判断是否需要访存
+  when(io.input.fire & rw_valid){  // 握手成功时判断是否需要访存
     mem_rw.io.valid := True
   } otherwise{
     mem_rw.io.valid := False
   }
 
-  when(io.from_Exu.rf_ctrl.mem2reg & mem_rw.io.rw_end){ // 是读内存指令并且已读完
+  when(io.input.rf_ctrl.mem2reg & mem_rw.io.rw_end){ // 是读内存指令并且已读完
     rdata := mem_rw.io.rdata
-  } elsewhen(io.to_Wbu.fire){ // 握手完成后置0
+  } elsewhen(io.output.fire){ // 握手完成后置0
     rdata := U"32'h0"
   } otherwise{
     rdata := rdata
   }
 
-// rw_end | ~(io.from_Exu.rf_ctrl.mem2reg | io.from_Exu.mem_ctrl.mem_wr)  // 不是访存指令或已经读完
+// rw_end | ~(io.input.rf_ctrl.mem2reg | io.input.mem_ctrl.mem_wr)  // 不是访存指令或已经读完
 
-  when(io.from_Exu.fire & ~rw_valid){    // 不需要访存
+  when(io.input.fire & ~rw_valid){    // 不需要访存
     lsu_end := True
   } elsewhen(mem_rw.io.rw_end & rw_valid){     // 需要访存并且访存完成
     lsu_end := True
-  } elsewhen(io.to_Wbu.fire){ // 握手完成后置0
+  } elsewhen(io.output.fire){ // 握手完成后置0
     lsu_end := False
   } otherwise{
     lsu_end := lsu_end
   }
 
   // 合并 addr + MemOp 生成 5 位索引
-  val addr_op = (mem_addr(1 downto 0) ## io.from_Exu.mem_ctrl.mem_op)
+  val addr_op = (mem_addr(1 downto 0) ## io.input.mem_ctrl.mem_op)
 
   // ------------------ 读操作 ------------------
   rdata_real := addr_op.mux(
@@ -120,14 +120,14 @@ case class ysyx_23060082_LSU() extends Component {
     default  -> U"0000"
   )
 
-  io.to_Wbu.pc          := io.from_Exu.pc
-  io.to_Wbu.pc_next     := io.from_Exu.pc_next
-  io.to_Wbu.mem_data_out:= rdata_real
-  io.to_Wbu.alu_data_out:= io.from_Exu.alu_result
-  io.to_Wbu.rf_ctrl     := io.from_Exu.rf_ctrl    
+  io.output.pc          := io.input.pc
+  io.output.pc_next     := io.input.pc_next
+  io.output.mem_data_out:= rdata_real
+  io.output.alu_data_out:= io.input.alu_result
+  io.output.rf_ctrl     := io.input.rf_ctrl    
 
-  io.from_Exu.ready := io.from_Exu.valid
-  // io.to_Wbu.valid   := io.from_Exu.valid
-  io.to_Wbu.valid   := lsu_end
+  io.input.ready := io.input.valid
+  // io.output.valid   := io.input.valid
+  io.output.valid   := lsu_end
 }
 

@@ -55,7 +55,7 @@ case class ysyx_23060082_IFU() extends Component {
 
 
   val read_end = Reg(Bool())
-
+  val ifu_busy = Reg(Bool())
   when(mem_rd.io.rd_end){     // 读取完成后valid置1
     read_end := True
   } elsewhen(io.output.fire){ // 握手完成后置0
@@ -64,10 +64,18 @@ case class ysyx_23060082_IFU() extends Component {
     read_end := read_end
   }
 
+  when(io.input.fire | rst_end){     // 读取完成后valid置1
+    ifu_busy := True
+  } elsewhen(mem_rd.io.rd_end){ // 握手完成后置0
+    ifu_busy := False
+  } otherwise{
+    ifu_busy := ifu_busy
+  }
+
   // ------------------ 用于握手的部分 ------------------ //
   val willValid = read_end
   io.output.valid := read_end    // io.input.valid为数据有效信号，是寄存器信号
-  io.input.ready := willValid
+  io.input.ready := (!ifu_busy)
   // ------------------ 数据传输部分 ------------------ //
   io.output.pc    := pc_reg
   io.output.instr := instr_reg

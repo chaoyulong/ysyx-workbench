@@ -46,9 +46,9 @@ case class CPU() extends Component {
   val wbu = ysyx_23060082_WBU()
   
   // ifu.io.to_Idu >-> idu.io.from_Ifu   // 
-  pipelineConnect(ifu.io.output, idu.io.from_Ifu, idu.io.to_Exu)
+  pipelineConnect(ifu.io.output, idu.io.input, idu.io.output)
 
-  idu.io.to_Exu >-> exu.io.from_Idu
+  idu.io.output >-> exu.io.from_Idu
   exu.io.to_Lsu >-> lsu.io.from_Exu
   lsu.io.to_Wbu >-> wbu.io.from_Lsu
   wbu.io.to_Ifu >-> ifu.io.input

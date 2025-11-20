@@ -38,8 +38,8 @@ case class Ctrl() extends Bundle {   // 控制信号
 
 case class ysyx_23060082_IDU() extends Component {
   val io = new Bundle {
-    val from_Ifu  = slave Stream(Ifu2Idu_data())
-    val to_Exu = master Stream(Idu2Exu_data()) 
+    val input  = slave  Stream(Ifu2Idu_data())
+    val output = master Stream(Idu2Exu_data()) 
 
     val rf_read_addr_1 = out UInt(5 bits)
     val rf_read_addr_2 = out UInt(5 bits)
@@ -47,7 +47,7 @@ case class ysyx_23060082_IDU() extends Component {
     val rf_read_data_2 = in  UInt(32 bits)
   }
 
-  val instr = io.from_Ifu.instr
+  val instr = io.input.instr
   val decoder = Decoder()
   decoder.instr := instr         
 // ***************************************** 立即数生成 *********************************************** //
@@ -61,17 +61,17 @@ case class ysyx_23060082_IDU() extends Component {
   val has_type = decoder.io.instr_type(5 downto 1).orR
   // val imm_values = Vec(immU, immJ, immI, immS, immB)
   val imm_values = Vec(immB, immS, immI, immJ, immU)    // 从低位到高位排序，为什么跟常规的有点不一样。。
-  io.to_Exu.imm := Mux(has_type, MuxOH(decoder.io.instr_type(5 downto 1), imm_values), U"32'h0")
+  io.output.imm := Mux(has_type, MuxOH(decoder.io.instr_type(5 downto 1), imm_values), U"32'h0")
 // *****************************************  *********************************************** //
   io.rf_read_addr_1 := instr(19 downto 15)
   io.rf_read_addr_2 := instr(24 downto 20)  // 为了写起来简洁，写寄存器地址在decoder中赋值
   
-  io.to_Exu.pc              := io.from_Ifu.pc
-  io.to_Exu.rf_read_data_1  := io.rf_read_data_1
-  io.to_Exu.rf_read_data_2  := io.rf_read_data_2
-  io.to_Exu.ctrl            := decoder.io.ctrl
+  io.output.pc              := io.input.pc
+  io.output.rf_read_data_1  := io.rf_read_data_1
+  io.output.rf_read_data_2  := io.rf_read_data_2
+  io.output.ctrl            := decoder.io.ctrl
 
-  io.from_Ifu.ready := io.from_Ifu.valid
-  io.to_Exu.valid := io.from_Ifu.valid
+  io.input.ready := io.input.valid
+  io.output.valid := io.input.valid
   
 }

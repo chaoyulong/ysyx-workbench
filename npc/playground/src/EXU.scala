@@ -15,37 +15,37 @@ case class Exu2Lsu_data() extends Bundle {
 
 case class ysyx_23060082_EXU() extends Component {
   val io = new Bundle {
-    val from_Idu  = slave Stream(Idu2Exu_data())
-    val to_Lsu    = master Stream(Exu2Lsu_data()) 
+    val input  = slave  Stream(Idu2Exu_data())
+    val output = master Stream(Exu2Lsu_data()) 
   }
 
   val alu = ysyx_23060082_ALU()
   val branch_cond = ysyx_23060082_BranchCond()
 
-  alu.io.alu_ctr := io.from_Idu.ctrl.alu_si.alu_ctr
-  alu.io.alu_in1 := Mux(io.from_Idu.ctrl.alu_si.alu_asrc, io.from_Idu.rf_read_data_1, io.from_Idu.pc)
-  alu.io.alu_in2 := io.from_Idu.ctrl.alu_si.alu_bsrc.mux(
-    U"00" -> io.from_Idu.rf_read_data_2,
-    U"01" -> io.from_Idu.imm,
+  alu.io.alu_ctr := io.input.ctrl.alu_si.alu_ctr
+  alu.io.alu_in1 := Mux(io.input.ctrl.alu_si.alu_asrc, io.input.rf_read_data_1, io.input.pc)
+  alu.io.alu_in2 := io.input.ctrl.alu_si.alu_bsrc.mux(
+    U"00" -> io.input.rf_read_data_2,
+    U"01" -> io.input.imm,
     default -> U"32'h4"
   )
 
-  branch_cond.io.branch := io.from_Idu.ctrl.alu_si.branch
+  branch_cond.io.branch := io.input.ctrl.alu_si.branch
   branch_cond.io.less   := alu.io.less
   branch_cond.io.zero   := alu.io.zero
 
-  val pc_data_a = Mux(branch_cond.io.pc_asrc, io.from_Idu.imm, U"32'd4")
-  val pc_data_b = Mux(branch_cond.io.pc_bsrc, io.from_Idu.rf_read_data_1, io.from_Idu.pc)
+  val pc_data_a = Mux(branch_cond.io.pc_asrc, io.input.imm, U"32'd4")
+  val pc_data_b = Mux(branch_cond.io.pc_bsrc, io.input.rf_read_data_1, io.input.pc)
 
-  io.to_Lsu.pc          := io.from_Idu.pc
-  io.to_Lsu.pc_next     := pc_data_a + pc_data_b
-  io.to_Lsu.alu_result  := alu.io.alu_result
-  io.to_Lsu.rf_read_data_2 := io.from_Idu.rf_read_data_2
-  io.to_Lsu.rf_ctrl  := io.from_Idu.ctrl.rf_si      // 直通数据，在EXU中无作用
-  io.to_Lsu.mem_ctrl  := io.from_Idu.ctrl.mem_si    // 直通数据，在EXU中无作用
+  io.output.pc          := io.input.pc
+  io.output.pc_next     := pc_data_a + pc_data_b
+  io.output.alu_result  := alu.io.alu_result
+  io.output.rf_read_data_2 := io.input.rf_read_data_2
+  io.output.rf_ctrl  := io.input.ctrl.rf_si      // 直通数据，在EXU中无作用
+  io.output.mem_ctrl  := io.input.ctrl.mem_si    // 直通数据，在EXU中无作用
 
-  io.from_Idu.ready := io.from_Idu.valid
-  io.to_Lsu.valid := io.from_Idu.valid
+  io.input.ready := io.input.valid
+  io.output.valid := io.input.valid
 }
 
 /*    Branch      跳转类型

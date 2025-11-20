@@ -48,8 +48,8 @@ case class CPU() extends Component {
   // ifu.io.to_Idu >-> idu.io.from_Ifu   // 
   pipelineConnect(ifu.io.output, idu.io.input, idu.io.output)
 
-  idu.io.output >-> exu.io.from_Idu
-  exu.io.to_Lsu >-> lsu.io.from_Exu
+  idu.io.output >-> exu.io.input
+  exu.io.output >-> lsu.io.from_Exu
   lsu.io.to_Wbu >-> wbu.io.from_Lsu
   wbu.io.to_Ifu >-> ifu.io.input
 

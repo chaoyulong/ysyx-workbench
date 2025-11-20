@@ -17,7 +17,7 @@ module Mem_Rd(
       rdata <= 32'h0;
     end
     else if(rd_req) begin
-      $display("read at addr = 0x%8x", addr);
+      // $display("read at addr = 0x%8x", addr);
       rdata <= pmem_read(addr);
     end
   end

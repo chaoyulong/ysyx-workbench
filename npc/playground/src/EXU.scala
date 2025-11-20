@@ -23,7 +23,7 @@ case class ysyx_23060082_EXU() extends Component {
   val branch_cond = ysyx_23060082_BranchCond()
 
   alu.io.alu_ctr := io.input.ctrl.alu_si.alu_ctr
-  alu.io.alu_in1 := Mux(io.input.ctrl.alu_si.alu_asrc, io.input.pc, io.input.rf_read_data_1)
+  alu.io.alu_in1 := Mux(io.input.ctrl.alu_si.alu_asrc, io.input.pc, io.input.rf_read_data_1)  // 为0时选择rs1，为1时选择PC。
   alu.io.alu_in2 := io.input.ctrl.alu_si.alu_bsrc.mux(
     U"00" -> io.input.rf_read_data_2,
     U"01" -> io.input.imm,

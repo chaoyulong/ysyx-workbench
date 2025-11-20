@@ -18,23 +18,24 @@ case class CPU() extends Component {
     thisOut: Stream[T2]     // 这一级的输出  
   ) = {
 
-    val prevFire = prevOut.valid && thisIn.ready                // 握手成功
+    val prevFire = prevOut.valid && thisIn.ready                // 当前级与上一级握手成功
     val thisFire = thisOut.valid && thisOut.ready               // 当前级与下一级握手成功，当前级的数据就没用了，可以用来接收数据
-    val payloadReg = RegNextWhen(prevOut.payload, prevFire)  // 握手成功更新寄存器
+    val payloadReg = RegNextWhen(prevOut.payload, prevFire)     // 握手成功更新寄存器
     val validReg = RegInit(False)
     
     
-    when(prevFire) {    // 有效状态
+    when(prevFire) {        // 上游握手成功，说明当前数据处于有效状态
       validReg := True
-    }.elsewhen(thisFire) {
+    }elsewhen(thisFire) {   // 下游握手成功，说明当前数据已经无用，进入无效状态
       validReg := False
+    }otherwise{
+      validReg := validReg
     }
     
-    // 连接下一级
-    thisIn.payload := payloadReg
-    thisIn.valid := prevOut.valid   // 上级有效信号直通
+    thisIn.payload := payloadReg  // 接入到当前级
+    thisIn.valid := dataValid     // 每一级的有效状态为数据有效状态
     
-    prevOut.ready := !validReg || thisFire   // 输入就绪：当寄存器为空或数据已被下游接收
+    prevOut.ready := !validReg || thisFire   // 当数据无效，或者下游握手成功即将无效，此时ready置1,表示可以接收新的数据
   }
   // ------------------ ------------- ------------------ //
 
@@ -47,11 +48,14 @@ case class CPU() extends Component {
   
   // ifu.io.to_Idu >-> idu.io.from_Ifu   // 
   pipelineConnect(ifu.io.output, idu.io.input, idu.io.output)
-
-  idu.io.output >-> exu.io.input
-  exu.io.output >-> lsu.io.input
-  lsu.io.output >-> wbu.io.input
-  wbu.io.output >-> ifu.io.input
+  pipelineConnect(idu.io.output, exu.io.input, exu.io.output)
+  pipelineConnect(exu.io.output, lsu.io.input, lsu.io.output)
+  pipelineConnect(lsu.io.output, wbu.io.input, wbu.io.output)
+  pipelineConnect(wbu.io.output, ifu.io.input, ifu.io.output)
+  // idu.io.output >-> exu.io.input
+  // exu.io.output >-> lsu.io.input
+  // lsu.io.output >-> wbu.io.input
+  // wbu.io.output >-> ifu.io.input
 
   reg_file.io.read_addr_1 <> idu.io.rf_read_addr_1
   reg_file.io.read_addr_2 <> idu.io.rf_read_addr_2

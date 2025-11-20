@@ -37,6 +37,11 @@ case class ysyx_23060082_EXU() extends Component {
   val pc_data_a = Mux(branch_cond.io.pc_asrc, io.input.imm, U"32'd4")
   val pc_data_b = Mux(branch_cond.io.pc_bsrc, io.input.rf_read_data_1, io.input.pc)
 
+  // ------------------ 用于握手的部分 ------------------ //
+  val willValid = True
+  io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
+  io.input.ready := willValid
+  // ------------------ 数据传输部分 ------------------ //
   io.output.pc          := io.input.pc
   io.output.pc_next     := pc_data_a + pc_data_b
   io.output.alu_result  := alu.io.alu_result
@@ -44,8 +49,8 @@ case class ysyx_23060082_EXU() extends Component {
   io.output.rf_ctrl  := io.input.ctrl.rf_si      // 直通数据，在EXU中无作用
   io.output.mem_ctrl  := io.input.ctrl.mem_si    // 直通数据，在EXU中无作用
 
-  io.input.ready := io.input.valid
-  io.output.valid := io.input.valid
+  // io.input.ready := io.input.valid
+  // io.output.valid := io.input.valid
 }
 
 /*    Branch      跳转类型

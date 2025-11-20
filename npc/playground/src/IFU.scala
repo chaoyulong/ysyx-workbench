@@ -53,9 +53,7 @@ case class ysyx_23060082_IFU() extends Component {
   }
   io.input.ready := io.input.valid 
 
-  // ------------------ 传递到下一级的数据 ------------------ //
-  io.output.pc    := pc_reg
-  io.output.instr := instr_reg
+
   val read_end = Reg(Bool())
 
   when(mem_rd.io.rd_end){     // 读取完成后valid置1
@@ -65,6 +63,15 @@ case class ysyx_23060082_IFU() extends Component {
   } otherwise{
     read_end := read_end
   }
-  io.output.valid := read_end
+
+  // ------------------ 用于握手的部分 ------------------ //
+  val willValid = read_end
+  io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
+  io.input.ready := willValid
+  // ------------------ 数据传输部分 ------------------ //
+  io.output.pc    := pc_reg
+  io.output.instr := instr_reg
+
+  // io.output.valid := read_end
 
 }

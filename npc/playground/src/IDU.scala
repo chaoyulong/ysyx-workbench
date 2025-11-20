@@ -60,9 +60,13 @@ case class ysyx_23060082_IDU() extends Component {
   // 独热码选择器
   val has_type = decoder.io.instr_type(5 downto 1).orR
   // val imm_values = Vec(immU, immJ, immI, immS, immB)
-  val imm_values = Vec(immB, immS, immI, immJ, immU)    // 从低位到高位排序，为什么跟常规的有点不一样。。
+  val imm_values = Vec(immB, immS, immI, immJ, immU)    // 从低位到高位排序，为什么跟常规的有点不一样。。。。
   io.output.imm := Mux(has_type, MuxOH(decoder.io.instr_type(5 downto 1), imm_values), U"32'h0")
-// *****************************************  *********************************************** //
+  // ------------------ 用于握手的部分 ------------------ //
+  val willValid = True
+  io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
+  io.input.ready := willValid
+  // ------------------ 数据传输部分 ------------------ //
   io.rf_read_addr_1 := instr(19 downto 15)
   io.rf_read_addr_2 := instr(24 downto 20)  // 为了写起来简洁，写寄存器地址在decoder中赋值
   
@@ -71,7 +75,7 @@ case class ysyx_23060082_IDU() extends Component {
   io.output.rf_read_data_2  := io.rf_read_data_2
   io.output.ctrl            := decoder.io.ctrl
 
-  io.input.ready := io.input.valid
-  io.output.valid := io.input.valid
+  // io.input.ready := io.input.valid
+  // io.output.valid := io.input.valid && willValid
   
 }

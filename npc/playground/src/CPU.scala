@@ -20,7 +20,7 @@ case class CPU() extends Component {
 
     val prevFire = prevOut.valid && thisIn.ready                // 握手成功
     val thisFire = thisOut.valid && thisOut.ready               // 当前级与下一级握手成功，当前级的数据就没用了，可以用来接收数据
-    val payloadReg = RegNextWhen(io.prevOut.payload, prevFire)  // 握手成功更新寄存器
+    val payloadReg = RegNextWhen(prevOut.payload, prevFire)  // 握手成功更新寄存器
     val validReg = RegInit(False)
     
     

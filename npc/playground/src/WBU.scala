@@ -27,6 +27,6 @@ case class ysyx_23060082_WBU() extends Component {
   io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
   io.input.ready := willValid
   // ------------------ 数据传输部分 ------------------ //
-  io.input.ready := io.input.valid
-  io.output.valid   := io.input.valid
+  // io.input.ready := io.input.valid
+  // io.output.valid   := io.input.valid
 }

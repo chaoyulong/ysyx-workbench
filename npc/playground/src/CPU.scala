@@ -50,7 +50,8 @@ case class CPU() extends Component {
   pipelineConnect(ifu.io.output, idu.io.input, idu.io.output)
   pipelineConnect(idu.io.output, exu.io.input, exu.io.output)
   pipelineConnect(exu.io.output, lsu.io.input, lsu.io.output)
-  pipelineConnect(lsu.io.output, wbu.io.input, wbu.io.output)
+  // pipelineConnect(lsu.io.output, wbu.io.input, wbu.io.output)
+  lsu.io.output >> wbu.io.input
   wbu.io.output >> ifu.io.input
   // pipelineConnect(wbu.io.output, ifu.io.input, ifu.io.output)
   // idu.io.output >-> exu.io.input

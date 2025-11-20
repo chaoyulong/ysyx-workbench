@@ -121,7 +121,7 @@ case class ysyx_23060082_LSU() extends Component {
   )
 
   // ------------------ 用于握手的部分 ------------------ //
-  val willValid = lsu_end || (io.input.fire & ~rw_valid)
+  val willValid = lsu_end || (~rw_valid)
   io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
   io.input.ready := willValid
   // ------------------ 数据传输部分 ------------------ //

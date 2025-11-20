@@ -4,7 +4,7 @@
 #include "common.h"
 
 // *********************************** mem *********************************** //
-#define CONFIG_MSIZE (paddr_t)0x1000
+#define CONFIG_MSIZE (paddr_t)0x10000
 #define CONFIG_MBASE (paddr_t)0x80000000
 
 #define PMEM_LEFT  ((paddr_t)CONFIG_MBASE)

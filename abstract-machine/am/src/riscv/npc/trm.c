@@ -1,6 +1,8 @@
 #include <am.h>
 #include <klib-macros.h>
 
+# define npc_trap(code) asm volatile("mv a0, %0; ebreak" : :"r"(code))
+
 extern char _heap_start;
 int main(const char *args);
 
@@ -15,7 +17,10 @@ void putch(char ch) {
 }
 
 void halt(int code) {
-  while (1);
+  npc_trap(code);
+  
+  // should not reach here
+  while (1);  
 }
 
 void _trm_init() {

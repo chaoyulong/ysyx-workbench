@@ -37,7 +37,7 @@ case class Decoder() extends Component {
   val f3_decode = fun3_decoder.io.output  
 // ****************************************** 指令匹配 ************************************************ //     
 // AUIPC              = M"-------------------------0010111"   
-val i_auipc  = (instr.asBits === M"-------------------------0010111"   )
+val i_auipc  = M"-------------------------0010111"(instr.asBits)
   // val i_auipc  = op_decode_h(U"001") & op_decode_l(U"0111")
   val i_lui    = op_decode_h(U"011") & op_decode_l(U"0111")
   val i_jal    = op_decode_h(U"110") & op_decode_l(U"1111")

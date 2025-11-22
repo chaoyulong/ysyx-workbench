@@ -8,6 +8,7 @@
 * `.gitignore` - 帮助 Git 忽略垃圾文件，如生成的文件、构建产品和临时文件。
 * `build.sc` - 指示 mill 构建 SpinalHDL 项目
 * `Makefile` - 构建规则
+* `out` - mill构建的过程文件
 * `playground` - SpinalHDL 的工程文件，"playground"为 SpinalHDL 的工程名，可以在Makefile中修改，不过要注意scala文件中的第一行要与该名称一致
 * `playground/src` - 存放要生成verilog的scala文件
 * `playground/test` - 存放 SpinalHDL 仿真文件

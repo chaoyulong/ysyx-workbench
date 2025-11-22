@@ -96,7 +96,7 @@ case class Decoder() extends Component {
   val type_B = (i_beq | i_bne | i_blt | i_bge | i_bltu | i_bgeu)
   val type_R = (i_add | i_sub | i_xor | i_or | i_and | i_sll | i_srl | i_sra | i_slt | i_sltu)
 
-  val instr_type := type_U ## type_J ## type_I ## type_S ## type_B ## type_R
+  val instr_type = type_U ## type_J ## type_I ## type_S ## type_B ## type_R
   // ***************************************** 立即数生成 *********************************************** //
   val immU = U(instr(31 downto 12) ## B"12'b0")
   val immJ = U((instr(31) #* 12) ## instr(19 downto 12) ## instr(20) ## instr(30 downto 21)## B"0")

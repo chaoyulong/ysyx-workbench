@@ -20,11 +20,10 @@ case class ysyx_23060082_EXU() extends Component {
   }
 
   val alu = ysyx_23060082_ALU()
-  val branch_cond = ysyx_23060082_BranchCond()
+  val banchCond = ysyx_23060082_BranchCond()
 
   alu.io.alu_ctr := io.input.ctrl.alu_si.alu_ctr
-  // alu.io.alu_in1 := Mux(io.input.ctrl.alu_si.alu_asrc, io.input.rf_read_data_1, io.input.pc)  // 为0时选择rs1，为1时选择PC。
-  alu.io.alu_in1 := io.input.ctrl.alu_si.alu_asrc.mux(
+  alu.io.alu_in1 := io.input.ctrl.alu_si.alu_asrc.mux(// 为0时选择rs1，为1时选择PC。
     True  -> io.input.pc,
     False -> io.input.rf_read_data_1
   )
@@ -34,12 +33,12 @@ case class ysyx_23060082_EXU() extends Component {
     default -> U"32'h4"
   )
 
-  branch_cond.io.branch := io.input.ctrl.alu_si.branch
-  branch_cond.io.less   := alu.io.less
-  branch_cond.io.zero   := alu.io.zero
+  banchCond.io.branch := io.input.ctrl.alu_si.branch
+  banchCond.io.less   := alu.io.less
+  banchCond.io.zero   := alu.io.zero
 
-  val pc_data_a = Mux(branch_cond.io.pc_asrc, io.input.imm, U"32'd4")
-  val pc_data_b = Mux(branch_cond.io.pc_bsrc, io.input.rf_read_data_1, io.input.pc)
+  val pc_data_a = Mux(banchCond.io.pc_asrc, io.input.imm, U"32'd4")
+  val pc_data_b = Mux(banchCond.io.pc_bsrc, io.input.rf_read_data_1, io.input.pc)
 
   // ------------------ 用于握手的部分 ------------------ //
   val willValid = True

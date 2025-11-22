@@ -116,21 +116,38 @@ case class Decoder() extends Component {
                             U"01" ))                          // 选通imm                                                   // 选通imm
   
 
-  val alu_table = Seq(
-    (i_and | i_andi) -> U"0111",   // 选择逻辑与输出
-    (i_or  | i_ori ) ->   U"0110",   // 选择逻辑或输出
-    (i_xor | i_xori) ->  U"0100",   // 选择异或输出
-    (i_sll | i_slli) ->  U"0001",   // 选择移位器输出，左移
-    (i_srl | i_srli) ->  U"0101",   // 选择移位器输出，逻辑右移
-    (i_sra | i_srai) ->  U"1101",   // 选择移位器输出，算术右移
-    (i_sub) ->          U"1000",   // 选择加法器输出，做减法
-    // (i_add | i_addi,  U"0000"),// 选择加法器输出，做加法
-    (i_lui) ->          U"0011",   // 选择ALU输入B的结果直接输出
-    (i_slt | i_slti | i_beq | i_bne | i_blt | i_bge) -> U"0010",  // 做减法，选择带符号小于置位结果输出, Less按带符号结果设置
-    (i_sltu| i_sltiu| i_bltu| i_bgeu) ->  U"1010"                // 做减法，选择无符号小于置位结果输出, Less按无符号结果设置
-  )
+  // val alu_table = Seq(
+  //   (i_and | i_andi) -> U"0111",   // 选择逻辑与输出
+  //   (i_or  | i_ori ) -> U"0110",   // 选择逻辑或输出
+  //   (i_xor | i_xori) -> U"0100",   // 选择异或输出
+  //   (i_sll | i_slli) -> U"0001",   // 选择移位器输出，左移
+  //   (i_srl | i_srli) -> U"0101",   // 选择移位器输出，逻辑右移
+  //   (i_sra | i_srai) -> U"1101",   // 选择移位器输出，算术右移
+  //   (i_sub)          -> U"1000",   // 选择加法器输出，做减法
+  //   // (i_add | i_addi) -> U"0000",// 选择加法器输出，做加法
+  //   (i_lui)          -> U"0011",   // 选择ALU输入B的结果直接输出
+  //   (i_slt | i_slti | i_beq | i_bne | i_blt | i_bge) -> U"0010",  // 做减法，选择带符号小于置位结果输出, Less按带符号结果设置
+  //   (i_sltu| i_sltiu| i_bltu| i_bgeu)                -> U"1010",  // 做减法，选择无符号小于置位结果输出, Less按无符号结果设置
+  //   True -> U"0000"
+  // )
 
-  io.ctrl.alu_si.alu_ctr := PriorityMux(alu_table :+ (True -> U"0000"))
+  // io.ctrl.alu_si.alu_ctr := PriorityMux(alu_table :+ (True -> U"0000"))
+
+    io.ctrl.alu_si.alu_ctr := PriorityMux( Seq(
+    (i_and | i_andi) -> U"0111",   // 选择逻辑与输出
+    (i_or  | i_ori ) -> U"0110",   // 选择逻辑或输出
+    (i_xor | i_xori) -> U"0100",   // 选择异或输出
+    (i_sll | i_slli) -> U"0001",   // 选择移位器输出，左移
+    (i_srl | i_srli) -> U"0101",   // 选择移位器输出，逻辑右移
+    (i_sra | i_srai) -> U"1101",   // 选择移位器输出，算术右移
+    (i_sub)          -> U"1000",   // 选择加法器输出，做减法
+    // (i_add | i_addi) -> U"0000",// 选择加法器输出，做加法
+    (i_lui)          -> U"0011",   // 选择ALU输入B的结果直接输出
+    (i_slt | i_slti | i_beq | i_bne | i_blt | i_bge) -> U"0010",  // 做减法，选择带符号小于置位结果输出, Less按带符号结果设置
+    (i_sltu| i_sltiu| i_bltu| i_bgeu)                -> U"1010",  // 做减法，选择无符号小于置位结果输出, Less按无符号结果设置
+    True -> U"0000"
+  ))
+
 
   // io.ctrl.alu_si.alu_ctr := Mux(i_and | i_andi, U"0111",                                 // 选择逻辑与输出
   //                           Mux(i_or  | i_ori , U"0110",                                 // 选择逻辑或输出

@@ -124,7 +124,7 @@ case class ysyx_23060082_ALU() extends Component {
   val adder_dat_a = io.alu_in1
   val adder_dat_b = Mux(sub_add, ~io.alu_in2, io.alu_in2)
   val adder_cin = sub_add.asUInt
-  val adder_result_33 = adder_dat_a.resize(33) + adder_dat_b.resize(33) + adder_cin.resize(33)
+  val adder_result_33 = adder_dat_a.resize(33) + adder_dat_b.resize(33) + adder_cin.resize(33)    // 扩展为33位计算，便于查看溢出情况
 
   val result_adder = adder_result_33(31 downto 0)   // 计算结果
   val carry = adder_result_33(32)

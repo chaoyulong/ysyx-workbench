@@ -11,7 +11,7 @@ case class CPU() extends Component {
   clockDomain.clock.setName("clock")  // 自定义时钟和复位信号名称，放在最顶层
   clockDomain.reset.setName("reset")
 
-  // ------------------ 定义级间寄存器函数 ------------------ //
+  // ------------------------------------------------------ 定义级间寄存器函数 ------------------------------------------------------ //
   def pipelineConnect[T <: Data, T2 <: Data](
     prevOut: Stream[T],     // 前一级的输出
     thisIn:  Stream[T],     // 这一级的输入  
@@ -22,7 +22,6 @@ case class CPU() extends Component {
     val thisFire = thisOut.valid && thisOut.ready               // 当前级与下一级握手成功，当前级的数据就没用了，可以用来接收数据
     val payloadReg = RegNextWhen(prevOut.payload, prevFire)     // 握手成功更新寄存器
     val validReg = RegInit(False)
-    
     
     when(prevFire) {        // 上游握手成功，说明当前数据处于有效状态
       validReg := True
@@ -37,7 +36,7 @@ case class CPU() extends Component {
     
     prevOut.ready := !validReg || thisFire   // 当数据无效，或者下游握手成功即将无效，此时ready置1,表示可以接收新的数据
   }
-  // ------------------ ------------- ------------------ //
+  // ------------------------------------------------------------------------------------------------------------------------- //
 
   val reg_file = RegFile()
   val ifu = ysyx_23060082_IFU()

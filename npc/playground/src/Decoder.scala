@@ -114,6 +114,9 @@ case class Decoder() extends Component {
               type_B -> immB,
               True -> B"32'h0")).asUInt
 // ------------------------------------------------------- 控制信号生成 ----------------------------------------------------- // 
+// csrrw:   R(rd) = CSR[imm]; *CSR[imm] = src1; 
+// csrrs:   R(rd) = CSR[imm]; *CSR[imm] |= src1;
+
   // ------------------ ebreak ------------------ //
   val my_ebreak = MyEbreak()
   my_ebreak.io.i_ebreak := i_ebreak

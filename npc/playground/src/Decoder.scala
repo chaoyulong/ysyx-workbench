@@ -35,8 +35,10 @@ case class Decoder() extends Component {
   val fun3_decoder = Decoder_3_8()
   fun3_decoder.io.input := func3
   val f3_decode = fun3_decoder.io.output  
-// ****************************************** 指令匹配 ************************************************ //        
-  val i_auipc  = op_decode_h(U"001") & op_decode_l(U"0111")
+// ****************************************** 指令匹配 ************************************************ //     
+// AUIPC              = M"-------------------------0010111"   
+val i_auipc  = (instr.asBits == M"-------------------------0010111"   )
+  // val i_auipc  = op_decode_h(U"001") & op_decode_l(U"0111")
   val i_lui    = op_decode_h(U"011") & op_decode_l(U"0111")
   val i_jal    = op_decode_h(U"110") & op_decode_l(U"1111")
   val i_lb     = op_decode_h(U"000") & op_decode_l(U"0011") & f3_decode(U"000")

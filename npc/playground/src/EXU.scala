@@ -53,8 +53,6 @@ case class ysyx_23060082_EXU() extends Component {
   io.output.rf_ctrl  := io.input.ctrl.rf_si      // 直通数据，在EXU中无作用
   io.output.mem_ctrl  := io.input.ctrl.mem_si    // 直通数据，在EXU中无作用
 
-  // io.input.ready := io.input.valid
-  // io.output.valid := io.input.valid
 }
 
 /*    Branch      跳转类型
@@ -116,16 +114,11 @@ case class ysyx_23060082_ALU() extends Component {
   }
 
   val sub_add = io.alu_ctr(1) | io.alu_ctr(3) // 加法器的加减,经过卡诺图化简
-  val u_s = io.alu_ctr(3) // 符号/无符号
-  val a_l = io.alu_ctr(3) // 算数/逻辑
-  val l_r = io.alu_ctr(2) // 左/右
 
   val adder = Adder()
   adder.io.in1 := io.alu_in1
   adder.io.in2 := io.alu_in2
-  adder.io.sub_add := sub_add.asUInt
-  val carry = adder.io.carry
-  val overflow = adder.io.overflow
+  adder.io.sub_add := sub_add
   val result_adder = adder.io.result
 
   val result_shift = io.alu_ctr(3 downto 2).mux(
@@ -134,9 +127,9 @@ case class ysyx_23060082_ALU() extends Component {
     default -> (io.alu_in1 |<< io.alu_in2(4 downto 0))          // 左移,使用的逻辑左移
   )
 
-  val less_0 = overflow ^ result_adder(31)
-  val less_1 = carry ^ sub_add
-  val less = Mux(u_s, less_1, less_0)
+  val less_0 = adder.io.overflow ^ result_adder(31)
+  val less_1 = adder.io.carry ^ sub_add
+  val less = Mux(io.alu_ctr(3), less_1, less_0)
 
   val result_slt = less.asUInt.resize(32)
   val result_lui = io.alu_in2
@@ -145,7 +138,7 @@ case class ysyx_23060082_ALU() extends Component {
   val result_or  = io.alu_in1 | io.alu_in2;
   val result_and = io.alu_in1 & io.alu_in2;
 
-  io.less := Mux(u_s, less_1, less_0)
+  io.less := Mux(io.alu_ctr(3), less_1, less_0)
   io.zero := adder.io.zero
   io.alu_result := io.alu_ctr(0 to 2).mux(
     U"3'b000" -> result_adder,
@@ -161,9 +154,9 @@ case class ysyx_23060082_ALU() extends Component {
 
 case class Adder() extends Component {
   val io = new Bundle {
-    val in1 = in port UInt(32 bits)
-    val in2 = in port UInt(32 bits)  
-    val sub_add = in port UInt(1 bits)
+    val in1 = in UInt(32 bits)
+    val in2 = in UInt(32 bits)  
+    val sub_add = in Bool()
 
     val carry = out port Bool()
     val zero = out port Bool()
@@ -172,7 +165,7 @@ case class Adder() extends Component {
   }
 
   val dat_a = io.in1
-  val dat_b = Mux(io.sub_add === U(1), ~io.in2, io.in2)
+  val dat_b = Mux(io.sub_add, ~io.in2, io.in2)
   val cin = io.sub_add
   val result_33 = dat_a.resize(33) + dat_b.resize(33) + cin.resize(33)
 

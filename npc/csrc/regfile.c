@@ -20,7 +20,7 @@ const char unfind[] = "xxx";
 
 uint32_t Rpc(void)
 {
-  // return top->rootp->CPU__DOT__pc;
+  return top->rootp->CPU__DOT__ifu__DOT__pc_reg;
   return 0;
 }
 

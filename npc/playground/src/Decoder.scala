@@ -6,7 +6,7 @@ case class Decoder() extends Component {
   val io = new Bundle {
     val instr       = in  UInt(32 bits)
     val ctrl        = out(Ctrl())
-    val instr_type  = out Bits(6 bits)
+    val imm         = out UInt(32 bits)
   }
 
   val instr = io.instr
@@ -23,8 +23,6 @@ case class Decoder() extends Component {
   val func7_40_is_0 = ~(func7(4 downto 0).orR) 
 
   io.ctrl.rf_si.rf_write_addr := instr(11 downto 7)   // 为了写起来简洁，写寄存器地址在此赋值
-
-
 // ****************************************** 指令匹配 ************************************************ //    
   val i_add    = i === M"0000000----------000-----0110011"
   val i_sub    = i === M"0100000----------000-----0110011"
@@ -98,7 +96,19 @@ case class Decoder() extends Component {
   val type_B = (i_beq | i_bne | i_blt | i_bge | i_bltu | i_bgeu)
   val type_R = (i_add | i_sub | i_xor | i_or | i_and | i_sll | i_srl | i_sra | i_slt | i_sltu)
 
-  io.instr_type := type_U ## type_J ## type_I ## type_S ## type_B ## type_R
+  val instr_type := type_U ## type_J ## type_I ## type_S ## type_B ## type_R
+  // ***************************************** 立即数生成 *********************************************** //
+  val immU = U(instr(31 downto 12) ## B"12'b0")
+  val immJ = U((instr(31) #* 12) ## instr(19 downto 12) ## instr(20) ## instr(30 downto 21)## B"0")
+  val immI = U((instr(31) #* 20) ## instr(31 downto 20))
+  val immS = U((instr(31) #* 20) ## instr(31 downto 25) ## instr(11 downto 7))
+  val immB = U((instr(31) #* 20) ## instr(7) ## instr(30 downto 25) ## instr(11 downto 8) ## B"0")
+
+  // 独热码选择器
+  val has_type = instr_type(5 downto 1).orR
+  // val imm_values = Vec(immU, immJ, immI, immS, immB)
+  val imm_values = Vec(immB, immS, immI, immJ, immU)    // 从低位到高位排序，为什么跟常规的有点不一样。。。。
+  io.imm := Mux(has_type, MuxOH(decoder.io.instr_type(5 downto 1), imm_values), U"32'h0")
 // **************************************** 控制信号生成 ********************************************** // 
   val my_ebreak = MyEbreak()
   my_ebreak.io.i_ebreak := i_ebreak

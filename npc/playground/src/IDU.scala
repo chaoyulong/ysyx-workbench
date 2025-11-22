@@ -50,18 +50,6 @@ case class ysyx_23060082_IDU() extends Component {
   val instr = io.input.instr
   val decoder = Decoder()
   decoder.instr := instr         
-// ***************************************** 立即数生成 *********************************************** //
-  val immU = U(instr(31 downto 12) ## B"12'b0")
-  val immJ = U((instr(31) #* 12) ## instr(19 downto 12) ## instr(20) ## instr(30 downto 21)## B"0")
-  val immI = U((instr(31) #* 20) ## instr(31 downto 20))
-  val immS = U((instr(31) #* 20) ## instr(31 downto 25) ## instr(11 downto 7))
-  val immB = U((instr(31) #* 20) ## instr(7) ## instr(30 downto 25) ## instr(11 downto 8) ## B"0")
-
-  // 独热码选择器
-  val has_type = decoder.io.instr_type(5 downto 1).orR
-  // val imm_values = Vec(immU, immJ, immI, immS, immB)
-  val imm_values = Vec(immB, immS, immI, immJ, immU)    // 从低位到高位排序，为什么跟常规的有点不一样。。。。
-  io.output.imm := Mux(has_type, MuxOH(decoder.io.instr_type(5 downto 1), imm_values), U"32'h0")
   // ------------------ 用于握手的部分 ------------------ //
   val willValid = True
   io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
@@ -74,7 +62,7 @@ case class ysyx_23060082_IDU() extends Component {
   io.output.rf_read_data_1  := io.rf_read_data_1
   io.output.rf_read_data_2  := io.rf_read_data_2
   io.output.ctrl            := decoder.io.ctrl
-
+  io.output.imm             := decoder.io.imm
   // io.input.ready := io.input.valid
   // io.output.valid := io.input.valid && willValid
   

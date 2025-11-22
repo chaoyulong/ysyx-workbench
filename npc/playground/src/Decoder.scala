@@ -105,8 +105,8 @@ case class Decoder() extends Component {
 
   // 独热码选择器
   val has_type = type_U | type_J | type_I | type_S | type_B
-  val imm_values = Vec(immB, immS, immI, immJ, immU)    // 从低位到高位排序，为什么跟常规的有点不一样。。。。
-  io.imm := Mux(has_type, MuxOH(type_U ## type_J ## type_I ## type_S ## type_B, imm_values), B"32'h0").asUint
+  val imm_values = Vec(immB.asUint, immS.asUint, immI.asUint, immJ.asUint, immU.asUint)    // 从低位到高位排序，为什么跟常规的有点不一样。。。。
+  io.imm := Mux(has_type, MuxOH(type_U ## type_J ## type_I ## type_S ## type_B, imm_values), U"32'h0")
 // ------------------------------------------------------- 控制信号生成 ----------------------------------------------------- // 
   val my_ebreak = MyEbreak()
   my_ebreak.io.i_ebreak := i_ebreak

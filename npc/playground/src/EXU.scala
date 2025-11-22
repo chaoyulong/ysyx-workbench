@@ -166,11 +166,11 @@ case class Adder() extends Component {
 
   val dat_a = io.in1
   val dat_b = Mux(io.sub_add, ~io.in2, io.in2)
-  val cin = io.sub_add
+  val cin = io.sub_add.asUInt
   val result_33 = dat_a.resize(33) + dat_b.resize(33) + cin.resize(33)
 
   io.carry := result_33(32)
   io.result := result_33(0 to 31)
-  io.zero := io.result === U(0)
+  io.zero := io.result === U"32'h0"
   io.overflow := (dat_a(31) === dat_b(31)) && (io.result(31) =/= dat_a(31));
 }

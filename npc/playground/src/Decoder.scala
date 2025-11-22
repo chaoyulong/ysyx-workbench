@@ -127,29 +127,13 @@ case class Decoder() extends Component {
               type_B -> immB,
               True -> B"32'h0")).asUInt
 
-// // **************************************** 控制信号生成 ********************************************** // 
-//   val my_ebreak = MyEbreak()
-//   my_ebreak.io.i_ebreak := i_ebreak
-
-//   io.ctrl.rf_si.reg_wr := (i_lui|i_auipc|i_jal|i_jalr|i_csrrw| i_csrrs|
-//                             i_addi|i_slti|i_sltiu|i_xori|i_ori|i_andi|i_slli|i_srli|i_srai|
-//                             i_add|i_sub|i_xor|i_or|i_and|i_sll|i_srl|i_sra|i_slt|i_sltu|
-//                             i_lb|i_lh|i_lw|i_lbu|i_lhu)
-//   io.ctrl.alu_si.alu_asrc := (i_auipc | i_jal | i_jalr)                                     // 0：选通rdata1，1：选通PC。
-//   io.ctrl.alu_si.alu_bsrc := Mux(i_jal | i_jalr, U"10",                                  // 选通4，用于跳转
-//                               Mux(i_add|i_sub|i_xor|i_or|i_and|i_sll|i_srl|i_sra|i_slt|
-//                               i_sltu|i_beq|i_bne|i_blt|i_bge|i_bltu|i_bgeu, U"00",       // 选通rdata2
-//                               U"01" ))                                                        // 选通imm
 // ------------------------------------------------------- 控制信号生成 ----------------------------------------------------- // 
-// csrrw:   R(rd) = CSR[imm]; *CSR[imm] = src1; 
-// csrrs:   R(rd) = CSR[imm]; *CSR[imm] |= src1;
-
   // ------------------ ebreak ------------------ //
   val my_ebreak = MyEbreak()
   my_ebreak.io.i_ebreak := i_ebreak
   // -------------------------------------------- //
   // io.ctrl.rf_si.reg_wr    := type_U | type_J | type_I | type_R
-    io.ctrl.rf_si.reg_wr := (i_lui|i_auipc|i_jal|i_jalr|i_csrrw| i_csrrs|
+    io.ctrl.rf_si.reg_wr := (type_U|i_jal|i_jalr|i_csrrw| i_csrrs|
                             i_addi|i_slti|i_sltiu|i_xori|i_ori|i_andi|i_slli|i_srli|i_srai|
                             i_add|i_sub|i_xor|i_or|i_and|i_sll|i_srl|i_sra|i_slt|i_sltu|
                             i_lb|i_lh|i_lw|i_lbu|i_lhu)

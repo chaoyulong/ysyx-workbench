@@ -30,15 +30,15 @@ case class MemCtrl() extends Bundle {   // LSU中消耗的控制信号
   val mem_op   = UInt(3 bits)   // 控制数据存储器读写格式，为010时为4字节读写，为001时为2字节读写带符号扩展，为000时为1字节读写带符号扩展，为101时为2字节读写无符号扩展，为100时为1字节读写无符号扩展
 }
 
-case class CsrCtrl() extends Bundle { // CSR寄存器的控制信号
-  val csr_addr   = UInt(12 bits)      // csr地址
-  val csr_cmd    = UInt(3 bits)       // 0=NOP,1=CSRRW,2=CSRRS
-  val trap_enter = Bool()             // 异常进入
-  val trap_exit  =  Bool()            // MRET
+// case class CsrCtrl() extends Bundle { // CSR寄存器的控制信号
+//   val csr_addr   = UInt(12 bits)      // csr地址
+//   val csr_cmd    = UInt(3 bits)       // 0=NOP,1=CSRRW,2=CSRRS
+//   val trap_enter = Bool()             // 异常进入
+//   val trap_exit  =  Bool()            // MRET
 
-  val pc_in      =  UInt(32 bits)     // 用于写mepc
-  val cause_in   =  UInt(32 bits)     // 异常原因
-}
+//   val pc_in      =  UInt(32 bits)     // 用于写mepc
+//   val cause_in   =  UInt(32 bits)     // 异常原因
+// }
 
 case class Ctrl() extends Bundle {   // 控制信号
   val rf_si  = out(RfCtrl())

@@ -20,9 +20,6 @@ case class Decoder() extends Component {
   val rs2  = instr(24 downto 20)
   val rd   = instr(11 downto 7)
 
-  val func7_is_0 = ~(func7.orR)
-  val func7_40_is_0 = ~(func7(4 downto 0).orR) 
-
   io.ctrl.rf_si.rf_write_addr := instr(11 downto 7)   // 为了写起来简洁，写寄存器地址在此赋值
 // ****************************************** 指令匹配 ************************************************ //    
   val i_add    = i === M"0000000----------000-----0110011"
@@ -121,17 +118,33 @@ case class Decoder() extends Component {
                               Mux(i_add|i_sub|i_xor|i_or|i_and|i_sll|i_srl|i_sra|i_slt|
                               i_sltu|i_beq|i_bne|i_blt|i_bge|i_bltu|i_bgeu, U"00",       // 选通rdata2
                               U"01" ))                                                        // 选通imm
-  io.ctrl.alu_si.alu_ctr := Mux(i_and | i_andi, U"0111",                                 // 选择逻辑与输出
-                            Mux(i_or  | i_ori , U"0110",                                 // 选择逻辑或输出
-                            Mux(i_sra | i_srai, U"1101",                                 // 选择移位器输出，算术右移
-                            Mux(i_srl | i_srli, U"0101",                                // 选择移位器输出，逻辑右移
-                            Mux(i_xor | i_xori, U"0100",                                 // 选择异或输出
-                            Mux(i_lui         , U"0011",                                         // 选择ALU输入B的结果直接输出
-                            Mux(i_sltu| i_sltiu| i_bltu| i_bgeu, U"1010",              // 做减法，选择无符号小于置位结果输出, Less按无符号结果设置
-                            Mux(i_slt | i_slti | i_beq | i_bne | i_blt | i_bge, U"0010",  // 做减法，选择带符号小于置位结果输出, Less按带符号结果设置
-                            Mux(i_sll | i_slli, U"0001",                               // 选择移位器输出，左移
-                            Mux(i_sub         , U"1000",                                          // 选择加法器输出，做减法
-                            U"0000"  ))))))))))                                                    // 选择加法器输出，做加法
+
+  io.ctrl.alu_si.alu_ctr := (Seq(
+                                i_and | i_andi, U"0111",
+                                i_or  | i_ori   -> U"0110",
+                                i_sra | i_srai -> U"1101",
+                                i_srl | i_srli -> U"0101",
+                                i_xor | i_xori -> U"0100",
+                                i_lui          -> U"0011",
+                                i_sltu| i_sltiu| i_bltu| i_bgeu -> U"1010",
+                                i_slt | i_slti | i_beq | i_bne | i_blt | i_bge -> U"0010",
+                                i_sll | i_slli -> U"0001",
+                                i_sub          -> U"1000"
+                              ),
+                              default = U"0000"
+                            )
+
+  // io.ctrl.alu_si.alu_ctr := Mux(i_and | i_andi, U"0111",                                 // 选择逻辑与输出
+  //                           Mux(i_or  | i_ori , U"0110",                                 // 选择逻辑或输出
+  //                           Mux(i_sra | i_srai, U"1101",                                 // 选择移位器输出，算术右移
+  //                           Mux(i_srl | i_srli, U"0101",                                // 选择移位器输出，逻辑右移
+  //                           Mux(i_xor | i_xori, U"0100",                                 // 选择异或输出
+  //                           Mux(i_lui         , U"0011",                                         // 选择ALU输入B的结果直接输出
+  //                           Mux(i_sltu| i_sltiu| i_bltu| i_bgeu, U"1010",              // 做减法，选择无符号小于置位结果输出, Less按无符号结果设置
+  //                           Mux(i_slt | i_slti | i_beq | i_bne | i_blt | i_bge, U"0010",  // 做减法，选择带符号小于置位结果输出, Less按带符号结果设置
+  //                           Mux(i_sll | i_slli, U"0001",                               // 选择移位器输出，左移
+  //                           Mux(i_sub         , U"1000",                                          // 选择加法器输出，做减法
+  //                           U"0000"  ))))))))))                                                    // 选择加法器输出，做加法
   io.ctrl.alu_si.branch :=  Mux(i_jal , U"001",                                            // 无条件跳转PC目标
                 Mux(i_jalr, U"010",                                            // 无条件跳转寄存器目标
                 Mux(i_beq , U"100",                                            // 条件分支，等于

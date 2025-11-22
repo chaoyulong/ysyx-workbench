@@ -128,7 +128,6 @@ case class ysyx_23060082_ALU() extends Component {
   val overflow = adder.io.overflow
   val result_adder = adder.io.result
 
-
   val result_shift = io.alu_ctr(3 downto 2).mux(
     U"01"   -> (io.alu_in1 |>> io.alu_in2(4 downto 0)),         // 逻辑右移
     U"11"   -> (U(S(io.alu_in1) >> io.alu_in2(4 downto 0))),    // 算数右移
@@ -181,20 +180,4 @@ case class Adder() extends Component {
   io.result := result_33(0 to 31)
   io.zero := io.result === U(0)
   io.overflow := (dat_a(31) === dat_b(31)) && (io.result(31) =/= dat_a(31));
-}
-
-case class Shifter() extends Component {
-  val io = new Bundle {
-    val din = in port UInt(32 bits)
-    val shamt = in port UInt(5 bits)
-    val l_r = in port Bool()
-    val a_l = in port Bool()
-    val shift = out port UInt(32 bits)
-  }
-
-  switch(io.a_l ## io.l_r){
-    is(B"01") {io.shift := io.din |>> io.shamt}  // 逻辑右移
-    is(B"11") {io.shift := U(S(io.din) >> io.shamt)}  // 算数右移
-    default   {io.shift := io.din |<< io.shamt}   // 左移,使用的逻辑左移
-  }
 }

@@ -86,14 +86,6 @@ case class ysyx_23060082_BranchCond() extends Component {
     U"111" -> ~io.less,
     default -> False
   )            
-
-  // io.pc_asrc := Mux(decode(U"001") | decode(U"010"), True,
-  //               Mux(decode(U"100"),  io.zero,
-  //               Mux(decode(U"101"), ~io.zero,
-  //               Mux(decode(U"110"),  io.less,
-  //               Mux(decode(U"111"), ~io.less,
-  //               False)))))
-
   io.pc_bsrc := io.branch === U"010"
 }
 
@@ -136,12 +128,12 @@ case class ysyx_23060082_ALU() extends Component {
   val overflow = adder.io.overflow
   val result_adder = adder.io.result
 
-  val shifter = Shifter() 
-  shifter.io.din := io.alu_in1
-  shifter.io.shamt := io.alu_in2(0 to 4)
-  shifter.io.l_r := l_r
-  shifter.io.a_l := a_l
-  val result_shift = shifter.io.shift
+
+  val result_shift = io.alu_ctr(3 downto 2).mux(
+    U"01"   -> io.alu_in1 |>> io.alu_in2(4 downto 0)          // 逻辑右移
+    U"11"   -> U(S(io.alu_in1) >> io.alu_in2(4 downto 0))     // 算数右移
+    default -> io.alu_in1 |<< io.alu_in2(4 downto 0)          // 左移,使用的逻辑左移
+  )
 
   val less_0 = overflow ^ result_adder(31)
   val less_1 = carry ^ sub_add
@@ -154,7 +146,7 @@ case class ysyx_23060082_ALU() extends Component {
   val result_or  = io.alu_in1 | io.alu_in2;
   val result_and = io.alu_in1 & io.alu_in2;
 
-  io.less := less
+  io.less := Mux(u_s, less_1, less_0)
   io.zero := adder.io.zero
   io.alu_result := io.alu_ctr(0 to 2).mux(
     U"3'b000" -> result_adder,

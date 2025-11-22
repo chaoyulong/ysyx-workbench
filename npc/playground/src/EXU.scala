@@ -83,7 +83,7 @@ case class ysyx_23060082_BranchCond() extends Component {
     U"111" -> ~io.less,
     default -> False
   )            
-  io.pc_bsrc := io.branch === U"010"
+  io.pc_bsrc := (io.branch === U"010")
 }
 
 /*              控制信号ALUctr的含义
@@ -113,13 +113,6 @@ case class ysyx_23060082_ALU() extends Component {
   }
 
   val sub_add = io.alu_ctr(1) | io.alu_ctr(3) // 加法器的加减,经过卡诺图化简
-
-  // val adder = Adder()
-  // adder.io.in1 := io.alu_in1
-  // adder.io.in2 := io.alu_in2
-  // adder.io.sub_add := sub_add
-  // val result_adder = adder.io.result
-
   // ------------------ 加法器 ------------------ //
   val adder_dat_a = io.alu_in1
   val adder_dat_b = Mux(sub_add, ~io.alu_in2, io.alu_in2)
@@ -136,12 +129,12 @@ case class ysyx_23060082_ALU() extends Component {
     U"11"   -> (U(S(io.alu_in1) >> io.alu_in2(4 downto 0))),    // 算数右移
     default -> (io.alu_in1 |<< io.alu_in2(4 downto 0))          // 左移,使用的逻辑左移
   )
-  // ------------------ --------------------------- //
+  // ------------------ 小于比较判断 ------------------ //
   val less_0 = overflow ^ result_adder(31)
   val less_1 = carry ^ sub_add
   val less = Mux(io.alu_ctr(3), less_1, less_0)
 
-  // val result_slt = less.asUInt.resize(32)
+  // ------------------ 输出结果 ------------------ //
   val result_slt = U(less #* 32)        // 扩展为32位
   val result_lui = io.alu_in2
   val result_xor = io.alu_in1 ^ io.alu_in2;

@@ -126,10 +126,10 @@ case class ysyx_23060082_ALU() extends Component {
   val adder_cin = io.sub_add.asUInt
   val adder_result_33 = adder_dat_a.resize(33) + adder_dat_b.resize(33) + adder_cin.resize(33)
 
-  io.carry := adder_result_33(32)
-  val result_adder = adder_result_33(31 downto 0)
+  val result_adder = adder_result_33(31 downto 0)   // 计算结果
+  val carry = adder_result_33(32)
   val zero = (result_adder === U"32'h0")
-  io.overflow := (adder_dat_a(31) === adder_dat_b(31)) && (result_adder(31) =/= adder_dat_a(31));
+  val overflow = (adder_dat_a(31) === adder_dat_b(31)) && (result_adder(31) =/= adder_dat_a(31));
   // ------------------ 移位寄存器 ------------------ //
   val result_shift = io.alu_ctr(3 downto 2).mux(
     U"01"   -> (io.alu_in1 |>> io.alu_in2(4 downto 0)),         // 逻辑右移
@@ -137,8 +137,8 @@ case class ysyx_23060082_ALU() extends Component {
     default -> (io.alu_in1 |<< io.alu_in2(4 downto 0))          // 左移,使用的逻辑左移
   )
   // ------------------ --------------------------- //
-  val less_0 = adder.io.overflow ^ result_adder(31)
-  val less_1 = adder.io.carry ^ sub_add
+  val less_0 = overflow ^ result_adder(31)
+  val less_1 = carry ^ sub_add
   val less = Mux(io.alu_ctr(3), less_1, less_0)
 
   val result_slt = less.asUInt.resize(32)

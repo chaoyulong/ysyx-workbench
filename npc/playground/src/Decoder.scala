@@ -105,14 +105,14 @@ case class Decoder() extends Component {
   val immI = (instr(31) #* 20) ## instr(31 downto 20)
   val immS = (instr(31) #* 20) ## instr(31 downto 25) ## instr(11 downto 7)
   val immB = (instr(31) #* 20) ## instr(7) ## instr(30 downto 25) ## instr(11 downto 8) ## B"0"
-  
+
   io.imm := PriorityMux(Seq(
               type_U -> immU,
               type_J -> immJ,
               type_I -> immI,
               type_S -> immS,
               type_B -> immB,
-              True -> U"32'h0"))
+              True -> B"32'h0")).asUInt
 // ------------------------------------------------------- 控制信号生成 ----------------------------------------------------- // 
   // ------------------ ebreak ------------------ //
   val my_ebreak = MyEbreak()

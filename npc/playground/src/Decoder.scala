@@ -109,7 +109,7 @@ case class Decoder() extends Component {
   val has_type = instr_type(5 downto 1).orR
   // val imm_values = Vec(immU, immJ, immI, immS, immB)
   val imm_values = Vec(immB, immS, immI, immJ, immU)    // 从低位到高位排序，为什么跟常规的有点不一样。。。。
-  io.imm := Mux(has_type, MuxOH(decoder.io.instr_type(5 downto 1), imm_values), U"32'h0")
+  io.imm := Mux(has_type, MuxOH(instr_type(5 downto 1), imm_values), U"32'h0")
 // **************************************** 控制信号生成 ********************************************** // 
   val my_ebreak = MyEbreak()
   my_ebreak.io.i_ebreak := i_ebreak

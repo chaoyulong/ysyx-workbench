@@ -120,7 +120,7 @@ case class Decoder() extends Component {
                               U"01" ))                                                        // 选通imm
 
   io.ctrl.alu_si.alu_ctr := (Seq(
-                                i_and | i_andi, U"0111",
+                                i_and | i_andi  -> U"0111",
                                 i_or  | i_ori   -> U"0110",
                                 i_sra | i_srai -> U"1101",
                                 i_srl | i_srli -> U"0101",

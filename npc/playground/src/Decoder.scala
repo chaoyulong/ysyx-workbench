@@ -1,6 +1,7 @@
 package playground
 
 import spinal.core._
+import spinal.lib._    // 使用spinal的模块库
 
 case class Decoder() extends Component {
   val io = new Bundle {

@@ -119,7 +119,7 @@ case class ysyx_23060082_ALU() extends Component {
   adder.io.in1 := io.alu_in1
   adder.io.in2 := io.alu_in2
   // adder.io.sub_add := sub_add
-  adder.io.sub_add := False
+  adder.io.sub_add := True
   val result_adder = adder.io.result
 
   val result_shift = io.alu_ctr(3 downto 2).mux(

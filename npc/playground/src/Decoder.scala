@@ -147,7 +147,7 @@ case class Decoder() extends Component {
                               i_bne            -> U"101",     // 条件分支，不等于
                               (i_blt | i_bltu) -> U"110",     // 条件分支，小于
                               (i_bge | i_bgeu) -> U"111",     // 条件分支，大于等于
-                              True             -> U"0000"))
+                              True             -> U"000"))
 
   io.ctrl.rf_si.mem2reg  := op(6 downto 2) === U"00000"       // i_lb | i_lh | i_lw | i_lbu | i_lhu
   io.ctrl.mem_si.mem_wr  := type_S                            // i_sb | i_sh | i_sw

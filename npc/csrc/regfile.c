@@ -21,14 +21,17 @@ const char unfind[] = "xxx";
 uint32_t Rpc(void)
 {
   return top->rootp->CPU__DOT__ifu__DOT__pc_reg;
-  return 0;
 }
 
 uint32_t gpr(int n)
-{
-  // uint32_t *rf_base_addr = &(top->rootp->CPU__DOT__reg_file__DOT__rf_0);
-  // return rf_base_addr[n];
-  return 0;
+{  
+  static uint32_t *rf_base_addr = &(top->rootp->CPU__DOT__reg_file__DOT__rf_0);
+  if(n >= REG_NUM)
+  {
+    printf("register only [0 - 15]");
+    assert(0);
+  }
+  return rf_base_addr[n];
 }
 
 void isa_reg_display()  // 共有32个寄存器

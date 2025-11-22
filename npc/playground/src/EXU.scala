@@ -130,9 +130,9 @@ case class ysyx_23060082_ALU() extends Component {
 
 
   val result_shift = io.alu_ctr(3 downto 2).mux(
-    U"01"   -> io.alu_in1 |>> io.alu_in2(4 downto 0),         // 逻辑右移
-    U"11"   -> U(S(io.alu_in1) >> io.alu_in2(4 downto 0)),    // 算数右移
-    default -> io.alu_in1 |<< io.alu_in2(4 downto 0)          // 左移,使用的逻辑左移
+    U"01"   -> (io.alu_in1 |>> io.alu_in2(4 downto 0)),         // 逻辑右移
+    U"11"   -> (U(S(io.alu_in1) >> io.alu_in2(4 downto 0))),    // 算数右移
+    default -> (io.alu_in1 |<< io.alu_in2(4 downto 0))          // 左移,使用的逻辑左移
   )
 
   val less_0 = overflow ^ result_adder(31)

@@ -77,18 +77,24 @@ case class ysyx_23060082_BranchCond() extends Component {
     val pc_bsrc= out Bool()
   }
 
-  val branch_decoder = Decoder_3_8()
-  branch_decoder.io.input := io.branch
-  val decode = branch_decoder.io.output  
+  io.pc_asrc := io.branch.mux(
+    U"001" -> True,
+    U"010" -> True,
+    U"100" -> io.zero,
+    U"101" -> ~io.zero,
+    U"110" -> io.less,
+    U"111" -> ~io.less,
+    default -> False
+  )            
 
-  io.pc_asrc := Mux(decode(U"001") | decode(U"010"), True,
-                Mux(decode(U"100"),  io.zero,
-                Mux(decode(U"101"), ~io.zero,
-                Mux(decode(U"110"),  io.less,
-                Mux(decode(U"111"), ~io.less,
-                False)))))
+  // io.pc_asrc := Mux(decode(U"001") | decode(U"010"), True,
+  //               Mux(decode(U"100"),  io.zero,
+  //               Mux(decode(U"101"), ~io.zero,
+  //               Mux(decode(U"110"),  io.less,
+  //               Mux(decode(U"111"), ~io.less,
+  //               False)))))
 
-  io.pc_bsrc := decode(U"010")
+  io.pc_bsrc := io.branch === U"010"
 }
 
 /*              控制信号ALUctr的含义

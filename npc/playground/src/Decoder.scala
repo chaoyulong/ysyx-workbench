@@ -130,7 +130,10 @@ case class Decoder() extends Component {
   (i_lui,                              U"0011")
 )
 
-io.ctrl.alu_si.alu_ctr := alu_table.find(_._1).map(_._2).getOrElse(U"0000")
+io.ctrl.alu_si.alu_ctr := PriorityMux(
+  alu_table.map { case (cond, value) => cond -> value },
+  default = U"0000"
+)
 
   // io.ctrl.alu_si.alu_ctr := Mux(i_and | i_andi, U"0111",                                 // 选择逻辑与输出
   //                           Mux(i_or  | i_ori , U"0110",                                 // 选择逻辑或输出

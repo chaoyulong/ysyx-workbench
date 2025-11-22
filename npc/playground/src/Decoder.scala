@@ -105,22 +105,21 @@ case class Decoder() extends Component {
   val immI = (instr(31) #* 20) ## instr(31 downto 20)
   val immS = (instr(31) #* 20) ## instr(31 downto 25) ## instr(11 downto 7)
   val immB = (instr(31) #* 20) ## instr(7) ## instr(30 downto 25) ## instr(11 downto 8) ## B"0"
-
-  // 独热码选择器
-  val has_type = type_U | type_J | type_I | type_S | type_B
-  val imm_values = Vec(immB, immS, immI, immJ, immU)          // 从低位到高位排序，为什么跟常规的有点不一样。。。。
-  io.imm := Mux(has_type, MuxOH(type_U ## type_J ## type_I ## type_S ## type_B, imm_values).asUInt , U"32'h0")
+  
+  io.imm := PriorityMux(Seq(
+              type_U -> immU,
+              type_J -> immJ,
+              type_I -> immI,
+              type_S -> immS,
+              type_B -> immB,
+              True -> U"32'h0"))
 // ------------------------------------------------------- 控制信号生成 ----------------------------------------------------- // 
   // ------------------ ebreak ------------------ //
   val my_ebreak = MyEbreak()
   my_ebreak.io.i_ebreak := i_ebreak
   // -------------------------------------------- //
-  // io.ctrl.rf_si.reg_wr := (i_lui|i_auipc|i_jal|i_jalr|i_csrrw| i_csrrs|
-  //                           i_addi|i_slti|i_sltiu|i_xori|i_ori|i_andi|i_slli|i_srli|i_srai|
-  //                           i_add|i_sub|i_xor|i_or|i_and|i_sll|i_srl|i_sra|i_slt|i_sltu|
-  //                           i_lb|i_lh|i_lw|i_lbu|i_lhu)
   io.ctrl.rf_si.reg_wr    := type_U | type_J | type_I | type_R
-  io.ctrl.alu_si.alu_asrc := (i_auipc | i_jal | i_jalr)       // 0：选通rdata1，1：选通PC。
+  io.ctrl.alu_si.alu_asrc := i_auipc | i_jal | i_jalr         // 0：选通rdata1，1：选通PC。
 
   io.ctrl.alu_si.alu_bsrc :=Mux(type_R | type_B, U"00",       // 选通rdata2
                             Mux(i_jal  | i_jalr, U"10",       // 选通4，用于跳转

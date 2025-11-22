@@ -107,7 +107,7 @@ case class Decoder() extends Component {
   
   val type_U = op(4 downto 2) === U"101"
   val type_J = op(6 downto 2) === U"11011"
-  val type_I = op(6 downto 2) === U"00100" || op(6 downto 2) === U"00000" || (op(6 downto 2) === U"11100" && func3 =/= U"000")
+  val type_I = op(6 downto 2) === U"00100" || op(6 downto 2) === U"00000" || op(6 downto 2) === U"11001" || (op(6 downto 2) === U"11100" && func3 =/= U"000")
   val type_S = op(6 downto 2) === U"01000"
   val type_B = op(6 downto 2) === U"11000"
   val type_R = op(6 downto 2) === U"01100"

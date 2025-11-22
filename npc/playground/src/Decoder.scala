@@ -97,13 +97,21 @@ case class Decoder() extends Component {
   val i_fence_i= op_decode_h(U"000") & op_decode_l(U"1111") & f3_decode(U"001");
 
 // ***************************************** 指令类型 *********************************************** //
-  val type_U = (i_auipc | i_lui)
-  val type_J = (i_jal)
-  val type_I = (i_lb | i_lh | i_lw | i_lbu | i_lhu | i_addi | i_slti | i_sltiu | i_xori | 
-                   i_ori | i_andi | i_slli | i_srli | i_srai | i_jalr | i_csrrw | i_csrrs)            
-  val type_S = (i_sb | i_sh | i_sw)
-  val type_B = (i_beq | i_bne | i_blt | i_bge | i_bltu | i_bgeu)
-  val type_R = (i_add | i_sub | i_xor | i_or | i_and | i_sll | i_srl | i_sra | i_slt | i_sltu)
+  // val type_U = (i_auipc | i_lui)
+  // val type_J = (i_jal)
+  // val type_I = (i_lb | i_lh | i_lw | i_lbu | i_lhu | i_addi | i_slti | i_sltiu | i_xori | 
+  //                  i_ori | i_andi | i_slli | i_srli | i_srai | i_jalr | i_csrrw | i_csrrs)            
+  // val type_S = (i_sb | i_sh | i_sw)
+  // val type_B = (i_beq | i_bne | i_blt | i_bge | i_bltu | i_bgeu)
+  // val type_R = (i_add | i_sub | i_xor | i_or | i_and | i_sll | i_srl | i_sra | i_slt | i_sltu)
+  
+    val type_U = op(4 downto 2) === U"101"
+  val type_J = op(6 downto 2) === U"11011"
+  val type_I = op(6 downto 2) === U"00100" || op(6 downto 2) === U"00000" || (op(6 downto 2) === U"11100" && func3 =/= U"000")
+  val type_S = op(6 downto 2) === U"01000"
+  val type_B = op(6 downto 2) === U"11000"
+  val type_R = op(6 downto 2) === U"01100"
+  val type_N = (op(6 downto 2) === U"11100" && func3 === U"000") || op(6 downto 2) === U"00011"   // 系统指令
 
     val immU = instr(31 downto 12) ## B"12'b0"
   val immJ = (instr(31) #* 12) ## instr(19 downto 12) ## instr(20) ## instr(30 downto 21)## B"0"

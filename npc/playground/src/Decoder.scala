@@ -9,7 +9,8 @@ case class Decoder() extends Component {
     val instr_type  = out Bits(6 bits)
   }
 
-  val instr = io.instr.asBits
+  val instr = io.instr
+  val i     = io.instr.asBits
 
   val op   = instr( 6 downto  0)     
   val func3= instr(14 downto 12)
@@ -220,7 +221,7 @@ case class Decoder() extends Component {
   val i_sb     = op_decode_h(U"010") & op_decode_l(U"0011") & f3_decode(U"000")
   val i_sh     = op_decode_h(U"010") & op_decode_l(U"0011") & f3_decode(U"001")
   val i_sw     = op_decode_h(U"010") & op_decode_l(U"0011") & f3_decode(U"010")
-  val i_add    = M"0000000----------000-----0110011"
+  val i_add    = i === M"0000000----------000-----0110011"
   val i_sub    = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"000") & func7_40_is_0 & func7(5) & ~func7(6)
   val i_xor    = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"100") & func7_is_0
   val i_or     = op_decode_h(U"011") & op_decode_l(U"0011") & f3_decode(U"110") & func7_is_0

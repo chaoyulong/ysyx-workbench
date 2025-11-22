@@ -16,12 +16,9 @@ case class Decoder() extends Component {
   val op   = instr( 6 downto  0)     
   val func3= instr(14 downto 12)
   val func7= instr(31 downto 25)
-  val rs1  = instr(19 downto 15) 
-  val rs2  = instr(24 downto 20)
-  val rd   = instr(11 downto 7)
 
   io.ctrl.rf_si.rf_write_addr := instr(11 downto 7)   // 为了写起来简洁，写寄存器地址在此赋值
-// ****************************************** 指令匹配 ************************************************ //    
+// --------------------------------------------------------- 指令匹配 --------------------------------------------------------- //    
   val i_add    = i === M"0000000----------000-----0110011"
   val i_sub    = i === M"0100000----------000-----0110011"
   val i_sll    = i === M"0000000----------001-----0110011"
@@ -63,22 +60,22 @@ case class Decoder() extends Component {
   val i_lui    = i === M"-------------------------0110111"
   val i_auipc  = i === M"-------------------------0010111"
 
-  val i_mul    = i === M"0000001----------000-----0110011"
-  val i_mulh   = i === M"0000001----------001-----0110011"
-  val i_mulhsu = i === M"0000001----------010-----0110011"
-  val i_mulhu  = i === M"0000001----------011-----0110011"
+  // val i_mul    = i === M"0000001----------000-----0110011"
+  // val i_mulh   = i === M"0000001----------001-----0110011"
+  // val i_mulhsu = i === M"0000001----------010-----0110011"
+  // val i_mulhu  = i === M"0000001----------011-----0110011"
 
-  val i_div    = i === M"0000001----------100-----0110011"
-  val i_divu   = i === M"0000001----------101-----0110011"
-  val i_rem    = i === M"0000001----------110-----0110011"
-  val i_remu   = i === M"0000001----------111-----0110011"
+  // val i_div    = i === M"0000001----------100-----0110011"
+  // val i_divu   = i === M"0000001----------101-----0110011"
+  // val i_rem    = i === M"0000001----------110-----0110011"
+  // val i_remu   = i === M"0000001----------111-----0110011"
 
   val i_csrrw  = i === M"-----------------001-----1110011"
   val i_csrrs  = i === M"-----------------010-----1110011"
-  val i_csrrc  = i === M"-----------------011-----1110011"
-  val i_csrrwi = i === M"-----------------101-----1110011"
-  val i_csrrsi = i === M"-----------------110-----1110011"
-  val i_csrrci = i === M"-----------------111-----1110011"
+  // val i_csrrc  = i === M"-----------------011-----1110011"
+  // val i_csrrwi = i === M"-----------------101-----1110011"
+  // val i_csrrsi = i === M"-----------------110-----1110011"
+  // val i_csrrci = i === M"-----------------111-----1110011"
 
   val i_ecall  = i === M"00000000000000000000000001110011"
   val i_ebreak = i === M"00000000000100000000000001110011"
@@ -86,13 +83,20 @@ case class Decoder() extends Component {
 
   val i_fence_i= i === M"-----------------001-----0001111"
 // --------------------------------------------------------- 指令类型 ------------------------------------------------------ //
-  val type_U = (i_auipc | i_lui)
-  val type_J = (i_jal)
-  val type_I = (i_lb | i_lh | i_lw | i_lbu | i_lhu | i_addi | i_slti | i_sltiu | i_xori | 
-                   i_ori | i_andi | i_slli | i_srli | i_srai | i_jalr | i_csrrw | i_csrrs)            
-  val type_S = (i_sb | i_sh | i_sw)
-  val type_B = (i_beq | i_bne | i_blt | i_bge | i_bltu | i_bgeu)
-  val type_R = (i_add | i_sub | i_xor | i_or | i_and | i_sll | i_srl | i_sra | i_slt | i_sltu)
+  // val type_U = (i_auipc | i_lui)
+  // val type_J = (i_jal)
+  // val type_I = (i_lb | i_lh | i_lw | i_lbu | i_lhu | i_addi | i_slti | i_sltiu | i_xori | 
+  //                  i_ori | i_andi | i_slli | i_srli | i_srai | i_jalr | i_csrrw | i_csrrs)     
+  // val type_S = (i_sb | i_sh | i_sw)
+  // val type_B = (i_beq | i_bne | i_blt | i_bge | i_bltu | i_bgeu)
+  // val type_R = (i_add | i_sub | i_xor | i_or | i_and | i_sll | i_srl | i_sra | i_slt | i_sltu)
+
+  val type_U = op(4 downto 2) === U"101"
+  val type_J = op(6 downto 2) === U"11011"
+  val type_I = op(6 downto 2) === U"00100"
+  val type_S = op(6 downto 2) === U"01000"
+  val type_B = op(6 downto 2) === U"11000"
+  val type_R = op(6 downto 2) === U"01100"
   // ------------------------------------------------------ 立即数生成 ------------------------------------------------------ //
   val immU = instr(31 downto 12) ## B"12'b0"
   val immJ = (instr(31) #* 12) ## instr(19 downto 12) ## instr(20) ## instr(30 downto 21)## B"0"
@@ -114,22 +118,27 @@ case class Decoder() extends Component {
                             i_add|i_sub|i_xor|i_or|i_and|i_sll|i_srl|i_sra|i_slt|i_sltu|
                             i_lb|i_lh|i_lw|i_lbu|i_lhu)
   io.ctrl.alu_si.alu_asrc := (i_auipc | i_jal | i_jalr)                                     // 0：选通rdata1，1：选通PC。
-  io.ctrl.alu_si.alu_bsrc := Mux(i_jal | i_jalr, U"10",                                  // 选通4，用于跳转
-                              Mux(i_add|i_sub|i_xor|i_or|i_and|i_sll|i_srl|i_sra|i_slt|
-                              i_sltu|i_beq|i_bne|i_blt|i_bge|i_bltu|i_bgeu, U"00",       // 选通rdata2
-                              U"01" ))                                                        // 选通imm
 
-  io.ctrl.alu_si.alu_ctr := Mux(i_and | i_andi, "0111",                                 // 选择逻辑与输出
-                            Mux(i_or  | i_ori , "0110",                                 // 选择逻辑或输出
-                            Mux(i_sra | i_srai, "1101",                                 // 选择移位器输出，算术右移
-                            Mux(i_srl | i_srli, "0101",                                // 选择移位器输出，逻辑右移
-                            Mux(i_xor | i_xori, "0100",                                 // 选择异或输出
-                            Mux(i_lui         , "0011",                                         // 选择ALU输入B的结果直接输出
-                            Mux(i_sltu| i_sltiu| i_bltu| i_bgeu, "1010",              // 做减法，选择无符号小于置位结果输出, Less按无符号结果设置
-                            Mux(i_slt | i_slti | i_beq | i_bne | i_blt | i_bge, "0010",  // 做减法，选择带符号小于置位结果输出, Less按带符号结果设置
-                            Mux(i_sll | i_slli, "0001",                               // 选择移位器输出，左移
-                            Mux(i_sub         , "1000",                                          // 选择加法器输出，做减法
-                            "0000"  ))))))))))                                                    // 选择加法器输出，做加法
+  io.ctrl.alu_si.alu_bsrc :=Mux(type_R, U"00",                                  // 选通rdata2
+                            Mux(i_jal | i_jalr, U"10",       // 选通4，用于跳转
+                            U"01" ))   // 选通imm
+  // io.ctrl.alu_si.alu_bsrc := Mux(i_jal | i_jalr, U"10",                                  // 选通4，用于跳转
+  //                             Mux(i_add|i_sub|i_xor|i_or|i_and|i_sll|i_srl|i_sra|i_slt|
+  //                             i_sltu|i_beq|i_bne|i_blt|i_bge|i_bltu|i_bgeu, U"00",       // 选通rdata2
+  //                             U"01" ))                                                        // 选通imm
+  
+
+  io.ctrl.alu_si.alu_ctr := Mux(i_and | i_andi, U"0111",                                 // 选择逻辑与输出
+                            Mux(i_or  | i_ori , U"0110",                                 // 选择逻辑或输出
+                            Mux(i_sra | i_srai, U"1101",                                 // 选择移位器输出，算术右移
+                            Mux(i_srl | i_srli, U"0101",                                // 选择移位器输出，逻辑右移
+                            Mux(i_xor | i_xori, U"0100",                                 // 选择异或输出
+                            Mux(i_lui         , U"0011",                                         // 选择ALU输入B的结果直接输出
+                            Mux(i_sltu| i_sltiu| i_bltu| i_bgeu, U"1010",              // 做减法，选择无符号小于置位结果输出, Less按无符号结果设置
+                            Mux(i_slt | i_slti | i_beq | i_bne | i_blt | i_bge, U"0010",  // 做减法，选择带符号小于置位结果输出, Less按带符号结果设置
+                            Mux(i_sll | i_slli, U"0001",                               // 选择移位器输出，左移
+                            Mux(i_sub         , U"1000",                                          // 选择加法器输出，做减法
+                            U"0000"  ))))))))))                                                    // 选择加法器输出，做加法
 
   // io.ctrl.alu_si.alu_ctr := Mux(i_and | i_andi, U"0111",                                 // 选择逻辑与输出
   //                           Mux(i_or  | i_ori , U"0110",                                 // 选择逻辑或输出

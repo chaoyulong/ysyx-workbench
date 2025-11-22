@@ -151,10 +151,11 @@ case class Decoder() extends Component {
   io.ctrl.rf_si.reg_wr    := type_U | type_J | type_I | type_R
   io.ctrl.alu_si.alu_asrc := i_auipc | i_jal | i_jalr         // 0：选通rdata1，1：选通PC。
 
-  io.ctrl.alu_si.alu_bsrc :=Mux(type_R | type_B, U"00",       // 选通rdata2
-                            Mux(i_jal  | i_jalr, U"10",       // 选通4，用于跳转
-                            U"01" ))                          // 选通imm 
-                            
+  io.ctrl.alu_si.alu_bsrc := Mux(i_jal | i_jalr, U"10",                                  // 选通4，用于跳转
+                              Mux(i_add|i_sub|i_xor|i_or|i_and|i_sll|i_srl|i_sra|i_slt|
+                              i_sltu|i_beq|i_bne|i_blt|i_bge|i_bltu|i_bgeu, U"00",       // 选通rdata2
+                              U"01" ))                                                        // 选通imm
+
   io.ctrl.alu_si.alu_ctr := Mux(i_and | i_andi, U"0111",                                 // 选择逻辑与输出
                             Mux(i_or  | i_ori , U"0110",                                 // 选择逻辑或输出
                             Mux(i_sra | i_srai, U"1101",                                 // 选择移位器输出，算术右移

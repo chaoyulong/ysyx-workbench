@@ -119,20 +119,17 @@ case class Decoder() extends Component {
                               i_sltu|i_beq|i_bne|i_blt|i_bge|i_bltu|i_bgeu, U"00",       // 选通rdata2
                               U"01" ))                                                        // 选通imm
 
-  io.ctrl.alu_si.alu_ctr := (Seq(
-                                i_and | i_andi  -> U"0111",
-                                i_or  | i_ori   -> U"0110",
-                                i_sra | i_srai -> U"1101",
-                                i_srl | i_srli -> U"0101",
-                                i_xor | i_xori -> U"0100",
-                                i_lui          -> U"0011",
-                                i_sltu| i_sltiu| i_bltu| i_bgeu -> U"1010",
-                                i_slt | i_slti | i_beq | i_bne | i_blt | i_bge -> U"0010",
-                                i_sll | i_slli -> U"0001",
-                                i_sub          -> U"1000"
-                              ),
-                              default = U"0000"
-                            )
+  io.ctrl.alu_si.alu_ctr := Mux(i_and | i_andi, "0111",                                 // 选择逻辑与输出
+                            Mux(i_or  | i_ori , "0110",                                 // 选择逻辑或输出
+                            Mux(i_sra | i_srai, "1101",                                 // 选择移位器输出，算术右移
+                            Mux(i_srl | i_srli, "0101",                                // 选择移位器输出，逻辑右移
+                            Mux(i_xor | i_xori, "0100",                                 // 选择异或输出
+                            Mux(i_lui         , "0011",                                         // 选择ALU输入B的结果直接输出
+                            Mux(i_sltu| i_sltiu| i_bltu| i_bgeu, "1010",              // 做减法，选择无符号小于置位结果输出, Less按无符号结果设置
+                            Mux(i_slt | i_slti | i_beq | i_bne | i_blt | i_bge, "0010",  // 做减法，选择带符号小于置位结果输出, Less按带符号结果设置
+                            Mux(i_sll | i_slli, "0001",                               // 选择移位器输出，左移
+                            Mux(i_sub         , "1000",                                          // 选择加法器输出，做减法
+                            "0000"  ))))))))))                                                    // 选择加法器输出，做加法
 
   // io.ctrl.alu_si.alu_ctr := Mux(i_and | i_andi, U"0111",                                 // 选择逻辑与输出
   //                           Mux(i_or  | i_ori , U"0110",                                 // 选择逻辑或输出

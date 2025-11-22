@@ -135,7 +135,7 @@ case class Decoder() extends Component {
   // io.ctrl.rf_si.reg_wr    := type_U | type_J | type_I | type_R
     io.ctrl.rf_si.reg_wr := (type_U |type_J |i_jalr|i_csrrw| i_csrrs|
                             i_addi|i_slti|i_sltiu|i_xori|i_ori|i_andi|i_slli|i_srli|i_srai|
-                            i_add|i_sub|i_xor|i_or|i_and|i_sll|i_srl|i_sra|i_slt|i_sltu|
+                            type_R|
                             i_lb|i_lh|i_lw|i_lbu|i_lhu)
   io.ctrl.alu_si.alu_asrc := i_auipc | i_jal | i_jalr         // 0：选通rdata1，1：选通PC。
 

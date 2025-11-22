@@ -161,26 +161,3 @@ case class ysyx_23060082_ALU() extends Component {
     U"3'b111" -> result_and  ,
   )
 }
-
-case class Adder() extends Component {
-  val io = new Bundle {
-    val in1 = in UInt(32 bits)
-    val in2 = in UInt(32 bits)  
-    val sub_add = in Bool()
-
-    val carry = out port Bool()
-    val zero = out port Bool()
-    val overflow = out port Bool()
-    val result = out port UInt(32 bits)
-  }
-
-  val dat_a = io.in1
-  val dat_b = Mux(io.sub_add, ~io.in2, io.in2)
-  val cin = io.sub_add.asUInt
-  val result_33 = dat_a.resize(33) + dat_b.resize(33) + cin.resize(33)
-
-  io.carry := result_33(32)
-  io.result := result_33(0 to 31)
-  io.zero := io.result === U"32'h0"
-  io.overflow := (dat_a(31) === dat_b(31)) && (io.result(31) =/= dat_a(31));
-}

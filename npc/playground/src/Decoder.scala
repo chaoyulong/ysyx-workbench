@@ -88,7 +88,7 @@ case class Decoder() extends Component {
   val i_mret   = i === M"00110000001000000000000001110011"
 
   val i_fence_i= i === M"-----------------001-----0001111"
-// ***************************************** 指令类型 *********************************************** //
+// --------------------------------------------------------- 指令类型 ------------------------------------------------------ //
   val type_U = (i_auipc | i_lui)
   val type_J = (i_jal)
   val type_I = (i_lb | i_lh | i_lw | i_lbu | i_lhu | i_addi | i_slti | i_sltiu | i_xori | 
@@ -96,9 +96,7 @@ case class Decoder() extends Component {
   val type_S = (i_sb | i_sh | i_sw)
   val type_B = (i_beq | i_bne | i_blt | i_bge | i_bltu | i_bgeu)
   val type_R = (i_add | i_sub | i_xor | i_or | i_and | i_sll | i_srl | i_sra | i_slt | i_sltu)
-
-  val instr_type = type_U ## type_J ## type_I ## type_S ## type_B ## type_R
-  // ***************************************** 立即数生成 *********************************************** //
+  // ------------------------------------------------------ 立即数生成 ------------------------------------------------------ //
   val immU = U(instr(31 downto 12) ## B"12'b0")
   val immJ = U((instr(31) #* 12) ## instr(19 downto 12) ## instr(20) ## instr(30 downto 21)## B"0")
   val immI = U((instr(31) #* 20) ## instr(31 downto 20))
@@ -106,11 +104,10 @@ case class Decoder() extends Component {
   val immB = U((instr(31) #* 20) ## instr(7) ## instr(30 downto 25) ## instr(11 downto 8) ## B"0")
 
   // 独热码选择器
-  val has_type = instr_type(5 downto 1).orR
-  // val imm_values = Vec(immU, immJ, immI, immS, immB)
+  val has_type = type_U | type_J | type_I | type_S | type_B
   val imm_values = Vec(immB, immS, immI, immJ, immU)    // 从低位到高位排序，为什么跟常规的有点不一样。。。。
-  io.imm := Mux(has_type, MuxOH(instr_type(5 downto 1), imm_values), U"32'h0")
-// **************************************** 控制信号生成 ********************************************** // 
+  io.imm := Mux(has_type, MuxOH(type_U ## type_J ## type_I ## type_S ## type_B, imm_values), U"32'h0")
+// ------------------------------------------------------- 控制信号生成 ----------------------------------------------------- // 
   val my_ebreak = MyEbreak()
   my_ebreak.io.i_ebreak := i_ebreak
 

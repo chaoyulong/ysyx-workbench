@@ -133,10 +133,8 @@ case class Decoder() extends Component {
   my_ebreak.io.i_ebreak := i_ebreak
   // -------------------------------------------- //
   // io.ctrl.rf_si.reg_wr    := type_U | type_J | type_I | type_R
-    io.ctrl.rf_si.reg_wr := (type_U |type_J |i_jalr|i_csrrw| i_csrrs|
-                            i_addi|i_slti|i_sltiu|i_xori|i_ori|i_andi|i_slli|i_srli|i_srai|
-                            type_R|
-                            i_lb|i_lh|i_lw|i_lbu|i_lhu)
+    io.ctrl.rf_si.reg_wr := (type_U |type_J | type_I | type_R)
+                            
   io.ctrl.alu_si.alu_asrc := i_auipc | i_jal | i_jalr         // 0：选通rdata1，1：选通PC。
 
   io.ctrl.alu_si.alu_bsrc :=Mux(type_R | type_B, U"00",       // 选通rdata2

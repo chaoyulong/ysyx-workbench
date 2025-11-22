@@ -114,31 +114,41 @@ case class ysyx_23060082_ALU() extends Component {
 
   val sub_add = io.alu_ctr(1) | io.alu_ctr(3) // 加法器的加减,经过卡诺图化简
 
-  val adder = Adder()
-  adder.io.in1 := io.alu_in1
-  adder.io.in2 := io.alu_in2
-  adder.io.sub_add := sub_add
-  val result_adder = adder.io.result
+  // val adder = Adder()
+  // adder.io.in1 := io.alu_in1
+  // adder.io.in2 := io.alu_in2
+  // adder.io.sub_add := sub_add
+  // val result_adder = adder.io.result
 
+  // ------------------ 加法器 ------------------ //
+  val adder_dat_a = io.alu_in1
+  val adder_dat_b = Mux(sub_add, ~io.alu_in2, io.alu_in2)
+  val adder_cin = io.sub_add.asUInt
+  val adder_result_33 = adder_dat_a.resize(33) + adder_dat_b.resize(33) + adder_cin.resize(33)
+
+  io.carry := adder_result_33(32)
+  val result_adder = adder_result_33(31 downto 0)
+  val zero = (result_adder === U"32'h0")
+  io.overflow := (adder_dat_a(31) === adder_dat_b(31)) && (result_adder(31) =/= adder_dat_a(31));
+  // ------------------ 移位寄存器 ------------------ //
   val result_shift = io.alu_ctr(3 downto 2).mux(
     U"01"   -> (io.alu_in1 |>> io.alu_in2(4 downto 0)),         // 逻辑右移
     U"11"   -> (U(S(io.alu_in1) >> io.alu_in2(4 downto 0))),    // 算数右移
     default -> (io.alu_in1 |<< io.alu_in2(4 downto 0))          // 左移,使用的逻辑左移
   )
-
+  // ------------------ --------------------------- //
   val less_0 = adder.io.overflow ^ result_adder(31)
   val less_1 = adder.io.carry ^ sub_add
   val less = Mux(io.alu_ctr(3), less_1, less_0)
 
   val result_slt = less.asUInt.resize(32)
   val result_lui = io.alu_in2
-
   val result_xor = io.alu_in1 ^ io.alu_in2;
   val result_or  = io.alu_in1 | io.alu_in2;
   val result_and = io.alu_in1 & io.alu_in2;
 
-  io.less := Mux(io.alu_ctr(3), less_1, less_0)
-  io.zero := adder.io.zero
+  io.less := less
+  io.zero := zero
   io.alu_result := io.alu_ctr(2 downto 0).mux(
     U"3'b000" -> result_adder,
     U"3'b001" -> result_shift,

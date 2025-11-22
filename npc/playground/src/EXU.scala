@@ -123,7 +123,7 @@ case class ysyx_23060082_ALU() extends Component {
   // ------------------ 加法器 ------------------ //
   val adder_dat_a = io.alu_in1
   val adder_dat_b = Mux(sub_add, ~io.alu_in2, io.alu_in2)
-  val adder_cin = io.sub_add.asUInt
+  val adder_cin = sub_add.asUInt
   val adder_result_33 = adder_dat_a.resize(33) + adder_dat_b.resize(33) + adder_cin.resize(33)
 
   val result_adder = adder_result_33(31 downto 0)   // 计算结果

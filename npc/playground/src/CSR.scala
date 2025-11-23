@@ -23,6 +23,8 @@ case class ysyx_23060082_CSR() extends Component {
 
     val pc_in  = in UInt(32 bits)    // 用于写mepc
     val cause_in = in UInt(32 bits)  // 异常原因
+    val mtvec = out UInt(32 bits)
+    val mepc  = out UInt(32 bits)
   }
 
   val mstatus   = Reg(UInt(32 bits)) init(0)
@@ -63,10 +65,13 @@ case class ysyx_23060082_CSR() extends Component {
   when(io.trap_enter){
     mepc   := io.pc_in
     mcause := io.cause_in
-    mstatus(7) := False  // MIE 清除
+    // mstatus(7) := False  // MIE 清除
   }
 
-  when(io.trap_exit){
-    mstatus(7) := True   // 恢复 MIE
-  }
+  // when(io.trap_exit){
+  //   mstatus(7) := True   // 恢复 MIE
+  // }
+
+  io.mtvec := mtvec
+  io.mepc := mepc
 }

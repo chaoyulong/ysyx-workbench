@@ -133,14 +133,16 @@ case class ysyx_23060082_LSU() extends Component {
 
   // mem_data_out := csr.io.csr_rdata  // 借用mem_data_out来输出读出的值
 
-
   // ----------------------- 用于握手的部分 ----------------------- //
   val willValid = lsu_end || (~rw_valid)
   io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
   io.input.ready := willValid
   // ----------------------- 数据传输部分 ----------------------- //
   io.output.pc          := io.input.pc
-  io.output.pc_next     := io.input.pc_next
+  io.output.pc_next     := Mux(io.input.csr_ctrl.trap_enter, csr.io.mtvec,
+                           Mux(io.input.csr_ctrl.trap_exit, csr.io.mepc,
+                               io.input.pc_next))
+
   io.output.mem_data_out:= Mux(io.input.csr_ctrl.csr_cmd =/= U"3'd0", csr.io.csr_rdata, rdata_real)           // 借用mem_data_out来输出读出的值
   io.output.alu_data_out:= io.input.alu_result
   io.output.rf_ctrl     := io.input.rf_ctrl    

@@ -50,9 +50,6 @@ case class ysyx_23060082_LSU() extends Component {
           when(needMem) {
             state := LsuState.WaitMem
           }
-          // otherwise{
-          //   state := LsuState.Done
-          // }
         }
     }
 
@@ -86,9 +83,9 @@ case class ysyx_23060082_LSU() extends Component {
     csr.io.cause_in   := io.input.rf_read_data_1
 
   // ----------------------- 用于握手的部分 ----------------------- //
-  val willValid = (state === LsuState.WaitMem && mem_rw.io.rw_end) ||
+  val willValid = (state === LsuState.WaitMem && mem_rw.io.rw_end) ||       // 需要访存并且访存成功
                   (state === LsuState.Idle && io.input.valid && !needMem)
-  io.output.valid := io.input.valid && willValid  // (state === LsuState.Done)
+  io.output.valid := io.input.valid && willValid  
   io.input.ready := (state === LsuState.Idle)
   // ----------------------- 数据传输部分 ----------------------- //
   io.output.pc          := io.input.pc

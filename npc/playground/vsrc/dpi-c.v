@@ -17,7 +17,6 @@ module Mem_Rd(
       rdata <= 32'h0;
     end
     else if(rd_req) begin
-      $display("read at addr = 0x%8x", addr);
       rdata <= pmem_read(addr);
     end
   end
@@ -53,7 +52,6 @@ module Mem_RW(
       rdata <= 32'h0;
     end
     else if(valid) begin
-      $display("in there");
       if(wen) begin   // 写
         pmem_write(addr, wdata, {4'b0, wmask});
       end

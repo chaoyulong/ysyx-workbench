@@ -46,10 +46,12 @@ case class ysyx_23060082_LSU() extends Component {
 
   switch(state) {
     is(LsuState.Idle) {
-        when(needMem) {
-          state := LsuState.WaitMem
-        }.otherwise{
-          state := LsuState.Done
+        when(io.input.valid){
+          when(needMem) {
+            state := LsuState.WaitMem
+          }.otherwise{
+            state := LsuState.Done
+          }
         }
     }
 

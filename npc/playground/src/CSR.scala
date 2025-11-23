@@ -8,23 +8,23 @@ object CSR {
   val mtvec      = 0x305    // 异常入口地址
   val mepc       = 0x341    // 异常pc
   val mcause     = 0x342    // 原因
-  val mvendorid  = 0xF11    // VendorID，从中读出ysyx的ASCII码, 即0x79737978    
-  val marchid    = 0xF12    // ArchitectureID，从中读出学号数字部分的十进制表示, 读出23060082, 即0x15fde72
+  val mvendorid  = 0xf11    // VendorID，从中读出ysyx的ASCII码, 即0x79737978    
+  val marchid    = 0xf12    // ArchitectureID，从中读出学号数字部分的十进制表示, 读出23060082, 即0x15fde72
 }
 
 case class ysyx_23060082_CSR() extends Component {
   val io = new Bundle {
-    val csr_addr  = in UInt(12 bits)    // csr地址
-    val csr_wdata = in UInt(32 bits)    
-    val csr_rdata = out UInt(32 bits)
-    val csr_cmd   = in UInt(3 bits)     // 0=NOP,1=CSRRW,2=CSRRS
-    val trap_enter = in Bool()          // 异常进入
-    val trap_exit  = in Bool()          // MRET
+    val csr_addr   = in  UInt(12 bits)    // csr地址
+    val csr_wdata  = in  UInt(32 bits)    
+    val csr_rdata  = out UInt(32 bits)
+    val csr_cmd    = in  UInt(3 bits)     // 0=NOP,1=CSRRW,2=CSRRS
+    val trap_enter = in  Bool()           // 异常进入
+    val trap_exit  = in  Bool()           // MRET
 
-    val pc_in  = in UInt(32 bits)    // 用于写mepc
-    val cause_in = in UInt(32 bits)  // 异常原因
-    val mtvec = out UInt(32 bits)
-    val mepc  = out UInt(32 bits)
+    val pc_in      = in  UInt(32 bits)    // 用于写mepc
+    val cause_in   = in  UInt(32 bits)    // 异常原因
+    val mtvec      = out UInt(32 bits)
+    val mepc       = out UInt(32 bits)
   }
 
   val mstatus   = Reg(UInt(32 bits)) init(0)
@@ -65,12 +65,7 @@ case class ysyx_23060082_CSR() extends Component {
   when(io.trap_enter){
     mepc   := io.pc_in
     mcause := io.cause_in
-    // mstatus(7) := False  // MIE 清除
   }
-
-  // when(io.trap_exit){
-  //   mstatus(7) := True   // 恢复 MIE
-  // }
 
   io.mtvec := mtvec
   io.mepc := mepc

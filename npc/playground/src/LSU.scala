@@ -21,6 +21,7 @@ case class ysyx_23060082_LSU() extends Component {
     val output    = master Stream(Lsu2Wbu_data()) 
   }
   val memAddr    = io.input.alu_result    // alu的输出结果就是访存地址
+  val rdata       = Reg(UInt(32 bits)) init(0)   
 
   val state = Reg(LsuState()) init(LsuState.Idle)   // 创建一个状态机
   val needMem = io.input.valid && (io.input.rf_ctrl.mem2reg || io.input.mem_ctrl.mem_wr) // 需要访问内存
@@ -35,6 +36,12 @@ case class ysyx_23060082_LSU() extends Component {
     mem_rw.io.addr  := U(memAddr(31 downto 2) ## U"2'h0")   // 真实地址要对齐
     mem_rw.io.wdata := dataProcess.io.wdataReal
     mem_rw.io.wmask := dataProcess.io.wmask
+
+  when(state === LsuState.WaitMem && mem_rw.io.rw_end){ // 是读内存指令并且已读完
+    rdata := mem_rw.io.rdata
+  } otherwise{
+    rdata := rdata
+  }
 
   switch(state) {
     is(LsuState.Idle) {

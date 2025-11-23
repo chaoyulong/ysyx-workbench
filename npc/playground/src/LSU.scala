@@ -58,7 +58,11 @@ case class ysyx_23060082_LSU() extends Component {
 
     is(LsuState.WaitMem) {
       when(mem_rw.io.rw_end) {
-        state := LsuState.Done
+        when(io.output.fire){    // 若已经握手成功，则返回到Idle状态
+          state := LsuState.Idle
+        } otherwise{
+          state := LsuState.Done
+        }
       }
     }
 

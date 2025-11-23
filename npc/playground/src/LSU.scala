@@ -29,12 +29,10 @@ case class ysyx_23060082_LSU() extends Component {
 
   wdata := io.input.rf_read_data_2 // 写数据为寄存器2的数据
   val mem_rw = Mem_RW()
-    // mem_rw.io.valid := io.input.rf_ctrl.mem2reg | io.input.mem_ctrl.mem_wr
     mem_rw.io.wen   := io.input.mem_ctrl.mem_wr
     mem_rw.io.addr  := addr_real
     mem_rw.io.wdata := wdata_real
     mem_rw.io.wmask := wmask
-  // rdata := mem_rw.io.rdata
 
   when(io.input.fire & rw_valid){  // 握手成功时判断是否需要访存
     mem_rw.io.valid := True

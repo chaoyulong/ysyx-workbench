@@ -49,9 +49,10 @@ case class ysyx_23060082_LSU() extends Component {
         when(io.input.valid){
           when(needMem) {
             state := LsuState.WaitMem
-          }.otherwise{
-            state := LsuState.Done
           }
+          // otherwise{
+          //   state := LsuState.Done
+          // }
         }
     }
 

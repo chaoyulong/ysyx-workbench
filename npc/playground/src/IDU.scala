@@ -40,6 +40,7 @@ case class Ctrl() extends Bundle {   // 控制信号
   val rf_si  = out(RfCtrl())
   val alu_si = out(AluCtrl())
   val mem_si = out(MemCtrl())
+  val csr_si = out(CsrCtrl())
 }
 
 case class ysyx_23060082_IDU() extends Component {

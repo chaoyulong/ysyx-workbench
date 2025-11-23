@@ -1,5 +1,5 @@
 #include "pmem.h"
-#include "devices.h"
+#include "device.h"
 
 uint8_t pmem[CONFIG_MSIZE];
 

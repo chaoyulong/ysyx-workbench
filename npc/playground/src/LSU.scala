@@ -32,6 +32,7 @@ case class ysyx_23060082_LSU() extends Component {
     dataProcess.io.rdata  := rdata
 
   val mem_rw = Mem_RW()
+    mem_rw.io.valid := needMem && (state === LsuState.Idle)
     mem_rw.io.wen   := io.input.mem_ctrl.mem_wr
     mem_rw.io.addr  := U(memAddr(31 downto 2) ## U"2'h0")   // 真实地址要对齐
     mem_rw.io.wdata := dataProcess.io.wdataReal
@@ -45,13 +46,11 @@ case class ysyx_23060082_LSU() extends Component {
 
   switch(state) {
     is(LsuState.Idle) {
-      when(io.input.valid) {    // 数据有效
         when(needMem) {
           state := LsuState.WaitMem
         }.otherwise{
           state := LsuState.Done
         }
-      }
     }
 
     is(LsuState.WaitMem) {

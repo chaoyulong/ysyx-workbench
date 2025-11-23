@@ -45,7 +45,7 @@ case class ysyx_23060082_LSU() extends Component {
     rdata_reg := rdata_reg
   }
 
-  rdata = Mux(state === LsuState.WaitMem && mem_rw.io.rw_end, mem_rw.io.rdata, rdata_reg)
+  rdata := Mux(state === LsuState.WaitMem && mem_rw.io.rw_end, mem_rw.io.rdata, rdata_reg)
 
   switch(state) {
     is(LsuState.Idle) {

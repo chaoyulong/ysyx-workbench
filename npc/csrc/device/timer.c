@@ -20,7 +20,8 @@ static uint64_t get_time() {
   return now - boot_time;
 }
 
-void rtc_io_handler(uint32_t offset) {
+//uptime->us = ((uint64_t)inl(RTC_ADDR + 4) << 32) + (uint64_t)inl(RTC_ADDR);
+uint32_t rtc_io_handler(uint32_t offset) {
   assert(offset == 0 || offset == 4);
   if (offset == 4) {
     uint64_t us = get_time();
@@ -30,4 +31,3 @@ void rtc_io_handler(uint32_t offset) {
   }
   return rtc_port_base[0];
 }
-//uptime->us = ((uint64_t)inl(RTC_ADDR + 4) << 32) + (uint64_t)inl(RTC_ADDR);

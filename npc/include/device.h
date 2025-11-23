@@ -16,6 +16,6 @@
 #define FB_ADDR         (MMIO_BASE   + 0x1000000)
 #define AUDIO_SBUF_ADDR (MMIO_BASE   + 0x1200000)
 
-void rtc_io_handler(uint32_t offset);
+uint32_t rtc_io_handler(uint32_t offset);
 
 #endif

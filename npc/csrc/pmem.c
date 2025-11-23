@@ -20,9 +20,10 @@ extern "C" uint32_t pmem_read(uint32_t raddr) {
     paddr_t real_addr = ((paddr_t)raddr & (paddr_t)(~0x3u));
     return host_read(guest_to_host(real_addr));
   }
-  else{
-    out_of_bound(raddr, 0);
-    return 0;
+  switch(raddr){
+    case RTC_ADDR: 
+    case RTC_ADDR + 4: return rtc_io_handler(waddr - RTC_ADDR); 
+    default: out_of_bound(raddr, 0); return 0;
   }
 }  
 
@@ -45,8 +46,6 @@ extern "C" void pmem_write(uint32_t waddr, uint32_t wdata, uint8_t wmask) {
   
   switch(waddr){
     case SERIAL_PORT: putc((uint8_t)wdata, stderr); break;
-    case RTC_ADDR: 
-    case RTC_ADDR + 4: rtc_io_handler(waddr - RTC_ADDR);
     default: out_of_bound(waddr, 1); break;
   }
 

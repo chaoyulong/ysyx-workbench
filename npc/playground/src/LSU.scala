@@ -25,7 +25,7 @@ case class ysyx_23060082_LSU() extends Component {
 
   val dataProcess = ysyx_23060082_DataProcess()   // 数据处理
     dataProcess.io.addrOp := U(memAddr(1 downto 0) ## io.input.mem_ctrl.mem_op)    // 合并 addr + MemOp 生成 5 位索引
-    dataProcess.io.wata   := io.input.rf_read_data_2 // 写数据为寄存器2的数据
+    dataProcess.io.wdata  := io.input.rf_read_data_2 // 写数据为寄存器2的数据
     dataProcess.io.rdata  := rdata
 
   val mem_rw = Mem_RW()

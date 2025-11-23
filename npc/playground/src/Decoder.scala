@@ -135,9 +135,16 @@ case class Decoder() extends Component {
   io.ctrl.mem_si.mem_wr  := type_S                            // i_sb | i_sh | i_sw
   io.ctrl.mem_si.mem_op  := func3  
   // ----------------------- csr寄存器 ----------------------- //
-  // csrrw:   R(rd) = CSR[imm]; *CSR[imm] = src1; 
-  // csrrs:   R(rd) = CSR[imm]; *CSR[imm] |= src1;
-
+  // csrrw:    R(rd) = CSR[imm]; CSR[imm] = src1; 
+  // csrrs:    R(rd) = CSR[imm]; CSR[imm] |= src1;
+  // ecall:    CSR[mcause] = R[15]
+  //           CSR[mepc  ] = pc
+  //           pc_next = CSR[mtvec]
+  // mret:     pc_next = CSR[mepc  ]
+  io.ctrl.csr_si.csr_cmd := Mux(i_csrrw, U"3'd1",             // 0=NOP,1=CSRRW,2=CSRRS
+                            Mux(i_csrrs, U"3'd2", U"3'd0"))
+  io.ctrl.csr_si.trap_enter := i_ecall      // 异常进入,后续应该会增加进入方式
+  io.ctrl.csr_si.trap_exit  := i_mret       // 退出异常,MRET
   // ------------------------ ebreak ------------------------ //
   val my_ebreak = MyEbreak()
   my_ebreak.io.i_ebreak := i_ebreak

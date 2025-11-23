@@ -31,7 +31,7 @@ case class MemCtrl() extends Bundle {   // LSU中消耗的控制信号
 }
 
 case class CsrCtrl() extends Bundle { // CSR寄存器的控制信号
-  val csr_cmd    = UInt(3 bits)       // 0=NOP,1=CSRRW,2=CSRRS
+  val csr_cmd    = UInt(3 bits)       // 0=NOP,1=CSRRW,2=CSRRS,其他后续可能有用
   val trap_enter = Bool()             // 异常进入
   val trap_exit  = Bool()             // MRET
 }
@@ -57,12 +57,14 @@ case class ysyx_23060082_IDU() extends Component {
   val instr = io.input.instr
   val decoder = Decoder()
   decoder.instr := instr         
-  // ------------------ 用于握手的部分 ------------------ //
+  // ----------------------- 用于握手的部分 ----------------------- //
   val willValid = True
   io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
   io.input.ready := willValid
-  // ------------------ 数据传输部分 ------------------ //
-  io.rf_read_addr_1 := instr(19 downto 15)
+  // ----------------------- 数据传输部分 ----------------------- //
+  io.rf_read_addr_1 := decoder.io.ctrl.csr_si.trap_enter.mux(   // 如果是触发异常的指令，则选择a5(第15个寄存器)作为数据输入
+                         True  -> U"5'd15", 
+                         False -> instr(19 downto 15))
   io.rf_read_addr_2 := instr(24 downto 20)  // 为了写起来简洁，写寄存器地址在decoder中赋值
   
   io.output.pc              := io.input.pc

@@ -29,11 +29,11 @@ case class ysyx_23060082_LSU() extends Component {
 
   wdata := io.input.rf_read_data_2 // 写数据为寄存器2的数据
   val mem_rw = Mem_RW()
-  mem_rw.io.valid := io.input.rf_ctrl.mem2reg | io.input.mem_ctrl.mem_wr
-  mem_rw.io.wen   := io.input.mem_ctrl.mem_wr
-  mem_rw.io.addr  := addr_real
-  mem_rw.io.wdata := wdata_real
-  mem_rw.io.wmask := wmask
+    mem_rw.io.valid := io.input.rf_ctrl.mem2reg | io.input.mem_ctrl.mem_wr
+    mem_rw.io.wen   := io.input.mem_ctrl.mem_wr
+    mem_rw.io.addr  := addr_real
+    mem_rw.io.wdata := wdata_real
+    mem_rw.io.wmask := wmask
   // rdata := mem_rw.io.rdata
 
   when(io.input.fire & rw_valid){  // 握手成功时判断是否需要访存
@@ -65,7 +65,7 @@ case class ysyx_23060082_LSU() extends Component {
   // 合并 addr + MemOp 生成 5 位索引
   val addr_op = (mem_addr(1 downto 0) ## io.input.mem_ctrl.mem_op)
 
-  // ------------------ 读操作 ------------------
+  // ------------------------------- 读操作 ------------------------------- //
   rdata_real := addr_op.mux(
     B"00010" -> rdata                                       ,   // LW
     B"00001" -> rdata(15 downto  0).asSInt.resize(32).asUInt,   // LH
@@ -87,7 +87,7 @@ case class ysyx_23060082_LSU() extends Component {
     B"11100" -> rdata(31 downto 24).resize(32)              ,
     default  -> U"32'h0"
   )
-  // ------------------ 写操作 ------------------
+  // ------------------------------- 写操作 ------------------------------- //
   wdata_real := addr_op.mux(
     // mem_addr[1:0] = 00
     B"00010" -> wdata.asBits                             ,// SW
@@ -119,12 +119,26 @@ case class ysyx_23060082_LSU() extends Component {
     B"11000" -> U"1000" ,
     default  -> U"0000"
   )
+  // -------------------------------------------------------------------- //
 
-  // ------------------ 用于握手的部分 ------------------ //
+  // ------------------------------- csr寄存器 ------------------------------- // 
+  val csr = ysyx_23060082_CSR()
+    csr.io.csr_addr   := io.input.imm
+    csr.io.csr_wdata  := io.input.rf_read_data_1
+    csr.io.csr_cmd    := io.input.csr_ctrl.csr_cmd
+    csr.io.trap_enter := io.input.csr_ctrl.trap_enter
+    csr.io.trap_exit  := io.input.csr_ctrl.trap_exit
+    csr.io.pc_in      := io.input.pc
+    csr.io.cause_in   := io.input.rf_read_data_1
+
+  mem_data_out := csr.io.csr_rdata  // 借用mem_data_out来输出读出的值
+
+
+  // ----------------------- 用于握手的部分 ----------------------- //
   val willValid = lsu_end || (~rw_valid)
   io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
   io.input.ready := willValid
-  // ------------------ 数据传输部分 ------------------ //
+  // ----------------------- 数据传输部分 ----------------------- //
   io.output.pc          := io.input.pc
   io.output.pc_next     := io.input.pc_next
   io.output.mem_data_out:= rdata_real

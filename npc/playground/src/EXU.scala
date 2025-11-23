@@ -8,6 +8,7 @@ case class Exu2Lsu_data() extends Bundle {
   val pc_next        = UInt(32 bits)
   val rf_ctrl        = RfCtrl()    // 直通数据，在EXU中无作用
   val mem_ctrl       = MemCtrl()   // 直通数据，在EXU中无作用
+  val csr_ctrl       = MemCtrl()   // 直通数据，在EXU中无作用 
 
   val imm            = UInt(12 bits)  // csr(位于LSU)模块中用于寄存器寻址
   val rf_read_data_1 = UInt(32 bits)  // 从寄存器中读取的数据1,在EXU及csr(位于LSU)模块中均有作用
@@ -55,7 +56,7 @@ case class ysyx_23060082_EXU() extends Component {
   io.output.rf_read_data_2 := io.input.rf_read_data_2
   io.output.rf_ctrl  := io.input.ctrl.rf_si      // 直通数据，在EXU中无作用
   io.output.mem_ctrl  := io.input.ctrl.mem_si    // 直通数据，在EXU中无作用
-
+  io.output.csr_ctrl  := io.input.ctrl.csr_si    // 直通数据，在EXU中无作用
 }
 
 /*    Branch      跳转类型

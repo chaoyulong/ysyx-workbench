@@ -1,7 +1,6 @@
 #include <am.h>
 #include <klib-macros.h>
-
-# define npc_trap(code) asm volatile("mv a0, %0; ebreak" : :"r"(code))
+#include "npc.h"
 
 extern char _heap_start;
 int main(const char *args);

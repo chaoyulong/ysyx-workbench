@@ -84,7 +84,7 @@ case class ysyx_23060082_LSU() extends Component {
   // ----------------------- 用于握手的部分 ----------------------- //
   val willValid = (state === LsuState.WaitMem && mem_rw.io.rw_end) ||
                   (state === LsuState.Idle && io.input.valid && !needMem)
-  io.output.valid := (state === LsuState.Done)
+  io.output.valid := willValid  // (state === LsuState.Done)
   io.input.ready := (state === LsuState.Idle)
   // ----------------------- 数据传输部分 ----------------------- //
   io.output.pc          := io.input.pc

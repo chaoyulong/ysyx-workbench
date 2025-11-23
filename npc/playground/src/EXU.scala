@@ -4,13 +4,15 @@ import spinal.core._
 import spinal.lib._    // 使用spinal的模块库
 
 case class Exu2Lsu_data() extends Bundle {
-  val pc            = UInt(32 bits)
-  val pc_next       = UInt(32 bits)
-  val rf_ctrl       = RfCtrl()    // 直通数据，在EXU中无作用
-  val mem_ctrl      = MemCtrl()   // 直通数据，在EXU中无作用
+  val pc             = UInt(32 bits)
+  val pc_next        = UInt(32 bits)
+  val rf_ctrl        = RfCtrl()    // 直通数据，在EXU中无作用
+  val mem_ctrl       = MemCtrl()   // 直通数据，在EXU中无作用
 
+  val imm            = UInt(12 bits)  // csr(位于LSU)模块中用于寄存器寻址
+  val rf_read_data_1 = UInt(32 bits)  // 从寄存器中读取的数据1,在EXU及csr(位于LSU)模块中均有作用
   val rf_read_data_2 = UInt(32 bits)  // 从寄存器中读取的数据2,在EXU及后续模块中均有作用
-  val alu_result    = UInt(32 bits)
+  val alu_result     = UInt(32 bits)
 }
 
 case class ysyx_23060082_EXU() extends Component {
@@ -48,6 +50,8 @@ case class ysyx_23060082_EXU() extends Component {
   io.output.pc          := io.input.pc
   io.output.pc_next     := pc_data_a + pc_data_b
   io.output.alu_result  := alu.io.alu_result
+  io.output.imm         := io.input.imm(11 downto 0)
+  io.output.rf_read_data_1 := io.input.rf_read_data_1
   io.output.rf_read_data_2 := io.input.rf_read_data_2
   io.output.rf_ctrl  := io.input.ctrl.rf_si      // 直通数据，在EXU中无作用
   io.output.mem_ctrl  := io.input.ctrl.mem_si    // 直通数据，在EXU中无作用

@@ -40,7 +40,7 @@ extern "C" void pmem_write(uint32_t waddr, uint32_t wdata, uint8_t wmask) {
     host_write(guest_to_host(real_addr), real_wdata);
     return;
   }
-
+  printf("waddr = 0x%08x\n", waddr);
   switch(waddr){
     case SERIAL_PORT: putc((uint8_t)wdata, stderr); break;
     default: out_of_bound(waddr, 1); break;

@@ -23,6 +23,7 @@ extern "C" uint32_t pmem_read(uint32_t raddr) {
   switch(raddr){
     case RTC_ADDR: 
     case RTC_ADDR + 4: return rtc_io_handler(raddr - RTC_ADDR); 
+    case KBD_ADDR: return keyboard_data_io_handler();
     default: out_of_bound(raddr, 0); return 0;
   }
 }  

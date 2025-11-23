@@ -14,6 +14,7 @@ case class Idu2Exu_data() extends Bundle {
 
 case class RfCtrl() extends Bundle {   // WBU中消耗的控制信号
   val mem2reg       = Bool()    // 选择写入寄存器的内容，为1时为存储器，为0时为alu
+  val csr2reg       = Bool()    // 从csr读取数据写入寄存器
   val reg_wr        =  Bool()   // 控制是否对寄存器rd进行写回，为1时写回寄存器。
   val rf_write_addr = UInt(5 bits)
 }

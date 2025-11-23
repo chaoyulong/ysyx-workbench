@@ -20,7 +20,7 @@ case class ysyx_23060082_WBU() extends Component {
   io.output.pc_next := io.input.pc_next
   io.rf_write_addr  := io.input.rf_ctrl.rf_write_addr
   io.rf_write_en    := io.input.rf_ctrl.reg_wr
-  io.rf_write_data  := Mux(io.input.rf_ctrl.mem2reg, io.input.mem_data_out, io.input.alu_data_out)
+  io.rf_write_data  := Mux(io.input.rf_ctrl.mem2reg | io.input.rf_ctrl.csr2reg, io.input.mem_data_out, io.input.alu_data_out)
 
   // ------------------ 用于握手的部分 ------------------ //
   // val willValid = True

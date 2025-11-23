@@ -1,4 +1,5 @@
 #include "pmem.h"
+#include "devices.h"
 
 uint8_t pmem[CONFIG_MSIZE];
 
@@ -15,13 +16,11 @@ paddr_t host_to_guest(uint8_t *haddr) { return haddr - pmem + CONFIG_MBASE; }
 
 extern "C" uint32_t pmem_read(uint32_t raddr) {
   // 总是读取地址为`raddr & ~0x3u`的4字节返回
-  if(in_pmem(raddr))
-  {
+  if(in_pmem(raddr)){
     paddr_t real_addr = ((paddr_t)raddr & (paddr_t)(~0x3u));
     return host_read(guest_to_host(real_addr));
   }
-  else
-  {
+  else{
     out_of_bound(raddr, 0);
     return 0;
   }
@@ -30,8 +29,7 @@ extern "C" void pmem_write(uint32_t waddr, uint32_t wdata, uint8_t wmask) {
   // 总是往地址为`waddr & ~0x3u`的4字节按写掩码`wmask`写入`wdata`
   // `wmask`中每比特表示`wdata`中1个字节的掩码,
   // 如`wmask = 0x3`代表只写入最低2个字节, 内存中的其它字节保持不变
-  if(in_pmem(waddr))
-  {
+  if(in_pmem(waddr)){
     paddr_t real_addr = ((paddr_t)waddr & (paddr_t)(~0x3u));  // 地址对齐
     word_t wmask32 = 0;
     for (int i = 0; i < 4; i++) {
@@ -40,11 +38,14 @@ extern "C" void pmem_write(uint32_t waddr, uint32_t wdata, uint8_t wmask) {
     word_t old_data = host_read(guest_to_host(real_addr)); 
     word_t real_wdata = (old_data & ~wmask32) | (wdata & wmask32);
     host_write(guest_to_host(real_addr), real_wdata);
+    return;
   }
-  else
-  {
-    out_of_bound(waddr, 1);
+
+  switch(waddr){
+    case SERIAL_PORT: putc((uint8_t)wdata, stderr); break;
+    default: out_of_bound(waddr, 1); break;
   }
+
 }
 
 void pmem_init(){
@@ -53,5 +54,4 @@ void pmem_init(){
   *(word_t *)(pmem + sizeof(word_t) * 2) = 0x0102c503;  // lbu a0,16(t0)
   *(word_t *)(pmem + sizeof(word_t) * 3) = 0x00100073;  // ebreak (used as nemu_trap)
   *(word_t *)(pmem + sizeof(word_t) * 4) = 0x00000297;  // some data
-
 }

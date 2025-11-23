@@ -141,7 +141,7 @@ case class ysyx_23060082_LSU() extends Component {
   // ----------------------- 数据传输部分 ----------------------- //
   io.output.pc          := io.input.pc
   io.output.pc_next     := io.input.pc_next
-  io.output.mem_data_out:= Mux(csr_cmd =/= U"3'd0", csr.io.csr_rdata, rdata_real)           // 借用mem_data_out来输出读出的值
+  io.output.mem_data_out:= Mux(io.input.csr_ctrl.csr_cmd =/= U"3'd0", csr.io.csr_rdata, rdata_real)           // 借用mem_data_out来输出读出的值
   io.output.alu_data_out:= io.input.alu_result
   io.output.rf_ctrl     := io.input.rf_ctrl    
 

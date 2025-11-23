@@ -30,7 +30,7 @@ case class ysyx_23060082_LSU() extends Component {
 
   val mem_rw = Mem_RW()
     mem_rw.io.wen   := io.input.mem_ctrl.mem_wr
-    mem_rw.io.addr  := (memAddr(31 downto 2) ## U"2'h0").asUInt   // 真实地址要对齐
+    mem_rw.io.addr  := U(memAddr(31 downto 2) ## U"2'h0")   // 真实地址要对齐
     mem_rw.io.wdata := dataProcess.io.wdataReal
     mem_rw.io.wmask := dataProcess.io.wmask
 

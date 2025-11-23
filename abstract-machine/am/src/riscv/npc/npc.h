@@ -3,6 +3,7 @@
 
 #include <klib-macros.h>
 #include <stdint.h>
+#include <riscv/riscv.h>
 
 #define npc_trap(code) asm volatile("mv a0, %0; ebreak" : :"r"(code))
 

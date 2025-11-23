@@ -46,7 +46,7 @@ extern "C" void pmem_write(uint32_t waddr, uint32_t wdata, uint8_t wmask) {
   
   switch(waddr){
     case SERIAL_PORT: putc((uint8_t)wdata, stderr); break;
-    // default: out_of_bound(waddr, 1); break;
+    default: out_of_bound(waddr, 1); break;
   }
 
 }

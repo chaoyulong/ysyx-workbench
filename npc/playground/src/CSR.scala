@@ -46,8 +46,8 @@ case class ysyx_23060082_CSR() extends Component {
   val csr_old = io.csr_rdata
 
   val writeData = io.csr_cmd.mux(
-    U"2'd1" -> io.csr_wdata,                // CSRRW
-    U"2'd2" -> (csr_old | io.csr_wdata),    // CSRRS
+    U"3'd1" -> io.csr_wdata,                // CSRRW
+    U"3'd2" -> (csr_old | io.csr_wdata),    // CSRRS
     default -> csr_old
   )
 

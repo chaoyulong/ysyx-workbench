@@ -29,7 +29,7 @@ case class ysyx_23060082_LSU() extends Component {
 
   wdata := io.input.rf_read_data_2 // 写数据为寄存器2的数据
   val mem_rw = Mem_RW()
-    mem_rw.io.valid := io.input.rf_ctrl.mem2reg | io.input.mem_ctrl.mem_wr
+    // mem_rw.io.valid := io.input.rf_ctrl.mem2reg | io.input.mem_ctrl.mem_wr
     mem_rw.io.wen   := io.input.mem_ctrl.mem_wr
     mem_rw.io.addr  := addr_real
     mem_rw.io.wdata := wdata_real
@@ -131,8 +131,6 @@ case class ysyx_23060082_LSU() extends Component {
     csr.io.pc_in      := io.input.pc
     csr.io.cause_in   := io.input.rf_read_data_1
 
-  // mem_data_out := csr.io.csr_rdata  // 借用mem_data_out来输出读出的值
-
   // ----------------------- 用于握手的部分 ----------------------- //
   val willValid = lsu_end || (~rw_valid)
   io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
@@ -147,8 +145,5 @@ case class ysyx_23060082_LSU() extends Component {
   io.output.alu_data_out:= io.input.alu_result
   io.output.rf_ctrl     := io.input.rf_ctrl    
 
-  // io.input.ready := io.input.valid
-  // io.output.valid   := io.input.valid
-  // io.output.valid   := lsu_end
 }
 

@@ -36,7 +36,7 @@ case class ysyx_23060082_IFU() extends Component {
   val pc_reg = RegNextWhen(io.input.pc_next, io.input.fire) init(U"32'h80000000")
   // ------------------------------------- 读内存 ------------------------------------- //
   val mem_rd = Mem_Rd()
-  val readReq = (state === IfuState.Idle) && (io.input.fire || rstEnd)
+  val readReq = (state === IfuState.Idle) && dataValid
   val rdataReg  = Reg(UInt(32 bits)) init(0)   
   mem_rd.io.rd_req := readReq
   mem_rd.io.addr  := pc_reg

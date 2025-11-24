@@ -12,20 +12,33 @@ module Mem_Rd(
   output reg [31:0] rdata
 );
 
+  reg        rd_end0;
   always @(posedge clock or posedge reset) begin
     if (reset) begin 
       rdata <= 32'h0;
     end
-    else if(rd_req) begin
+    else if(rd_end0) begin
       rdata <= pmem_read(addr);
     end
   end
 
   always @(posedge clock or posedge reset) begin
     if (reset) begin 
-      rd_end <= 1'b0;
+      rd_end0 <= 1'b0;
     end
     else if(rd_req) begin
+      rd_end0 <= 1'b1;
+    end
+    else begin
+      rd_end0 <= 1'b0;
+    end 
+  end
+
+  always @(posedge clock or posedge reset) begin
+    if (reset) begin 
+      rd_end <= 1'b0;
+    end
+    else if(rd_end0) begin
       rd_end <= 1'b1;
     end
     else begin
@@ -64,7 +77,7 @@ module Mem_RW(
 
   always @(posedge clock or posedge reset) begin
     if (reset) begin 
-      rw_end <= 1'b0;
+      rw_end0 <= 1'b0;
     end
     else if(valid) begin
       rw_end0 <= 1'b1;

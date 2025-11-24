@@ -33,7 +33,7 @@ case class ysyx_23060082_IFU() extends Component {
     dataValid := dataValid
   }
   // ------------------------------------ PC寄存器 ------------------------------------ //
-  val pc_reg   = Reg(UInt(32 bits)) init(U"32'h80000000")
+  val pc_reg = RegNextWhen(io.input.pc_next, io.input.fire) init(U"32'h80000000")
   // ------------------------------------- 读内存 ------------------------------------- //
   val mem_rd = Mem_Rd()
   val readReq = (state === IfuState.Idle) && (io.input.fire || rstEnd)

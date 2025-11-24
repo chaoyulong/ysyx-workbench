@@ -46,37 +46,21 @@ case class ysyx_23060082_LSU() extends Component {
   }
   rdata := Mux(state === LsuState.WaitMem && mem_rw.io.rw_end, mem_rw.io.rdata, rdata_reg)
   // ------------------------------- 状态机 ------------------------------- // 
-  // switch(state) {
-  //   is(LsuState.Idle) {
-  //     when(needMem) {
-  //       state := LsuState.WaitMem
-  //     }
-  //   }
-
-  //   is(LsuState.WaitMem) {
-  //     when(mem_rw.io.rw_end) {
-  //       when(io.output.fire){    // 若已经握手成功，则返回到Idle状态
-  //         state := LsuState.Idle
-  //       } otherwise{
-  //         state := LsuState.Done
-  //       }
-  //     }
-  //   }
-
-  //   is(LsuState.Done) {
-  //     when(io.output.fire) {
-  //       state := LsuState.Idle
-  //     }
-  //   }
-  // }
-
-  when(True){
-    switch(state){
-      is(LsuState.Idle)     {state := Mux(needMem, LsuState.WaitMem, state)}
-      is(LsuState.WaitMem)  {state := Mux(mem_rw.io.rw_end, Mux(io.output.fire, LsuState.Idle, LsuState.Done), state)}
-      is(LsuState.Done)     {state := Mux(io.output.fire, LsuState.Idle, state)}
+  switch(state) {
+    is(LsuState.Idle) {
+      when(needMem) {state := LsuState.WaitMem}       
+    }
+    is(LsuState.WaitMem) {
+      when(mem_rw.io.rw_end) {
+        when(io.output.fire){state := LsuState.Idle}     // 若已经握手成功，则返回到Idle状态
+        otherwise{state := LsuState.Done}
+      }
+    }
+    is(LsuState.Done) {
+      when(io.output.fire) {state := LsuState.Idle}        
     }
   }
+
 
   // -------------------------------------------------------------------- //
 

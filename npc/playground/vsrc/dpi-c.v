@@ -46,6 +46,7 @@ module Mem_RW(
   output reg        rw_end,
   output reg [31:0] rdata
 );
+  reg rw_end0;
 
   always @(posedge clock or posedge reset) begin
     if (reset) begin 
@@ -66,13 +67,24 @@ module Mem_RW(
       rw_end <= 1'b0;
     end
     else if(valid) begin
+      rw_end0 <= 1'b1;
+    end
+    else begin
+      rw_end <= 1'b0;
+    end   
+  end
+  
+  always @(posedge clock or posedge reset) begin
+    if (reset) begin 
+      rw_end <= 1'b0;
+    end
+    else if(rw_end0) begin
       rw_end <= 1'b1;
     end
     else begin
       rw_end <= 1'b0;
-    end 
+    end   
   end
-  
 endmodule
 
 module MyEbreak(

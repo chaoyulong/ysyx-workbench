@@ -44,7 +44,6 @@ case class ysyx_23060082_LSU() extends Component {
   } otherwise{
     rdata_reg := rdata_reg
   }
-
   rdata := Mux(state === LsuState.WaitMem && mem_rw.io.rw_end, mem_rw.io.rdata, rdata_reg)
 
   switch(state) {
@@ -101,6 +100,74 @@ case class ysyx_23060082_LSU() extends Component {
   io.output.alu_data_out:= io.input.alu_result
   io.output.rf_ctrl     := io.input.rf_ctrl    
 
+}
+
+case class ysyx_23060082_DataProcess() extends Component {
+  val io = new Bundle {
+    val addrOp    = in  Bits( 5 bits)
+    val wdata     = in  UInt(32 bits)
+    val wdataReal = out UInt(32 bits)
+    val wmask     = out UInt( 4 bits)
+    val rdata     = in  UInt(32 bits)
+    val rdataReal = out UInt(32 bits)
+  }
+
+  val wdata = io.wdata
+  val rdata = io.rdata
+// ------------------------------- 读操作 ------------------------------- //
+  io.rdataReal := io.addrOp.mux(
+    B"00010" -> rdata                                       ,   // LW
+    B"00001" -> rdata(15 downto  0).asSInt.resize(32).asUInt,   // LH
+    B"00000" -> rdata( 7 downto  0).asSInt.resize(32).asUInt,   // LB
+    B"00101" -> rdata(15 downto  0).resize(32)              ,   // LHU
+    B"00100" -> rdata( 7 downto  0).resize(32)              ,   // LBU
+    // mem_addr[1:0] = 01
+    B"01001" -> rdata(23 downto  8).asSInt.resize(32).asUInt,
+    B"01000" -> rdata(15 downto  8).asSInt.resize(32).asUInt,
+    B"01101" -> rdata(23 downto  8).resize(32)              ,
+    B"01100" -> rdata(15 downto  8).resize(32)              ,
+    // mem_addr[1:0] = 10
+    B"10001" -> rdata(31 downto 16).asSInt.resize(32).asUInt,
+    B"10000" -> rdata(23 downto 16).asSInt.resize(32).asUInt,
+    B"10101" -> rdata(31 downto 16).resize(32)              ,
+    B"10100" -> rdata(23 downto 16).resize(32)              ,
+    // mem_addr[1:0] = 11
+    B"11000" -> rdata(31 downto 24).asSInt.resize(32).asUInt,
+    B"11100" -> rdata(31 downto 24).resize(32)              ,
+    default  -> U"32'h0"
+  )
+// ------------------------------- 写操作 ------------------------------- //
+  io.wdataReal := io.addrOp.mux(
+    // mem_addr[1:0] = 00
+    B"00010" -> wdata.asBits                             ,// SW
+    B"00001" -> U"16'h0" ## wdata(15 downto 0)           ,// SH
+    B"00000" -> U"24'h0" ## wdata( 7 downto 0)           ,// SB
+    // mem_addr[1:0] = 01
+    B"01001" -> U"8'h0"  ## wdata(15 downto 0) ## U"8'h0",
+    B"01000" -> U"16'h0" ## wdata( 7 downto 0) ## U"8'h0",
+    // mem_addr[1:0] = 10
+    B"10001" -> wdata(15 downto 0) ## U"16'h0"           ,
+    B"10000" -> U"8'h0" ## wdata(7 downto 0) ## U"16'h0" ,
+    // mem_addr[1:0] = 11
+    B"11000" -> wdata(7 downto 0) ## U"24'h0"            ,
+    default  -> B"32'h0"
+  ).asUInt
+
+  io.wmask := io.addrOp.mux(
+    // mem_addr[1:0] = 00
+    B"00010" -> U"1111" ,   // SW
+    B"00001" -> U"0011" ,   // SH
+    B"00000" -> U"0001" ,   // SB
+    // mem_addr[1:0] = 01
+    B"01001" -> U"0110" ,
+    B"01000" -> U"0010" ,
+    // mem_addr[1:0] = 10
+    B"10001" -> U"1100" ,
+    B"10000" -> U"0100" ,
+    // mem_addr[1:0] = 11
+    B"11000" -> U"1000" ,
+    default  -> U"0000"
+  )
 }
 
 
@@ -187,70 +254,3 @@ case class ysyx_23060082_LSU() extends Component {
 
 // }
 
-case class ysyx_23060082_DataProcess() extends Component {
-  val io = new Bundle {
-    val addrOp    = in  Bits( 5 bits)
-    val wdata     = in  UInt(32 bits)
-    val wdataReal = out UInt(32 bits)
-    val wmask     = out UInt( 4 bits)
-    val rdata     = in  UInt(32 bits)
-    val rdataReal = out UInt(32 bits)
-  }
-
-  val wdata = io.wdata
-  val rdata = io.rdata
-// ------------------------------- 读操作 ------------------------------- //
-  io.rdataReal := io.addrOp.mux(
-    B"00010" -> rdata                                       ,   // LW
-    B"00001" -> rdata(15 downto  0).asSInt.resize(32).asUInt,   // LH
-    B"00000" -> rdata( 7 downto  0).asSInt.resize(32).asUInt,   // LB
-    B"00101" -> rdata(15 downto  0).resize(32)              ,   // LHU
-    B"00100" -> rdata( 7 downto  0).resize(32)              ,   // LBU
-    // mem_addr[1:0] = 01
-    B"01001" -> rdata(23 downto  8).asSInt.resize(32).asUInt,
-    B"01000" -> rdata(15 downto  8).asSInt.resize(32).asUInt,
-    B"01101" -> rdata(23 downto  8).resize(32)              ,
-    B"01100" -> rdata(15 downto  8).resize(32)              ,
-    // mem_addr[1:0] = 10
-    B"10001" -> rdata(31 downto 16).asSInt.resize(32).asUInt,
-    B"10000" -> rdata(23 downto 16).asSInt.resize(32).asUInt,
-    B"10101" -> rdata(31 downto 16).resize(32)              ,
-    B"10100" -> rdata(23 downto 16).resize(32)              ,
-    // mem_addr[1:0] = 11
-    B"11000" -> rdata(31 downto 24).asSInt.resize(32).asUInt,
-    B"11100" -> rdata(31 downto 24).resize(32)              ,
-    default  -> U"32'h0"
-  )
-// ------------------------------- 写操作 ------------------------------- //
-  io.wdataReal := io.addrOp.mux(
-    // mem_addr[1:0] = 00
-    B"00010" -> wdata.asBits                             ,// SW
-    B"00001" -> U"16'h0" ## wdata(15 downto 0)           ,// SH
-    B"00000" -> U"24'h0" ## wdata( 7 downto 0)           ,// SB
-    // mem_addr[1:0] = 01
-    B"01001" -> U"8'h0"  ## wdata(15 downto 0) ## U"8'h0",
-    B"01000" -> U"16'h0" ## wdata( 7 downto 0) ## U"8'h0",
-    // mem_addr[1:0] = 10
-    B"10001" -> wdata(15 downto 0) ## U"16'h0"           ,
-    B"10000" -> U"8'h0" ## wdata(7 downto 0) ## U"16'h0" ,
-    // mem_addr[1:0] = 11
-    B"11000" -> wdata(7 downto 0) ## U"24'h0"            ,
-    default  -> B"32'h0"
-  ).asUInt
-
-  io.wmask := io.addrOp.mux(
-    // mem_addr[1:0] = 00
-    B"00010" -> U"1111" ,   // SW
-    B"00001" -> U"0011" ,   // SH
-    B"00000" -> U"0001" ,   // SB
-    // mem_addr[1:0] = 01
-    B"01001" -> U"0110" ,
-    B"01000" -> U"0010" ,
-    // mem_addr[1:0] = 10
-    B"10001" -> U"1100" ,
-    B"10000" -> U"0100" ,
-    // mem_addr[1:0] = 11
-    B"11000" -> U"1000" ,
-    default  -> U"0000"
-  )
-}

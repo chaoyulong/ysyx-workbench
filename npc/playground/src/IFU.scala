@@ -37,15 +37,16 @@ case class ysyx_23060082_IFU() extends Component {
   // ------------------------------------- 读内存 ------------------------------------- //
   val mem_rd = Mem_Rd()
   val readReq = (state === IfuState.Idle) && dataValid
-  val rdataReg  = Reg(UInt(32 bits)) init(0)   
+  // val rdataReg  = Reg(UInt(32 bits)) init(0)   
+  val rdataReg = RegNextWhen(mem_rd.io.rdata, state === IfuState.WaitMem && mem_rd.io.rd_end) // 读完时更新数据
   mem_rd.io.rd_req := readReq
   mem_rd.io.addr  := pc_reg
 
-  when(state === IfuState.WaitMem && mem_rd.io.rd_end){   // 已读完
-    rdataReg := mem_rd.io.rdata
-  } otherwise{
-    rdataReg := rdataReg
-  }
+  // when(state === IfuState.WaitMem && mem_rd.io.rd_end){   // 已读完
+  //   rdataReg := mem_rd.io.rdata
+  // } otherwise{
+  //   rdataReg := rdataReg
+  // }
   val rdata = Mux(state === IfuState.WaitMem && mem_rd.io.rd_end, mem_rd.io.rdata, rdataReg)
   // ------------------------------------- 状态机 ------------------------------------- //
   switch(state) {

@@ -40,7 +40,7 @@ case class CPU() extends Component {
   def pipelineConnect2[T <: Data, T2 <: Data](
     prevOut: Stream[T],     // 前一级的输出
     thisIn:  Stream[T],     // 这一级的输入  
-    thisOut: Stream[T2]     // 这一级的输出  
+    thisOut: Stream[T2],    // 这一级的输出  
     dataValid: Bool()
   ) = {
 

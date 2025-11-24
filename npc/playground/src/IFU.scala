@@ -33,13 +33,13 @@ case class ysyx_23060082_IFU() extends Component {
     dataValid := dataValid
   }
   // ------------------------------------ PC寄存器 ------------------------------------ //
-  val pc_reg = RegNextWhen(io.input.pc_next, io.input.fire) init(U"32'h80000000")
+  val pc = RegNextWhen(io.input.pc_next, io.input.fire) init(U"32'h80000000")
   // ------------------------------------- 读内存 ------------------------------------- //
   val mem_rd = Mem_Rd()
   val readReq = (state === IfuState.Idle) && dataValid
   val rdataReg = RegNextWhen(mem_rd.io.rdata, state === IfuState.WaitMem && mem_rd.io.rd_end) init(0)  // 读完时更新数据
   mem_rd.io.rd_req := readReq
-  mem_rd.io.addr  := pc_reg
+  mem_rd.io.addr  := pc
   // ------------------------------------- 状态机 ------------------------------------- //
   switch(state) {
     is(IfuState.Idle) {
@@ -62,6 +62,6 @@ case class ysyx_23060082_IFU() extends Component {
   io.output.valid := dataValid && willValid  
   io.input.ready := !dataValid || io.output.fire
   // ----------------------------------- 数据传输部分 ----------------------------------- //
-  io.output.pc    := pc_reg
+  io.output.pc    := pc
   io.output.instr := Mux(state === IfuState.WaitMem && mem_rd.io.rd_end, mem_rd.io.rdata, rdataReg)
 }

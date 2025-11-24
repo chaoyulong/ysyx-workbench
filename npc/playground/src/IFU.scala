@@ -50,7 +50,7 @@ case class ysyx_23060082_IFU() extends Component {
   // ------------------------------------- 状态机 ------------------------------------- //
   switch(state) {
     is(IfuState.Idle) {
-      when(dataValid || rstEnd) {state := IfuState.WaitMem}     // 握手成功或者复位结束，都会触发读取 
+      when(dataValid) {state := IfuState.WaitMem}     // 握手成功或者复位结束，都会触发读取 
     }
     is(IfuState.WaitMem) {
       when(mem_rd.io.rd_end) {

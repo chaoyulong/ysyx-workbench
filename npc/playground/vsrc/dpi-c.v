@@ -70,7 +70,7 @@ module Mem_RW(
       rw_end0 <= 1'b1;
     end
     else begin
-      rw_end <= 1'b0;
+      rw_end0 <= 1'b0;
     end   
   end
   

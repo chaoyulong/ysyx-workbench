@@ -18,14 +18,14 @@ case class CPU() extends Component {
     thisOut: Stream[T2]     // 这一级的输出  
   ) = {
 
-    val prevFire = prevOut.valid && prevOut.ready                // 当前级与上一级握手成功
-    val thisFire = thisOut.valid && thisOut.ready               // 当前级与下一级握手成功，当前级的数据就没用了，可以用来接收数据
+    // val prevFire = prevOut.valid && prevOut.ready                // 当前级与上一级握手成功
+    // val thisFire = thisOut.valid && thisOut.ready               // 当前级与下一级握手成功，当前级的数据就没用了，可以用来接收数据
     val payloadReg = RegNextWhen(prevOut.payload, prevOut.fire)     // 握手成功更新寄存器
     val validReg = RegInit(False)
     
     when(prevOut.fire) {        // 上游握手成功，说明当前数据处于有效状态
       validReg := True
-    }elsewhen(thisFire) {   // 下游握手成功，说明当前数据已经无用，进入无效状态
+    }elsewhen(thisOut.fire) {   // 下游握手成功，说明当前数据已经无用，进入无效状态
       validReg := False
     }otherwise{
       validReg := validReg
@@ -34,7 +34,7 @@ case class CPU() extends Component {
     thisIn.payload := payloadReg  // 接入到当前级
     thisIn.valid := validReg     // 每一级的有效状态为数据有效状态
     
-    prevOut.ready := !validReg || thisFire   // 当数据无效，或者下游握手成功即将无效，此时ready置1,表示可以接收新的数据
+    prevOut.ready := !validReg || thisOut.fire   // 当数据无效，或者下游握手成功即将无效，此时ready置1,表示可以接收新的数据
   }
 
   def pipelineConnect2[T <: Data, T2 <: Data](

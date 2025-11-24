@@ -37,10 +37,10 @@ case class CPU() extends Component {
     prevOut.ready := !validReg || thisFire   // 当数据无效，或者下游握手成功即将无效，此时ready置1,表示可以接收新的数据
   }
 
-  def pipelineConnect2[T <: Data, T2 <: Data](
+  def pipelineConnect2[T <: Data, T2 <: Data, T3 <: Data](
     prevOut: Stream[T],     // 前一级的输出
-    thisIn:  Stream[T],     // 这一级的输入  
-    thisOut: Stream[T2],    // 这一级的输出  
+    thisIn:  Stream[T2],     // 这一级的输入  
+    thisOut: Stream[T3],    // 这一级的输出  
     dataValid: Bool
   ) = {
 
@@ -57,8 +57,8 @@ case class CPU() extends Component {
       validReg := validReg
     }
     
-    thisIn.payload   := payloadReg    // 接入到当前级
-    dataValid := validReg      // 每一级的有效状态为数据有效状态
+    thisIn.payload  := payloadReg    // 接入到当前级
+    thisIn.valid    := validReg      // 每一级的有效状态为数据有效状态
     
     prevOut.ready := !validReg || thisFire   // 当数据无效，或者下游握手成功即将无效，此时ready置1,表示可以接收新的数据
   }
@@ -74,7 +74,7 @@ case class CPU() extends Component {
   // ifu.io.to_Idu >-> idu.io.from_Ifu   // 
   pipelineConnect(ifu.io.output, idu.io.input, idu.io.output)
   pipelineConnect(idu.io.output, exu.io.input, exu.io.output)
-  pipelineConnect2(exu.io.output, lsu.io.input, lsu.io.output, lsu.io.inputDataValid)
+  pipelineConnect2(exu.io.output, lsu.io.input, lsu.io.output)
   // pipelineConnect(lsu.io.output, wbu.io.input, wbu.io.output)
   lsu.io.output >> wbu.io.input
   wbu.io.output >> ifu.io.input

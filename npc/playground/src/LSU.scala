@@ -28,11 +28,12 @@ case class ysyx_23060082_LSU() extends Component {
   val needMem = io.input.valid && (io.input.rf_ctrl.mem2reg || io.input.mem_ctrl.mem_wr) // 需要访问内存
 
   val dataProcess = ysyx_23060082_DataProcess()   // 数据处理
+  val mem_rw = Mem_RW()
+  
     dataProcess.io.addrOp := memAddr(1 downto 0) ## io.input.mem_ctrl.mem_op      // 合并 addr + MemOp 生成 5 位索引
     dataProcess.io.wdata  := io.input.rf_read_data_2 // 写数据为寄存器2的数据
     dataProcess.io.rdata  := Mux(state === LsuState.WaitMem && mem_rw.io.rw_end, mem_rw.io.rdata, rdata_reg)
 
-  val mem_rw = Mem_RW()
     mem_rw.io.valid := needMem && (state === LsuState.Idle)
     mem_rw.io.wen   := io.input.mem_ctrl.mem_wr
     mem_rw.io.addr  := U(memAddr(31 downto 2) ## U"00")   // 真实地址要对齐

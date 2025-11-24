@@ -25,7 +25,7 @@ case class ysyx_23060082_IFU() extends Component {
   val rstEnd = (rstReg1 && !rstReg2)
   // ------------------------------------ -------------------------------------------- //
   val dataValid = RegInit(False)
-  when(io.input.fire | rstEnd) {        // 上游握手成功，说明当前数据处于有效状态
+  when(io.input.fire || rstEnd) {        // 上游握手成功，说明当前数据处于有效状态
     dataValid := True
   }elsewhen(io.output.fire) {   // 下游握手成功，说明当前数据已经无用，进入无效状态
     dataValid := False
@@ -50,7 +50,7 @@ case class ysyx_23060082_IFU() extends Component {
   // ------------------------------------- 状态机 ------------------------------------- //
   switch(state) {
     is(IfuState.Idle) {
-      when(io.input.fire || rstEnd) {state := IfuState.WaitMem}     // 握手成功或者复位结束，都会触发读取 
+      when(dataValid || rstEnd) {state := IfuState.WaitMem}     // 握手成功或者复位结束，都会触发读取 
     }
     is(IfuState.WaitMem) {
       when(mem_rd.io.rd_end) {

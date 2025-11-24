@@ -14,7 +14,7 @@ case class CPU() extends Component {
   // ------------------------------------------------------ 定义级间寄存器函数 ------------------------------------------------------ //
   def pipelineConnect[T <: Data, T2 <: Data](
     prevOut: Stream[T],     // 前一级的输出
-    thisIn:  Flow[T],     // 这一级的输入  
+    thisIn:  Flow[T],       // 这一级的输入  
     thisOut: Stream[T2]     // 这一级的输出  
   ) = {
 
@@ -36,25 +36,20 @@ case class CPU() extends Component {
   }
   // ------------------------------------------------------------------------------------------------------------------------- //
 
-  val reg_file = RegFile()
+  val reg_file = ysyx_23060082_RegFile()
   val ifu = ysyx_23060082_IFU()
   val idu = ysyx_23060082_IDU()
   val exu = ysyx_23060082_EXU()
   val lsu = ysyx_23060082_LSU()
   val wbu = ysyx_23060082_WBU()
   
-  // ifu.io.to_Idu >-> idu.io.from_Ifu   // 
   pipelineConnect(ifu.io.output, idu.io.input, idu.io.output)
   pipelineConnect(idu.io.output, exu.io.input, exu.io.output)
   pipelineConnect(exu.io.output, lsu.io.input, lsu.io.output)
   // pipelineConnect(lsu.io.output, wbu.io.input, wbu.io.output)
-  lsu.io.output >> wbu.io.input
+  lsu.io.output >> wbu.io.input   // wbu没有下一级，直接特殊对待，写回直接在内部处理
   wbu.io.output >> ifu.io.input
-  // pipelineConnect(wbu.io.output, ifu.io.input, ifu.io.output)
-  // idu.io.output >-> exu.io.input
-  // exu.io.output >-> lsu.io.input
-  // lsu.io.output >-> wbu.io.input
-  // wbu.io.output >-> ifu.io.input
+
 
   reg_file.io.read_addr_1 <> idu.io.rf_read_addr_1
   reg_file.io.read_addr_2 <> idu.io.rf_read_addr_2
@@ -67,7 +62,7 @@ case class CPU() extends Component {
 
 }
 
-case class RegFile() extends Component {
+case class ysyx_23060082_RegFile() extends Component {
   val io = new Bundle {
     val read_addr_1 = in UInt(5 bits)
     val read_addr_2 = in UInt(5 bits)
@@ -81,9 +76,9 @@ case class RegFile() extends Component {
 
   val rf = Vec(Reg(UInt(32 bits)),16)    // riscv32e,有16个通用寄存器
   when(io.write_en){
-    rf(io.write_addr(0 to 3)) := io.write_data
+    rf(io.write_addr(3 downto 0)) := io.write_data
   }
-  rf(U"4'h0") := U"32'h0"
+  rf(0) := U"32'h0"
   
   io.read_data_1 := rf(io.read_addr_1(0 to 3))
   io.read_data_2 := rf(io.read_addr_2(0 to 3)) 

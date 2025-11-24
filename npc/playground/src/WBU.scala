@@ -17,6 +17,8 @@ case class ysyx_23060082_WBU() extends Component {
     val rf_write_en    = out Bool()
   }
 
+  
+
   io.output.pc_next := io.input.pc_next
   io.rf_write_addr  := io.input.rf_ctrl.rf_write_addr
   io.rf_write_en    := io.input.rf_ctrl.reg_wr

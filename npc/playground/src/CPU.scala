@@ -40,8 +40,7 @@ case class CPU() extends Component {
   def pipelineConnect2[T <: Data, T2 <: Data, T3 <: Data](
     prevOut: Stream[T],     // 前一级的输出
     thisIn:  Stream[T2],     // 这一级的输入  
-    thisOut: Stream[T3],    // 这一级的输出  
-    dataValid: Bool
+    thisOut: Stream[T3]     // 这一级的输出  
   ) = {
 
     val prevFire = prevOut.valid && thisIn.ready                // 当前级与上一级握手成功

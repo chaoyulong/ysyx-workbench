@@ -17,7 +17,7 @@ object LsuState extends SpinalEnum {
 
 case class ysyx_23060082_LSU() extends Component {
   val io = new Bundle {
-    val dataValid = in Bool()             // 数据有效标志
+    val inputDataValid = in Bool()             // 数据有效标志
     val input     = slave Stream(Exu2Lsu_data())
     val output    = master Stream(Lsu2Wbu_data()) 
   }
@@ -26,7 +26,7 @@ case class ysyx_23060082_LSU() extends Component {
   val rdata_reg  = Reg(UInt(32 bits)) init(0)   
 
   val state = Reg(LsuState()) init(LsuState.Idle)   // 创建一个状态机
-  val needMem = io.input.dataValid && (io.input.rf_ctrl.mem2reg || io.input.mem_ctrl.mem_wr) // 需要访问内存
+  val needMem = io.inputDataValid && (io.input.rf_ctrl.mem2reg || io.input.mem_ctrl.mem_wr) // 需要访问内存
 
   val dataProcess = ysyx_23060082_DataProcess()   // 数据处理
     dataProcess.io.addrOp := memAddr(1 downto 0) ## io.input.mem_ctrl.mem_op      // 合并 addr + MemOp 生成 5 位索引
@@ -86,8 +86,8 @@ case class ysyx_23060082_LSU() extends Component {
   // ----------------------- 用于握手的部分 ----------------------- //
   // willValid的意义就是当前周期就可以完成任务
   val willValid = (state === LsuState.WaitMem && mem_rw.io.rw_end) ||       // 需要访存并且访存成功
-                  (state === LsuState.Idle && io.input.dataValid && !needMem)
-  io.output.valid := io.input.dataValid && willValid  
+                  (state === LsuState.Idle && io.inputDataValid && !needMem)
+  io.output.valid := io.inputDataValid && willValid  
   // ----------------------- 数据传输部分 ----------------------- //
   io.output.pc          := io.input.pc
   io.output.pc_next     := Mux(io.input.csr_ctrl.trap_enter, csr.io.mtvec,

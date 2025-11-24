@@ -21,15 +21,13 @@ case class ysyx_23060082_LSU() extends Component {
     val output    = master Stream(Lsu2Wbu_data()) 
   }
   val memAddr    = io.input.alu_result    // alu的输出结果就是访存地址
-  val rdata      = UInt(32 bits)
-  val rdata_reg  = Reg(UInt(32 bits)) init(0)   
 
   val state = Reg(LsuState()) init(LsuState.Idle)   // 创建一个状态机
   val needMem = io.input.valid && (io.input.rf_ctrl.mem2reg || io.input.mem_ctrl.mem_wr) // 需要访问内存
 
   val dataProcess = ysyx_23060082_DataProcess()   // 数据处理
   val mem_rw = Mem_RW()
-  val rdata_reg = RegNextWhen(mem_rw.io.rdata, state === LsuState.WaitMem && mem_rw.io.rw_end && io.input.rf_ctrl.mem2reg)  // 是读内存指令并且已读完
+  val rdata_reg = RegNextWhen(mem_rw.io.rdata, state === LsuState.WaitMem && mem_rw.io.rw_end && io.input.rf_ctrl.mem2reg) init(0)  // 是读内存指令并且已读完
 
     dataProcess.io.addrOp := memAddr(1 downto 0) ## io.input.mem_ctrl.mem_op      // 合并 addr + MemOp 生成 5 位索引
     dataProcess.io.wdata  := io.input.rf_read_data_2 // 写数据为寄存器2的数据

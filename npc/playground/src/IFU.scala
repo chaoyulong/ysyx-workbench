@@ -18,6 +18,7 @@ case class ysyx_23060082_IFU() extends Component {
     val output = master Stream(Ifu2Idu_data())  
   }
 
+  val state = Reg(IfuState()) init(IfuState.Idle)   // 创建一个状态机
   // --------------------------------- 用于确定复位结束 --------------------------------- //
   val rstReg1 = RegNext(True) init(False)
   val rstReg2 = RegNext(rstReg1) init(False)
@@ -47,8 +48,6 @@ case class ysyx_23060082_IFU() extends Component {
   }
   val rdata = Mux(state === IfuState.WaitMem && mem_rd.io.rd_end, mem_rd.io.rdata, rdataReg)
   // ------------------------------------- 状态机 ------------------------------------- //
-  val state = Reg(IfuState()) init(IfuState.Idle)   // 创建一个状态机
-
   switch(state) {
     is(IfuState.Idle) {
       when(io.input.fire || rstEnd) {state := IfuState.WaitMem}     // 握手成功或者复位结束，都会触发读取 

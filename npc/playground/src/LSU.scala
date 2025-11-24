@@ -29,7 +29,8 @@ case class ysyx_23060082_LSU() extends Component {
 
   val dataProcess = ysyx_23060082_DataProcess()   // 数据处理
   val mem_rw = Mem_RW()
-  
+  val rdata_reg = RegNextWhen(mem_rw.io.rdata, state === LsuState.WaitMem && mem_rw.io.rw_end && io.input.rf_ctrl.mem2reg)  // 是读内存指令并且已读完
+
     dataProcess.io.addrOp := memAddr(1 downto 0) ## io.input.mem_ctrl.mem_op      // 合并 addr + MemOp 生成 5 位索引
     dataProcess.io.wdata  := io.input.rf_read_data_2 // 写数据为寄存器2的数据
     dataProcess.io.rdata  := Mux(state === LsuState.WaitMem && mem_rw.io.rw_end, mem_rw.io.rdata, rdata_reg)
@@ -39,13 +40,6 @@ case class ysyx_23060082_LSU() extends Component {
     mem_rw.io.addr  := U(memAddr(31 downto 2) ## U"00")   // 真实地址要对齐
     mem_rw.io.wdata := dataProcess.io.wdataReal
     mem_rw.io.wmask := dataProcess.io.wmask
-
-  when(state === LsuState.WaitMem && mem_rw.io.rw_end){ // 是读内存指令并且已读完
-    rdata_reg := mem_rw.io.rdata
-  } otherwise{
-    rdata_reg := rdata_reg
-  }
-
   // ------------------------------------- 状态机 ------------------------------------- // 
   switch(state) {
     is(LsuState.Idle) {

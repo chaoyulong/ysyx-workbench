@@ -18,8 +18,13 @@ case class ysyx_23060082_IFU() extends Component {
     val output = master Stream(Ifu2Idu_data())  
   }
 
+  // --------------------------------- 用于确定复位结束 --------------------------------- //
+  val rstReg1 = RegNext(True) init(False)
+  val rstReg2 = RegNext(rstReg1) init(False)
+  val rstEnd = (rstReg1 && !rstReg2)
+  // ------------------------------------ -------------------------------------------- //
   val dataValid = RegInit(False)
-  when(io.input.fire | rst_end) {        // 上游握手成功，说明当前数据处于有效状态
+  when(io.input.fire | rstEnd) {        // 上游握手成功，说明当前数据处于有效状态
     dataValid := True
   }elsewhen(output.fire) {   // 下游握手成功，说明当前数据已经无用，进入无效状态
     dataValid := False
@@ -28,13 +33,9 @@ case class ysyx_23060082_IFU() extends Component {
   }
   // ------------------------------------ PC寄存器 ------------------------------------ //
   val pc_reg   = Reg(UInt(32 bits)) init(U"32'h80000000")
-  // --------------------------------- 用于确定复位结束 --------------------------------- //
-  val rstReg1 = RegNext(True) init(False)
-  val rstReg2 = RegNext(rstReg1) init(False)
-  val rstEnd = (rstReg1 && !rstReg2)
   // ------------------------------------- 读内存 ------------------------------------- //
   val mem_rd = Mem_Rd()
-  val readReq = (state === IfuState.Idle) && (io.input.fire || rst_end)
+  val readReq = (state === IfuState.Idle) && (io.input.fire || rstEnd)
   val rdataReg  = Reg(UInt(32 bits)) init(0)   
   mem_rd.io.rd_req := readReq
   mem_rd.io.addr  := pc_reg
@@ -50,7 +51,7 @@ case class ysyx_23060082_IFU() extends Component {
 
   switch(state) {
     is(IfuState.Idle) {
-      when(io.input.fire || rst_end) {state := IfuState.WaitMem}     // 握手成功或者复位结束，都会触发读取 
+      when(io.input.fire || rstEnd) {state := IfuState.WaitMem}     // 握手成功或者复位结束，都会触发读取 
     }
     is(IfuState.WaitMem) {
       when(mem_rd.io.rd_end) {

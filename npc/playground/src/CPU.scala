@@ -37,10 +37,10 @@ case class CPU() extends Component {
     prevOut.ready := !validReg || thisFire   // 当数据无效，或者下游握手成功即将无效，此时ready置1,表示可以接收新的数据
   }
 
-  def pipelineConnect2[T <: Data, T2 <: Data, T3 <: Data](
+  def pipelineConnect2[T <: Data, T2 <: Data](
     prevOut: Stream[T],     // 前一级的输出
-    thisIn:  Stream[T2],     // 这一级的输入  
-    thisOut: Stream[T3]     // 这一级的输出  
+    thisIn:  Flow[T],     // 这一级的输入  
+    thisOut: Stream[T2]     // 这一级的输出  
   ) = {
 
     val prevFire = prevOut.valid && thisIn.ready                // 当前级与上一级握手成功

@@ -30,7 +30,7 @@ case class ysyx_23060082_LSU() extends Component {
   val dataProcess = ysyx_23060082_DataProcess()   // 数据处理
     dataProcess.io.addrOp := memAddr(1 downto 0) ## io.input.mem_ctrl.mem_op      // 合并 addr + MemOp 生成 5 位索引
     dataProcess.io.wdata  := io.input.rf_read_data_2 // 写数据为寄存器2的数据
-    dataProcess.io.rdata  := rdata
+    dataProcess.io.rdata  := Mux(state === LsuState.WaitMem && mem_rw.io.rw_end, mem_rw.io.rdata, rdata_reg)
 
   val mem_rw = Mem_RW()
     mem_rw.io.valid := needMem && (state === LsuState.Idle)
@@ -44,8 +44,8 @@ case class ysyx_23060082_LSU() extends Component {
   } otherwise{
     rdata_reg := rdata_reg
   }
-  rdata := Mux(state === LsuState.WaitMem && mem_rw.io.rw_end, mem_rw.io.rdata, rdata_reg)
-  // ------------------------------- 状态机 ------------------------------- // 
+
+  // ------------------------------------- 状态机 ------------------------------------- // 
   switch(state) {
     is(LsuState.Idle) {
       when(needMem) {state := LsuState.WaitMem}       
@@ -60,9 +60,7 @@ case class ysyx_23060082_LSU() extends Component {
       when(io.output.fire) {state := LsuState.Idle}        
     }
   }
-  // -------------------------------------------------------------------- //
-
-  // ------------------------------- csr寄存器 ------------------------------- // 
+  // ----------------------------------- csr寄存器 ----------------------------------- // 
   val csr = ysyx_23060082_CSR()
     csr.io.csr_addr   := io.input.imm
     csr.io.csr_wdata  := io.input.rf_read_data_1
@@ -72,13 +70,13 @@ case class ysyx_23060082_LSU() extends Component {
     csr.io.pc_in      := io.input.pc
     csr.io.cause_in   := io.input.rf_read_data_1
 
-  // ----------------------- 用于握手的部分 ----------------------- //
+  // --------------------------------- 用于握手的部分 --------------------------------- //
   // willValid的意义就是当前周期就可以完成任务
   val willValid = (state === LsuState.WaitMem && mem_rw.io.rw_end) ||       // 需要访存并且访存成功
                   (state === LsuState.Done) ||
                   (state === LsuState.Idle && io.input.valid && !needMem)
   io.output.valid := io.input.valid && willValid  
-  // ----------------------- 数据传输部分 ----------------------- //
+  // ---------------------------------- 数据传输部分 ---------------------------------- //
   io.output.pc          := io.input.pc
   io.output.pc_next     := Mux(io.input.csr_ctrl.trap_enter, csr.io.mtvec,
                            Mux(io.input.csr_ctrl.trap_exit, csr.io.mepc,
@@ -89,6 +87,7 @@ case class ysyx_23060082_LSU() extends Component {
   io.output.rf_ctrl     := io.input.rf_ctrl    
 }
 
+// ---------------------------------- 数据处理单元 ---------------------------------- //
 case class ysyx_23060082_DataProcess() extends Component {
   val io = new Bundle {
     val addrOp    = in  Bits( 5 bits)

@@ -18,7 +18,7 @@ case class Exu2Lsu_data() extends Bundle {
 
 case class ysyx_23060082_EXU() extends Component {
   val io = new Bundle {
-    val input  = slave  Stream(Idu2Exu_data())
+    val input  = slave  Flow  (Idu2Exu_data())
     val output = master Stream(Exu2Lsu_data()) 
   }
 
@@ -46,7 +46,7 @@ case class ysyx_23060082_EXU() extends Component {
   // ------------------ 用于握手的部分 ------------------ //
   val willValid = True
   io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
-  io.input.ready := willValid
+  // io.input.ready := willValid
   // ------------------ 数据传输部分 ------------------ //
   io.output.pc          := io.input.pc
   io.output.pc_next     := pc_data_a + pc_data_b

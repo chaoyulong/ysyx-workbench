@@ -46,7 +46,7 @@ case class Ctrl() extends Bundle {   // 控制信号
 
 case class ysyx_23060082_IDU() extends Component {
   val io = new Bundle {
-    val input  = slave  Stream(Ifu2Idu_data())
+    val input  = slave  Flow(Ifu2Idu_data())
     val output = master Stream(Idu2Exu_data()) 
 
     val rf_read_addr_1 = out UInt(5 bits)
@@ -61,7 +61,7 @@ case class ysyx_23060082_IDU() extends Component {
   // ----------------------- 用于握手的部分 ----------------------- //
   val willValid = True
   io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
-  io.input.ready := willValid
+  // io.input.ready := willValid
   // ----------------------- 数据传输部分 ----------------------- //
   io.rf_read_addr_1 := decoder.io.ctrl.csr_si.trap_enter.mux(   // 如果是触发异常的指令，则选择a5(第15个寄存器)作为数据输入
                          True  -> U"5'd15", 

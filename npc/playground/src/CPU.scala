@@ -18,7 +18,7 @@ case class CPU() extends Component {
     thisOut: Stream[T2]     // 这一级的输出  
   ) = {
 
-    val prevFire = prevOut.valid && thisIn.ready                // 当前级与上一级握手成功
+    val prevFire = prevOut.valid && prevOut.ready                // 当前级与上一级握手成功
     val thisFire = thisOut.valid && thisOut.ready               // 当前级与下一级握手成功，当前级的数据就没用了，可以用来接收数据
     val payloadReg = RegNextWhen(prevOut.payload, prevFire)     // 握手成功更新寄存器
     val validReg = RegInit(False)

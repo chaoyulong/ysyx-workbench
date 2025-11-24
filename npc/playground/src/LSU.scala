@@ -11,13 +11,19 @@ case class Lsu2Wbu_data() extends Bundle {
   val rf_ctrl       = RfCtrl()      // 其中的mem2reg信号会作为读内存信号被用到
 }
 
+case class Exu2LsuPayload() extends Bundle {
+  val dataValid = Bool()             // 数据有效标志
+  val payload   = Exu2Lsu_data()     // 真正的数据
+}
+
 object LsuState extends SpinalEnum {
   val Idle, WaitMem, Done = newElement()
 }
 
 case class ysyx_23060082_LSU() extends Component {
   val io = new Bundle {
-    val input  = slave Stream(Exu2Lsu_data())
+    // val input  = slave Stream(Exu2Lsu_data())
+    val input     = in(Exu2LsuPayload())
     val output    = master Stream(Lsu2Wbu_data()) 
   }
   val memAddr    = io.input.alu_result    // alu的输出结果就是访存地址
@@ -25,7 +31,7 @@ case class ysyx_23060082_LSU() extends Component {
   val rdata_reg  = Reg(UInt(32 bits)) init(0)   
 
   val state = Reg(LsuState()) init(LsuState.Idle)   // 创建一个状态机
-  val needMem = io.input.valid && (io.input.rf_ctrl.mem2reg || io.input.mem_ctrl.mem_wr) // 需要访问内存
+  val needMem = io.input.dataValid && (io.input.rf_ctrl.mem2reg || io.input.mem_ctrl.mem_wr) // 需要访问内存
 
   val dataProcess = ysyx_23060082_DataProcess()   // 数据处理
     dataProcess.io.addrOp := memAddr(1 downto 0) ## io.input.mem_ctrl.mem_op      // 合并 addr + MemOp 生成 5 位索引
@@ -45,7 +51,7 @@ case class ysyx_23060082_LSU() extends Component {
     rdata_reg := rdata_reg
   }
   rdata := Mux(state === LsuState.WaitMem && mem_rw.io.rw_end, mem_rw.io.rdata, rdata_reg)
-
+  // ------------------------------- 状态机 ------------------------------- // 
   switch(state) {
     is(LsuState.Idle) {
       when(needMem) {
@@ -85,9 +91,8 @@ case class ysyx_23060082_LSU() extends Component {
   // ----------------------- 用于握手的部分 ----------------------- //
   // willValid的意义就是当前周期就可以完成任务
   val willValid = (state === LsuState.WaitMem && mem_rw.io.rw_end) ||       // 需要访存并且访存成功
-                  (state === LsuState.Idle && io.input.valid && !needMem)
-  io.output.valid := io.input.valid && willValid  
-  io.input.ready := (state === LsuState.Idle)
+                  (state === LsuState.Idle && io.input.dataValid && !needMem)
+  io.output.valid := io.input.dataValid && willValid  
   // ----------------------- 数据传输部分 ----------------------- //
   io.output.pc          := io.input.pc
   io.output.pc_next     := Mux(io.input.csr_ctrl.trap_enter, csr.io.mtvec,

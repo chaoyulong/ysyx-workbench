@@ -17,7 +17,7 @@ object LsuState extends SpinalEnum {
 
 case class ysyx_23060082_LSU() extends Component {
   val io = new Bundle {
-    val input     = slave Flow(Exu2Lsu_data())
+    val input     = slave  Flow(Exu2Lsu_data())
     val output    = master Stream(Lsu2Wbu_data()) 
   }
   val memAddr    = io.input.alu_result    // alu的输出结果就是访存地址
@@ -75,6 +75,7 @@ case class ysyx_23060082_LSU() extends Component {
   // ----------------------- 用于握手的部分 ----------------------- //
   // willValid的意义就是当前周期就可以完成任务
   val willValid = (state === LsuState.WaitMem && mem_rw.io.rw_end) ||       // 需要访存并且访存成功
+                  (state === LsuState.Done) ||
                   (state === LsuState.Idle && io.input.valid && !needMem)
   io.output.valid := io.input.valid && willValid  
   // ----------------------- 数据传输部分 ----------------------- //
@@ -86,7 +87,6 @@ case class ysyx_23060082_LSU() extends Component {
   io.output.mem_data_out:= Mux(io.input.csr_ctrl.csr_cmd =/= U"3'd0", csr.io.csr_rdata, dataProcess.io.rdataReal)           // 借用mem_data_out来输出读出的值
   io.output.alu_data_out:= io.input.alu_result
   io.output.rf_ctrl     := io.input.rf_ctrl    
-
 }
 
 case class ysyx_23060082_DataProcess() extends Component {

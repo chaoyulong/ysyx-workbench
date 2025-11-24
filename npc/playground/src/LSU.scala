@@ -11,19 +11,14 @@ case class Lsu2Wbu_data() extends Bundle {
   val rf_ctrl       = RfCtrl()      // 其中的mem2reg信号会作为读内存信号被用到
 }
 
-case class Exu2LsuPayload() extends Bundle {
-  val dataValid = Bool()             // 数据有效标志
-  val payload   = Exu2Lsu_data()     // 真正的数据
-}
-
 object LsuState extends SpinalEnum {
   val Idle, WaitMem, Done = newElement()
 }
 
 case class ysyx_23060082_LSU() extends Component {
   val io = new Bundle {
-    // val input  = slave Stream(Exu2Lsu_data())
-    val input     = in(Exu2LsuPayload())
+    val dataValid = in Bool()             // 数据有效标志
+    val input     = slave Stream(Exu2Lsu_data())
     val output    = master Stream(Lsu2Wbu_data()) 
   }
   val memAddr    = io.input.alu_result    // alu的输出结果就是访存地址

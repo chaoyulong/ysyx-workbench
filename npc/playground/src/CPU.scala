@@ -41,7 +41,7 @@ case class CPU() extends Component {
     prevOut: Stream[T],     // 前一级的输出
     thisIn:  Stream[T],     // 这一级的输入  
     thisOut: Stream[T2],    // 这一级的输出  
-    dataValid: Bool()
+    dataValid: Bool
   ) = {
 
     val prevFire = prevOut.valid && thisIn.ready                // 当前级与上一级握手成功

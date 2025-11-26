@@ -1,37 +1,135 @@
+# 最常修改的一个
+SPINAL_TOPNAME = CPU
+ISA = RISCV32_E
+
+
+# verilator相关
+TOPNAME = $(SPINAL_TOPNAME)
+YXYXSOC_VFILE =
+
+INC_PATH += $(abspath include)
 BUILD_DIR = ./build
+OBJ_DIR = $(BUILD_DIR)/obj_dir
+BIN = $(BUILD_DIR)/V$(TOPNAME)
+SIM_WAVE = $(BUILD_DIR)/waveform.fst
 
-PRJ = playground
+# spinal生成verilog相关
+SPINAL_PRJ = playground
+SPINAL_VFILE = $(abspath $(BUILD_DIR)/$(TOPNAME).v)
+SPINAL_SIM_DIR = $(BUILD_DIR)/simulations
 
-test:
-	mill -i $(PRJ).test
+ifneq ($(words $(CURDIR)),1)
+  $(error Unsupported: GNU Make cannot build in directories containing spaces, build elsewhere: '$(CURDIR)')
+endif
+
+ifeq ($(VERILATOR_ROOT),)
+  VERILATOR = verilator
+else
+  export VERILATOR_ROOT
+  VERILATOR = $(VERILATOR_ROOT)/bin/verilator
+endif
+VERILATOR_CFLAGS += -MMD --build -cc  \
+				-O3 --x-assign fast --x-initial fast --noassert \
+				--trace-fst --relative-includes	\
+				--no-timing --timescale "1ns/1ns"	\
+				--autoflush
+
+default: $(BIN)
+
+$(shell mkdir -p $(BUILD_DIR))
+
+# rules for NVBoard	
+NXDC_FILES = constr/pin.nxdc
+SRC_AUTO_BIND = $(abspath $(BUILD_DIR)/auto_bind.cpp)
+$(SRC_AUTO_BIND): $(NXDC_FILES)
+	@(sed -i '1s/.*/top=$(TOPNAME)/' $(NXDC_FILES))
+	@python3 $(NVBOARD_HOME)/scripts/auto_pin_bind.py $^ $@
+
+include $(NVBOARD_HOME)/scripts/nvboard.mk
+
+# verilator相关
+VSRCS += $(SPINAL_VFILE)
+VSRCS += $(shell find $(abspath playground/vsrc) -name "*.v")
+CSRCS = $(shell find $(abspath csrc) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
+INCFLAGS = $(addprefix -I, $(INC_PATH))
+CXXFLAGS += $(INCFLAGS) -DTOP_NAME="\"V$(TOPNAME)\"" -D__$(ISA)__
+LDFLAGS += -lreadline
+override ARGS ?=
+IMG ?=
+
+#rules for disassemble
+LIBCAPSTONE = tools/capstone/repo/libcapstone.so.5
+INC_PATH +=  $(abspath tools/capstone/repo/include)
+CXXFLAGS += -DCONFIG_ISA_riscv
+$(abspath csrc/disasm.c): $(LIBCAPSTONE)
+$(LIBCAPSTONE):
+	$(MAKE) -C tools/capstone
+
+# 只操作spinal的两条命令:verilog与test
+SPINAL_GEN_ENV := SPINAL_TOPNAME=$(SPINAL_PRJ).$(SPINAL_TOPNAME) BUILD_DIR=$(BUILD_DIR)
+SPINAL_SIM_ENV := SPINAL_SIM_DIR=$(BUILD_DIR)/simulations
 
 verilog:
 	$(call git_commit, "generate verilog")
-	mkdir -p $(BUILD_DIR)
-	mill -i $(PRJ).runMain Elaborate --target-dir $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)
+	@$(SPINAL_GEN_ENV) mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog 
 
-help:
-	mill -i $(PRJ).runMain Elaborate --help
+test:
+	@$(SPINAL_SIM_ENV) mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalSim 
+	@gtkwave $(SPINAL_SIM_DIR)/$(SPINAL_TOPNAME)/test/wave.fst
 
-reformat:
-	mill -i __.reformat
+# 应该每次都重新生成一次verilog文件
+$(SPINAL_VFILE): verilog
 
-checkformat:
-	mill -i __.checkFormat
+# 此函数用于verilator编译，nvboard和直接仿真所用文件不同，例如：
+# 		$(call build_target, $^, -D__USE_NVBOARD__),第一个变量为所需的文件，第二个变量为加入的宏定义
+define build_target
+	$(call git_commit, "sim RTL") # DO NOT REMOVE THIS LINE!!!
+	@echo verilator[]: compiling...
+	@rm -rf $(OBJ_DIR)
+	@$(VERILATOR) $(VERILATOR_CFLAGS) \
+		$(addprefix -CFLAGS , $(CXXFLAGS) $2) $(addprefix -LDFLAGS , $(LDFLAGS)) \
+		--top-module $(TOPNAME) $1 \
+		--Mdir $(OBJ_DIR) --exe -o $(abspath $(BIN)) \
+		2>&1 | grep -v -E '^g++|^echo|^rm|^python3'
+	@echo verilator[]: completed
+	@echo $(BIN) start running...
+	@$(BIN) $(ARGS) $(IMG)
+	@echo $(BIN) run end
+endef
 
-bsp:
-	mill -i mill.bsp.BSP/install
+# 直接在nvboard上运行，直接查看现象
+run: $(CSRCS) $(VSRCS) $(NVBOARD_ARCHIVE) $(SRC_AUTO_BIND)
+	@$(call build_target, $^, -D__USE_NVBOARD__)
 
-idea:
-	mill -i mill.idea.GenIdea/idea
+# 用于单步执行
+sim: $(CSRCS) $(VSRCS)
+	@$(call build_target, $^, )
+
+# 运行并记录波形
+wave: $(CSRCS) $(VSRCS)
+	@$(call build_target, $^, -D__GET_WAVE__)
+	@gtkwave $(SIM_WAVE)
+
+# help:
+# 	mill -i $(SPINAL_PRJ).runMain Elborate --help
+
+# reformat:
+# 	mill -i __.reformat
+
+# checkformat:
+# 	mill -i __.checkFormat
+
+# bsp:
+# 	mill -i mill.bsp.BSP/install
+
+# idea:
+# 	mill -i mill.idea.GenIdea/idea
 
 clean:
-	-rm -rf $(BUILD_DIR)
+	-rm -rf $(BUILD_DIR) ./simulations ./*.v
 
-.PHONY: test verilog help reformat checkformat clean
+.PHONY: $(SPINAL_VFILE) test verilog run sim wave help reformat checkformat clean 
 
-sim:
-	$(call git_commit, "sim RTL") # DO NOT REMOVE THIS LINE!!!
-	@echo "Write this Makefile by yourself."
 
 -include ../Makefile

@@ -15,20 +15,18 @@ object AxiConfig {
     addressWidth = 32,
     dataWidth    = 32,
     idWidth      = 4 ,
-    // userWidth    = 32,
-    useBurst     = True,
-    useSize      = True,
-    useLen       = True,
-    useLast      = True,
-    useResp      = True,
-    useStrb      = True,
-    useid        = True,
-    useRegion    = False,
-    useLock      = False,
-    useCache     = False,
-    useQos       = False,
-    useProt      = False
-    // useUser      = False,
+    useId        = true,
+    useBurst     = true,
+    useSize      = true,
+    useLen       = true,
+    useLast      = true,
+    useResp      = true,
+    useStrb      = true,      
+    useRegion    = false,
+    useLock      = false,
+    useCache     = false,
+    useQos       = false,
+    useProt      = false
   )
 }
 

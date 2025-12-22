@@ -75,13 +75,13 @@ case class ysyx_23060082_IFU() extends Component {
 /* ****************************************************************
   只有读通道的axi总线控制器
 **************************************************************** */
-case class ysyx_23060082_AXI_Ctrl_ReadOnly() extends Component {
-  val io = new Bundle {
-    val readReq  = in Bool()
-    val readAddr = in UInt(32 bits)
-    val readData = out UInt(32 bits)
-    val axi4 = master Axi4ReadOnly(axiConfig)
-  }
+// case class ysyx_23060082_AXI_Ctrl_ReadOnly() extends Component {
+//   val io = new Bundle {
+//     val readReq  = in Bool()
+//     val readAddr = in UInt(32 bits)
+//     val readData = out UInt(32 bits)
+//     val axi4 = master Axi4ReadOnly(axiConfig)
+//   }
 
-  Axi4ReadOnly(axiConfig)
-}
+//   Axi4ReadOnly(axiConfig)
+// }

@@ -27,7 +27,7 @@ object AxiConfig {
     useLock      = False,
     useCache     = False,
     useQos       = False,
-    useProt      = False,
+    useProt      = False
     // useUser      = False,
   )
 }

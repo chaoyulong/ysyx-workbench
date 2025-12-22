@@ -12,6 +12,12 @@ object IfuState extends SpinalEnum {
   val Idle, WaitMem, Done = newElement()
 }
 
+val axiConfig = Axi4Config(
+  addressWidth = 32,
+  dataWidth    = 32,
+  idWidth      = 4
+)
+
 case class ysyx_23060082_IFU() extends Component {
   val io = new Bundle {
     val input  = slave  Stream(Wbu2Ifu_data())
@@ -64,4 +70,18 @@ case class ysyx_23060082_IFU() extends Component {
   // ----------------------------------- 数据传输部分 ----------------------------------- //
   io.output.pc    := pc
   io.output.instr := Mux(state === IfuState.WaitMem && mem_rd.io.rd_end, mem_rd.io.rdata, rdataReg)
+}
+
+/* ****************************************************************
+  只有读通道的axi总线控制器
+**************************************************************** */
+case class ysyx_23060082_AXI_Ctrl_ReadOnly() extends Component {
+  val io = new Bundle {
+    val readReq  = in Bool()
+    val readAddr = in UInt(32 bits)
+    val readData = out UInt(32 bits)
+    val axi4 = master Axi4ReadOnly(axiConfig)
+  }
+
+  Axi4ReadOnly(axiConfig)
 }

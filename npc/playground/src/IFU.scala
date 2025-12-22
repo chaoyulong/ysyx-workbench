@@ -8,9 +8,6 @@ case class Ifu2Idu_data() extends Bundle {
   val instr = UInt(32 bits)
 }
 
-object IfuState extends SpinalEnum {
-  val Idle, WaitMem, Done = newElement()
-}
 
 // val axiConfig = Axi4Config(
 //   addressWidth = 32,
@@ -24,6 +21,9 @@ case class ysyx_23060082_IFU() extends Component {
     val output = master Stream(Ifu2Idu_data())  
   }
 
+  object IfuState extends SpinalEnum {
+    val Idle, WaitMem, Done = newElement()
+  }
   val state = Reg(IfuState()) init(IfuState.Idle)   // 创建一个状态机
   // --------------------------------- 用于确定复位结束 --------------------------------- //
   val rstReg1 = RegNext(True) init(False)

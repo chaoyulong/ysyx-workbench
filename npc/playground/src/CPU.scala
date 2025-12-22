@@ -79,7 +79,7 @@ case class ysyx_23060082_RegFile() extends Component {
     rf(io.write_addr(3 downto 0)) := io.write_data
   }
   when(True){
-    rf(0) := U"32'h0"
+    rf(0) := U"32'h0"   // 0号寄存器固定为0
   }
 
   io.read_data_1 := rf(io.read_addr_1(0 to 3))

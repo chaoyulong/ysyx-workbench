@@ -2,6 +2,7 @@ package playground
 
 import spinal.core._
 import spinal.lib._       // 使用spinal的模块库
+import spinal.lib.bus.amba4.axi._
 
 case class Ifu2Idu_data() extends Bundle {
   val pc    = UInt(32 bits)

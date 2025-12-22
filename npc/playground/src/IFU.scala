@@ -15,7 +15,7 @@ object AxiConfig {
     addressWidth = 32,
     dataWidth    = 32,
     idWidth      = 4 ,
-    userWidth    = 32,
+    // userWidth    = 32,
     useBurst     = True,
     useSize      = True,
     useLen       = True,

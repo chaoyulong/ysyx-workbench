@@ -98,7 +98,7 @@ case class ysyx_23060082_AXI_Ctrl_ReadOnly() extends Component {
     val readReq  = in Bool()
     val readAddr = in UInt(32 bits)
     val readData = out UInt(32 bits)
-    val axi4 = master Axi4ReadOnly(AxiConfig.axiConfig)
+    val axi4 = master (Axi4ReadOnly(AxiConfig.axiConfig))
   }
 
   Axi4ReadOnly(AxiConfig.axiConfig)

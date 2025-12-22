@@ -22,7 +22,7 @@ object AxiConfig {
     useLast      = True,
     useResp      = True,
     useStrb      = True,
-    useld        = False,
+    useId        = True,
     useRegion    = False,
     useLock      = False,
     useCache     = False,

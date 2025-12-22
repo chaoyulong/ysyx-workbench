@@ -28,7 +28,7 @@ object AxiConfig {
     useCache     = False,
     useQos       = False,
     useProt      = False,
-    useUser      = False,
+    // useUser      = False,
   )
 }
 
@@ -43,6 +43,8 @@ case class ysyx_23060082_IFU() extends Component {
     val Idle, WaitMem, Done = newElement()
   }
   val state = Reg(IfuState()) init(IfuState.Idle)   // 创建一个状态机
+
+  val axi4 = ysyx_23060082_AXI_Ctrl_ReadOnly()
   // --------------------------------- 用于确定复位结束 --------------------------------- //
   val rstReg1 = RegNext(True) init(False)
   val rstReg2 = RegNext(rstReg1) init(False)
@@ -98,8 +100,8 @@ case class ysyx_23060082_AXI_Ctrl_ReadOnly() extends Component {
     val readReq  = in Bool()
     val readAddr = in UInt(32 bits)
     val readData = out UInt(32 bits)
-    val axi4 = master (Axi4ReadOnly(AxiConfig.axiConfig))
+    val axi4 = master(Axi4ReadOnly(AxiConfig.axiConfig))
   }
 
-  Axi4ReadOnly(AxiConfig.axiConfig)
+  val axiReadOnly = Axi4ReadOnly(AxiConfig.axiConfig)
 }

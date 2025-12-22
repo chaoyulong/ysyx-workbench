@@ -8,12 +8,29 @@ case class Ifu2Idu_data() extends Bundle {
   val instr = UInt(32 bits)
 }
 
+// axi的配置信息
+object AxiConfig {
+  val axiConfig = Axi4Config(
+    addressWidth = 32,
+    dataWidth    = 32,
+    idWidth      = 4 ,
+    userWidth    = 32,
+    useBurst     = True,
+    useSize      = True,
+    useLen       = True,
+    useLast      = True,
+    useResp      = True,
+    useStrb      = True,
+    useId        = False,
+    useRegion    = False,
+    useLock      = False,
+    useCache     = False,
+    useQos       = False,
+    useProt      = False,
+    useUser      = False,
+  )
+}
 
-// val axiConfig = Axi4Config(
-//   addressWidth = 32,
-//   dataWidth    = 32,
-//   idWidth      = 4
-// )
 
 case class ysyx_23060082_IFU() extends Component {
   val io = new Bundle {
@@ -21,7 +38,7 @@ case class ysyx_23060082_IFU() extends Component {
     val output = master Stream(Ifu2Idu_data())  
   }
 
-  object IfuState extends SpinalEnum {
+  object IfuState extends SpinalEnum {              // 定义状态机枚举
     val Idle, WaitMem, Done = newElement()
   }
   val state = Reg(IfuState()) init(IfuState.Idle)   // 创建一个状态机
@@ -75,13 +92,13 @@ case class ysyx_23060082_IFU() extends Component {
 /* ****************************************************************
   只有读通道的axi总线控制器
 **************************************************************** */
-// case class ysyx_23060082_AXI_Ctrl_ReadOnly() extends Component {
-//   val io = new Bundle {
-//     val readReq  = in Bool()
-//     val readAddr = in UInt(32 bits)
-//     val readData = out UInt(32 bits)
-//     val axi4 = master Axi4ReadOnly(axiConfig)
-//   }
+case class ysyx_23060082_AXI_Ctrl_ReadOnly() extends Component {
+  val io = new Bundle {
+    val readReq  = in Bool()
+    val readAddr = in UInt(32 bits)
+    val readData = out UInt(32 bits)
+    val axi4 = master Axi4ReadOnly(AxiConfig.axiConfig)
+  }
 
-//   Axi4ReadOnly(axiConfig)
-// }
+  Axi4ReadOnly(axiConfig)
+}

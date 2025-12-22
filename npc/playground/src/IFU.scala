@@ -12,11 +12,11 @@ object IfuState extends SpinalEnum {
   val Idle, WaitMem, Done = newElement()
 }
 
-val axiConfig = Axi4Config(
-  addressWidth = 32,
-  dataWidth    = 32,
-  idWidth      = 4
-)
+// val axiConfig = Axi4Config(
+//   addressWidth = 32,
+//   dataWidth    = 32,
+//   idWidth      = 4
+// )
 
 case class ysyx_23060082_IFU() extends Component {
   val io = new Bundle {

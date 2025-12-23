@@ -20,13 +20,6 @@ case class GetInstr() extends BlackBox{
   addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/dpi-c.v")   
 }
 
-// object Mem_Rd{
-//   def apply(addr:UInt): UInt ={
-//     val memory = new Mem_Rd()
-//     memory.io.addr  <> addr 
-//     memory.io.rdata
-//   }
-// }
 case class Mem_Rd() extends BlackBox{
   val io=new Bundle{
     val clock = in Bool()
@@ -42,7 +35,7 @@ case class Mem_Rd() extends BlackBox{
 }
 
 case class NpcMemRead() extends BlackBox{
-  val io=new Bundle{
+  val io = new Bundle{
     val clock = in Bool()
     val reset = in Bool()
     val valid = in Bool()
@@ -54,19 +47,6 @@ case class NpcMemRead() extends BlackBox{
   addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/dpi-c.v")   
 }
 
-
-
-// object Mem_RW{
-//   def apply(valid:Bool, wen:Bool, addr:UInt, wdata:UInt, wmask:UInt): UInt ={
-//     val memory = new Mem_RW()
-//     memory.io.valid <> valid
-//     memory.io.wen   <> wen  
-//     memory.io.addr  <> addr 
-//     memory.io.wdata <> wdata
-//     memory.io.wmask <> wmask
-//     memory.io.rdata
-//   }
-// }
 case class Mem_RW() extends BlackBox{
   val io=new Bundle{
     val clock = in Bool()

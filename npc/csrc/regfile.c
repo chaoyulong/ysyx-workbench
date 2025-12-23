@@ -25,7 +25,7 @@ uint32_t Rpc(void)
 
 uint32_t gpr(int n)
 {  
-  static uint32_t *rf_base_addr = &(top->rootp->CPU__DOT__reg_file__DOT__rf_0);
+  static uint32_t *rf_base_addr = &(top->rootp->CPU__DOT__regFile__DOT__rf_0);
   if(n >= REG_NUM)
   {
     printf("register only [0 - 15]");

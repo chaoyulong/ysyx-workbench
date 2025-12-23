@@ -86,7 +86,7 @@ case class ysyx_23060082_AXI_Ctrl_ReadOnly() extends Component {
 
   when(io.readReq) {
     io.axi4.ar.valid := True
-  } elsewhen(io.axi4.ar.fire) {
+  } elsewhen(io.axi4.ar.valid && io.axi4.ar.ready) {
     io.axi4.ar.valid := False
   } otherwise {
     io.axi4.ar.valid := io.axi4.ar.valid

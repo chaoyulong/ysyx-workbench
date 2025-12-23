@@ -57,7 +57,7 @@ case class CPU() extends Component {
   }
   // ------------------------------------------------------------------------------------------------------------------------- //
 
-  val reg_file = ysyx_23060082_RegFile()
+  val regFile = ysyx_23060082_RegFile()
   val ifu = ysyx_23060082_IFU()
   val idu = ysyx_23060082_IDU()
   val exu = ysyx_23060082_EXU()
@@ -72,41 +72,64 @@ case class CPU() extends Component {
   wbu.io.output >> ifu.io.input
 
 
-  reg_file.io.read_addr_1 <> idu.io.rf_read_addr_1
-  reg_file.io.read_addr_2 <> idu.io.rf_read_addr_2
-  reg_file.io.read_data_1 <> idu.io.rf_read_data_1
-  reg_file.io.read_data_2 <> idu.io.rf_read_data_2
-  reg_file.io.write_addr  <> wbu.io.rf_write_addr
-  reg_file.io.write_data  <> wbu.io.rf_write_data
-  reg_file.io.write_en    <> wbu.io.rf_write_en  
+  regFile.io.readAddr1 <> idu.io.rf_read_addr_1
+  regFile.io.readAddr2 <> idu.io.rf_read_addr_2
+  regFile.io.readData1 <> idu.io.rf_read_data_1
+  regFile.io.readData2 <> idu.io.rf_read_data_2
+  regFile.io.writeAddr <> wbu.io.rf_write_addr
+  regFile.io.writeData <> wbu.io.rf_write_data
+  regFile.io.writeEn   <> wbu.io.rf_write_en  
 
 
+  // ----------------------------------- 暂时的axi从机 ----------------------------------- //
+  val axi4Slave = slave(Axi4ReadOnly(AxiConfig.axiConfig))
+  axi4Slave <> ifu.io.axi4
+  axi4Slave.r.valid.setAsReg() init(False)
+
+  // val readAddr  = RegNextWhen(axi4Slave.ar.addr, axi4Slave.ar.valid)  init(U"32'b0")
+  // val ar_id     = RegNextWhen(axi4Slave.ar.id, axi4Slave.ar.valid)    init(U"4'b0")
+  // val ar_len    = RegNextWhen(axi4Slave.ar.len, axi4Slave.ar.valid)   init(U"8'b0"  )        // 突发长度
+  // val ar_size   = RegNextWhen(axi4Slave.ar.size , axi4Slave.ar.valid) init(U"3'b010")        // 突发大小
+  // val ar_burst  = RegNextWhen(axi4Slave.ar.burst, axi4Slave.ar.valid) init(B"2'b01" )        // 突发类型
+  axi4Slave.ar.ready := axi4Slave.ar.valid
+
+  val npcMemRead = NpcMemRead()
+  npcMemRead.io.valid := axi4Slave.ar.valid
+  npcMemRead.io.addr  := axi4Slave.ar.addr
+  axi4Slave.r.data := npcMemRead.io.rdata.asBits
+  when (axi4Slave.ar.valid) {
+    axi4Slave.r.valid := True
+  } elsewhen (axi4Slave.r.ready) {
+    axi4Slave.r.valid := False
+  } otherwise {
+    axi4Slave.r.valid := axi4Slave.r.valid
+  }
 }
 
 case class ysyx_23060082_RegFile() extends Component {
   val io = new Bundle {
-    val read_addr_1 = in UInt(5 bits)
-    val read_addr_2 = in UInt(5 bits)
-    val write_addr  = in UInt(5 bits)
-    val write_data  = in UInt(32 bits)
-    val write_en    = in Bool()
+    val readAddr1 = in UInt(5 bits)
+    val readAddr2 = in UInt(5 bits)
+    val writeAddr  = in UInt(5 bits)
+    val writeData  = in UInt(32 bits)
+    val writeEn    = in Bool()
 
-    val read_data_1 = out UInt(32 bits)
-    val read_data_2 = out UInt(32 bits)
+    val readData1 = out UInt(32 bits)
+    val readData2 = out UInt(32 bits)
   }
 
   val rf = Vec(Reg(UInt(32 bits)),16)    // riscv32e,有16个通用寄存器
-  when(io.write_en){
-    rf(io.write_addr(3 downto 0)) := io.write_data
+  when(io.writeEn){
+    rf(io.writeAddr(3 downto 0)) := io.writeData
   }
   .otherwise{rf := rf}
-  
+
   when(True){
     rf(0) := U"32'h0"   // 0号寄存器固定为0
   }
 
-  io.read_data_1 := rf(io.read_addr_1(0 to 3))
-  io.read_data_2 := rf(io.read_addr_2(0 to 3)) 
+  io.readData1 := rf(io.readAddr1(0 to 3))
+  io.readData2 := rf(io.readAddr2(0 to 3)) 
 }
 
 

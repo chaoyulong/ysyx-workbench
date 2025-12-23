@@ -3,6 +3,19 @@ import "DPI-C" function void pmem_write(input int waddr, input int wdata, input 
 import "DPI-C" function void my_ebreak();
 import "DPI-C" function void get_instr(int pc_o, int instr);
 
+module NpcMemRead(
+  input             clock,
+  input             reset,
+  input             valid,
+  input      [31:0] addr,
+  output     [31:0] rdata
+)
+  always @(*) begin
+    if(valid)
+      rdata = pmem_read(addr);
+  end
+endmodule
+
 module Mem_Rd(
   input             clock,
   input             reset,

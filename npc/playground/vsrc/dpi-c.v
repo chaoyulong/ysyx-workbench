@@ -10,17 +10,20 @@ module NpcMemRead(
   input      [31:0] addr,
   output reg [31:0] rdata
 )
-  always @(posedge clock or posedge reset) begin
-    if (reset) begin 
-      rdata <= 32'h0;
-    end
-    else if(valid) begin
+  always @(posedge clock) begin
+    if(valid) begin
       rdata <= pmem_read(addr);
     end
-    else begin
-      rdata <= rdata
-    end
   end
+
+  // always@(posedge clock) begin
+  //   if (valid)
+  //     if (cmd == 8'h03) flash_read(addr, data);
+  //     else begin
+  //       $fwrite(32'h80000002, "Assertion failed: Unsupport command `%xh`, only support `03h` read command\n", cmd);
+  //       $fatal;
+  //     end
+  // end
 endmodule
 
 module Mem_Rd(

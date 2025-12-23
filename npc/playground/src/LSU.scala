@@ -88,26 +88,33 @@ case class ysyx_23060082_LSU() extends Component {
   val io = new Bundle {
     val input     = slave  Flow(Exu2Lsu_data())
     val output    = master Stream(Lsu2Wbu_data()) 
+    val axi4 = master(Axi4(AxiConfig.axiConfig))
   }
   val state = Reg(LsuState()) init(LsuState.Idle)   // 创建一个状态机
   val memAddr    = io.input.alu_result    // alu的输出结果就是访存地址
-  val needMem = io.input.valid && (io.input.rf_ctrl.mem2reg || io.input.mem_ctrl.memWr) // 需要访问内存
+  val needRead  = io.input.valid && io.input.rf_ctrl.mem2reg  // 需要读内存
+  val needWrite = io.input.valid && io.input.mem_ctrl.memWr   // 需要写内存
+  val needMem   = needRead || needWrite                       // 需要访问内存
   // ------------------------------------- 内存控制器 ------------------------------------- // 
-  val axiCtrl = ysyx_23060082_AXI_Ctrl()
   val dataProcess = ysyx_23060082_DataProcess()   // 数据处理
-  val mem_rw = Mem_RW()
-  val rdEnd = (state === LsuState.WaitMem) && mem_rw.io.rw_end && io.input.rf_ctrl.mem2reg  // 读内存结束，需要更新数据
-  val rdata_reg = RegNextWhen(mem_rw.io.rdata, rdEnd) init(0)  // 是读内存指令并且已读完
+  val axiCtrl = ysyx_23060082_AXI_Ctrl()          // AXI总线控制
 
-    dataProcess.io.addrOp := memAddr(1 downto 0) ## io.input.mem_ctrl.memOp      // 合并 addr + MemOp 生成 5 位索引
-    dataProcess.io.wdata  := io.input.rf_read_data_2 // 写数据为寄存器2的数据
-    dataProcess.io.rdata  := Mux(state === LsuState.WaitMem && mem_rw.io.rw_end, mem_rw.io.rdata, rdata_reg)
+  val rdEnd = (state === LsuState.WaitMem) && axiCtrl.io.readEnd && io.input.rf_ctrl.mem2reg  // 读内存结束，需要更新数据
+  val wrEnd = (state === LsuState.WaitMem) && axiCtrl.io.writeEnd && io.input.mem_ctrl.memWr
+  val rdataReg = RegNextWhen(axiCtrl.io.readData, rdEnd) init(0)  // 是读内存指令并且已读完
+  dataProcess.io.addrOp := memAddr(1 downto 0) ## io.input.mem_ctrl.memOp      // 合并 addr + MemOp 生成 5 位索引
+  dataProcess.io.wdata  := io.input.rf_read_data_2 // 写数据为寄存器2的数据
+  dataProcess.io.rdata  := Mux(state === LsuState.WaitMem && rdEnd, axiCtrl.io.readData, rdataReg)
 
-    mem_rw.io.valid := needMem && (state === LsuState.Idle)
-    mem_rw.io.wen   := io.input.mem_ctrl.memWr
-    mem_rw.io.addr  := U(memAddr(31 downto 2) ## U"00")   // 真实地址要对齐
-    mem_rw.io.wdata := dataProcess.io.wdataReal
-    mem_rw.io.wmask := dataProcess.io.wmask
+  io.axi4 <> axiCtrl.io.axi4
+  axiCtrl.io.readReq  := needRead  && (state === LsuState.Idle)
+  axiCtrl.io.writeReq := needWrite && (state === LsuState.Idle)
+  axiCtrl.io.memOp    := io.input.mem_ctrl.memOp
+  axiCtrl.io.readAddr := memAddr
+  axiCtrl.io.writeAddr:= memAddr
+  axiCtrl.io.writeData:= dataProcess.io.wdataReal // 处理后的数据
+  axiCtrl.io.writeMask:= dataProcess.io.wmask
+
   // ------------------------------------- 状态机 ------------------------------------- // 
   switch(state) {
     is(LsuState.Idle) {
@@ -115,7 +122,7 @@ case class ysyx_23060082_LSU() extends Component {
       .otherwise{state := state} 
     }
     is(LsuState.WaitMem) {
-      when(mem_rw.io.rw_end) {
+      when(rdEnd || wrEnd) {
         when(io.output.fire){state := LsuState.Idle}     // 若已经握手成功，则返回到Idle状态
         .otherwise{state := LsuState.Done}
       }
@@ -138,7 +145,7 @@ case class ysyx_23060082_LSU() extends Component {
 
   // --------------------------------- 用于握手的部分 --------------------------------- //
   // willValid的意义就是当前周期就可以完成任务
-  val willValid = (state === LsuState.WaitMem && mem_rw.io.rw_end) ||       // 需要访存并且访存成功
+  val willValid = (state === LsuState.WaitMem && rdEnd || wrEnd) ||       // 需要访存并且访存成功
                   (state === LsuState.Done) ||
                   (state === LsuState.Idle && io.input.valid && !needMem)
   io.output.valid := io.input.valid && willValid  

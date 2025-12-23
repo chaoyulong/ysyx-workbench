@@ -100,12 +100,11 @@ case class ysyx_23060082_IFU() extends Component {
   val pc = RegNextWhen(io.input.pc_next, io.input.fire) init(U"32'h80000000")
   // ------------------------------------- 读内存 ------------------------------------- //
   val axiCtrl = ysyx_23060082_AXI_Ctrl_ReadOnly()
+  io.axi4 <> axiCtrl.io.axi4
   axiCtrl.io.readReq := (state === IfuState.Idle) && dataValid   // 数据开始有效并且处于等待状态，触发一次读取
   axiCtrl.io.readAddr:= pc
 
   val rdataReg = RegNextWhen(axiCtrl.io.readData, state === IfuState.WaitMem && axiCtrl.io.readEnd) init(0)  // 读完时更新数据
-
-  io.axi4 <> axiCtrl.io.axi4
   // ------------------------------------- 状态机 ------------------------------------- //
   switch(state) {
     is(IfuState.Idle) {

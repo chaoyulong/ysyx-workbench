@@ -4,12 +4,12 @@ import spinal.core._
 import spinal.lib._    // 使用spinal的模块库
 
 object CSR {
-  val mstatus    = 0x300    // 状态
-  val mtvec      = 0x305    // 异常入口地址
-  val mepc       = 0x341    // 异常pc
-  val mcause     = 0x342    // 原因
-  val mvendorid  = 0xf11    // VendorID，从中读出ysyx的ASCII码, 即0x79737978    
-  val marchid    = 0xf12    // ArchitectureID，从中读出学号数字部分的十进制表示, 读出23060082, 即0x15fde72
+  val mstatus    = U"12'h300"    // 状态
+  val mtvec      = U"12'h305"    // 异常入口地址
+  val mepc       = U"12'h341"    // 异常pc
+  val mcause     = U"12'h342"    // 原因
+  val mvendorid  = U"12'hf11"    // VendorID，从中读出ysyx的ASCII码, 即0x79737978    
+  val marchid    = U"12'hf12"    // ArchitectureID，从中读出学号数字部分的十进制表示, 读出23060082, 即0x15fde72
 }
 
 case class ysyx_23060082_CSR() extends Component {

@@ -9,28 +9,6 @@ case class Ifu2Idu_data() extends Bundle {
   val instr = UInt(32 bits)
 }
 
-// axi的配置信息
-object AxiConfig {
-  val axiConfig = Axi4Config(
-    addressWidth = 32,
-    dataWidth    = 32,
-    idWidth      = 4 ,
-    useId        = true,
-    useBurst     = true,
-    useSize      = true,
-    useLen       = true,
-    useLast      = true,
-    useResp      = true,
-    useStrb      = true,      
-    useRegion    = false,
-    useLock      = false,
-    useCache     = false,
-    useQos       = false,
-    useProt      = false
-  )
-}
-
-
 case class ysyx_23060082_IFU() extends Component {
   val io = new Bundle {
     val input  = slave  Stream(Wbu2Ifu_data())
@@ -42,7 +20,7 @@ case class ysyx_23060082_IFU() extends Component {
   }
   val state = Reg(IfuState()) init(IfuState.Idle)   // 创建一个状态机
 
-  val axi4 = ysyx_23060082_AXI_Ctrl_ReadOnly()
+
   // --------------------------------- 用于确定复位结束 --------------------------------- //
   val rstReg1 = RegNext(True) init(False)
   val rstReg2 = RegNext(rstReg1) init(False)
@@ -79,6 +57,9 @@ case class ysyx_23060082_IFU() extends Component {
       when(io.output.fire) {state := IfuState.Idle}        
     }
   }
+  // ------------------------------------- AXI4 ------------------------------------- //
+  val axi4 = ysyx_23060082_AXI_Ctrl_ReadOnly()
+  axi4.io.readReq := readReq
   // ---------------------------------- 用于握手的部分 ---------------------------------- //
   // willValid的意义就是当前周期就可以完成任务
   val willValid = (state === IfuState.WaitMem && mem_rd.io.rd_end) ||       // 访存完成
@@ -101,5 +82,46 @@ case class ysyx_23060082_AXI_Ctrl_ReadOnly() extends Component {
     val axi4 = master(Axi4ReadOnly(AxiConfig.axiConfig))
   }
 
-  val axiReadOnly = Axi4ReadOnly(AxiConfig.axiConfig)
+  // val axiReadOnly = Axi4ReadOnly(AxiConfig.axiConfig)
+
+  when(io.readReq) {
+    io.axi4.ar.valid := True
+  } elsewhen(io.axi4.ar.fire) {
+    io.axi4.ar.valid := False
+  } otherwise {
+    io.axi4.ar.valid := io.axi4.ar.valid
+  }
+
+  // always @(posedge clk) begin
+  //   if(rst) 
+  //     arvalid <= 1'b0;        
+  //   else if(RREQ) 
+  //     arvalid <= 1'b1;   
+  //   else if(arready && arvalid) 
+  //     arvalid <= 1'b0;
+  // end
+
+  // always @(posedge clk) begin
+  //   if(rst) begin
+  //     araddr <= 32'h0;
+  //     arid <= 4'b0;
+  //     arlen <= 8'h0;      // 突发长度1  
+  //     arsize <= 3'b010;   // 突发大小4字节
+  //     arburst <= 2'b01;   // 突发类型INCR
+  //   end
+  //   else if(arready && arvalid) begin
+  //     araddr <= 32'h0;
+  //     arid <= 4'b0;
+  //     arlen <= 8'h0;   
+  //     arsize <= 3'b000;
+  //     arburst <= 2'b00;
+  //   end
+  //   else if(RREQ) begin
+  //     araddr <= in_raddr;
+  //     arid <= 4'b0;
+  //     arlen <= 8'h0;      // 突发长度1  
+  //     arsize <= 3'b010;   // 突发大小4字节
+  //     arburst <= 2'b01;   // 突发类型INCR
+  //   end
+  // end
 }

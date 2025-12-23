@@ -2,7 +2,28 @@ package playground
 
 import spinal.core._
 import spinal.lib._       // 使用spinal的模块库
+import spinal.lib.bus.amba4.axi._
 
+// axi的配置信息
+object AxiConfig {
+  val axiConfig = Axi4Config(
+    addressWidth = 32,
+    dataWidth    = 32,
+    idWidth      = 4 ,
+    useId        = true,
+    useBurst     = true,
+    useSize      = true,
+    useLen       = true,
+    useLast      = true,
+    useResp      = true,
+    useStrb      = true,      
+    useRegion    = false,
+    useLock      = false,
+    useCache     = false,
+    useQos       = false,
+    useProt      = false
+  )
+}
 
 case class CPU() extends Component {
   val io = new Bundle {

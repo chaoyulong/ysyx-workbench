@@ -8,7 +8,7 @@ module NpcMemRead(
   input             reset,
   input             valid,
   input      [31:0] addr,
-  output     [31:0] rdata
+  output reg [31:0] rdata
 )
   always @(*) begin
     if(valid)

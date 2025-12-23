@@ -83,13 +83,14 @@ case class ysyx_23060082_AXI_Ctrl_ReadOnly() extends Component {
   }
 
   // val axiReadOnly = Axi4ReadOnly(AxiConfig.axiConfig)
-
+  val arvalid = RegInit(False)
+  io.axi4.ar.valid := arvalid
   when(io.readReq) {
-    io.axi4.ar.valid := True
-  } elsewhen(io.axi4.ar.valid && io.axi4.ar.ready) {
-    io.axi4.ar.valid := False
+    arvalid := True
+  } elsewhen(io.axi4.ar.fire) {
+    arvalid := False
   } otherwise {
-    io.axi4.ar.valid := io.axi4.ar.valid
+    arvalid := arvalid
   }
 
   // always @(posedge clk) begin

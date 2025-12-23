@@ -89,9 +89,7 @@ case class ysyx_23060082_AXI_Ctrl_ReadOnly() extends Component {
     arvalid := True
   } elsewhen(io.axi4.ar.fire) {
     arvalid := False
-  } otherwise {
-    arvalid := arvalid
-  }
+  } 
 
   // always @(posedge clk) begin
   //   if(rst) 

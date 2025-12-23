@@ -92,7 +92,8 @@ case class ysyx_23060082_LSU() extends Component {
   val state = Reg(LsuState()) init(LsuState.Idle)   // 创建一个状态机
   val memAddr    = io.input.alu_result    // alu的输出结果就是访存地址
   val needMem = io.input.valid && (io.input.rf_ctrl.mem2reg || io.input.mem_ctrl.memWr) // 需要访问内存
-
+  // ------------------------------------- 内存控制器 ------------------------------------- // 
+  val axiCtrl = ysyx_23060082_AXI_Ctrl()
   val dataProcess = ysyx_23060082_DataProcess()   // 数据处理
   val mem_rw = Mem_RW()
   val rdEnd = (state === LsuState.WaitMem) && mem_rw.io.rw_end && io.input.rf_ctrl.mem2reg  // 读内存结束，需要更新数据
@@ -247,7 +248,7 @@ case class ysyx_23060082_AXI_Ctrl() extends Component {
   io.axi4.ar.len  .setAsReg() init(0)
   io.axi4.ar.size .setAsReg() init(0)
   io.axi4.ar.burst.setAsReg() init(0)
-
+  // ---------------- 读地址 ---------------- //
   when(io.readReq) {
     io.axi4.ar.valid := True
   } elsewhen(io.axi4.ar.fire) {
@@ -269,118 +270,64 @@ case class ysyx_23060082_AXI_Ctrl() extends Component {
     io.axi4.ar.size := io.axi4.ar.size  
     io.axi4.ar.burst:= io.axi4.ar.burst // 突发类型INCR
   }
-
+  // ---------------- 读数据 ---------------- //
   io.axi4.r.ready := io.axi4.r.valid
   io.readEnd := io.axi4.r.fire
   io.readData := io.axi4.r.data.asUInt
 
   // ------------------------------- 写操作 ------------------------------- //
+  io.axi4.aw.valid.setAsReg() init(False)
+  io.axi4.aw.addr .setAsReg() init(0)
+  io.axi4.aw.id   .setAsReg() init(0)
+  io.axi4.aw.len  .setAsReg() init(0)
+  io.axi4.aw.size .setAsReg() init(0)
+  io.axi4.aw.burst.setAsReg() init(0)
 
-// //************************************** 组合逻辑信号 ********************************************//
-//   assign error = bresp & rresp;
- 
-// //************************************** 写地址状态机 ********************************************//  
-//   always @(posedge clk) begin
-//     if(rst) 
-//       awvalid <= 1'b0;      
-//     else if(WREQ) 
-//         awvalid <= 1'b1;     
-//     else if(awvalid && awready) 
-//       awvalid <= 1'b0;      
-//   end
+  io.axi4.w.valid .setAsReg() init(False)
+  io.axi4.w.data  .setAsReg() init(0)
+  io.axi4.w.strb  .setAsReg() init(0)
+  io.axi4.w.last  .setAsReg() init(False)
+  // ---------------- 写地址 ---------------- //
+  when(io.writeReq) {
+    io.axi4.aw.valid := True
+  } elsewhen(io.axi4.aw.fire) {
+    io.axi4.aw.valid := False
+  } otherwise {
+    io.axi4.aw.valid := io.axi4.aw.valid
+  }
 
-//   always @(posedge clk) begin
-//     if(rst) begin
-//       awaddr <= 32'h0;
-//       awid <= 4'b0;  
-//       awlen <= 8'h0;
-//       awsize <= 3'b0;
-//       awburst <= 2'b00;
-//     end    
-//     else if(WREQ) begin
-//       awaddr <= in_waddr;
-//       awid <= 4'b0;  
-//       awlen <= 8'h0;
-//       awsize <= MemOP;
-//       awburst <= 2'b10;
-//     end
-//     else if(awvalid && awready) begin
-//       awaddr <= 32'h0;
-//       awid <= 4'b0;  
-//       awlen <= 8'h0;
-//       awsize <= 3'b0;
-//       awburst <= 2'b00;
-//     end
-//   end
-// //************************************** 写数据状态机 ********************************************//
+  when(io.writeReq) {
+    io.axi4.aw.addr := io.writeAddr
+    io.axi4.aw.id   := U"4'b0"
+    io.axi4.aw.len  := U"8'b0"          // 突发长度1  
+    io.axi4.aw.size := io.memOp       
+    io.axi4.aw.burst:= B"2'b01"         // 突发类型INCR
+  } otherwise {
+    io.axi4.aw.addr := io.axi4.aw.addr 
+    io.axi4.aw.id   := io.axi4.aw.id 
+    io.axi4.aw.len  := io.axi4.aw.len   // 突发长度1  
+    io.axi4.aw.size := io.axi4.aw.size  
+    io.axi4.aw.burst:= io.axi4.aw.burst // 突发类型INCR
+  }
+  // ---------------- 写数据 ---------------- //
+  when(io.writeReq) {
+    io.axi4.w.valid := True
+  } elsewhen(io.axi4.w.fire) {
+    io.axi4.w.valid := False
+  } otherwise {
+    io.axi4.w.valid := io.axi4.w.valid
+  }
 
-//   always @(posedge clk) begin
-//     if(rst) 
-//       wvalid <= 1'b0;
-//     else if(WREQ) 
-//       wvalid <= 1'b1;     
-//     else if(wvalid && wready) 
-//       wvalid <= 1'b0;        
-//   end
-
-//   always @(posedge clk) begin
-//     if(rst) begin
-//       wdata <= 32'b0;
-//       wstrb <= 4'b0000;
-//       wlast <= 1'b0;
-//     end
-//     else if(wvalid && wready) begin
-//       wdata <= 32'b0;
-//       wstrb <= 4'b0000;
-//       wlast <= 1'b0;
-//     end
-//     else if(WREQ) begin
-//       wdata <= in_wdata;
-//       wstrb <= in_wmask;
-//       wlast <= 1'b1;
-//     end
-//   end
-// //************************************** 写响应状态机 ********************************************//
-//   assign bready = bvalid;
-
-// //************************************** 读地址状态机 ********************************************//
-//   always @(posedge clk) begin
-//     if(rst) 
-//       arvalid <= 1'b0;
-//     else if(arready && arvalid) 
-//       arvalid <= 1'b0;    
-//     else if(RREQ) 
-//       arvalid <= 1'b1;   
-//   end
-
-//   always @(posedge clk) begin
-//     if(rst) begin
-//       araddr <= 32'h0;
-//       arid <= 4'b0;
-//       arlen <= 8'h0;      // 突发长度1  
-//       arsize <= 3'b000;   // 突发大小
-//       arburst <= 2'b00;   // 突发类型INCR
-//     end
-//     else if(arvalid && arready) begin
-//       araddr <= 32'h0;
-//       arid <= 4'b0;
-//       arlen <= 8'h0;   
-//       arsize <= 3'b000;
-//       arburst <= 2'b00;
-//     end
-//     else if(RREQ) begin
-//       araddr <= in_raddr;
-//       arid <= 4'b0;
-//       arlen <= 8'h0;      // 突发长度1  
-//       arsize <= MemOP;   // 突发大小
-//       arburst <= 2'b01;   // 突发类型INCR
-//     end
-//   end
-// //************************************** 读数据状态机 ********************************************//
-
-//   assign rready = rvalid;
-
-//   assign read_end = rvalid && rready;
-//   assign write_end = bvalid && bready;
-//   assign out_rdata = read_end ? rdata : 32'b0;
+  when(io.writeReq) {
+    io.axi4.w.data := io.writeData.asBits
+    io.axi4.w.strb := io.writeMask.asBits
+    io.axi4.w.last := True  
+  } otherwise {
+    io.axi4.w.data := io.axi4.w.data
+    io.axi4.w.strb := io.axi4.w.strb
+    io.axi4.w.last := io.axi4.w.last
+  }
+  // ---------------- 写响应 ---------------- //
+  io.axi4.b.ready := io.axi4.b.valid
+  io.writeEnd := io.axi4.b.fire
 }

@@ -10,9 +10,16 @@ module NpcMemRead(
   input      [31:0] addr,
   output reg [31:0] rdata
 )
-  always @(valid) begin
-    if(valid)
-      rdata = pmem_read(addr);
+  always @(posedge clock or posedge reset) begin
+    if (reset) begin 
+      rdata <= 32'h0;
+    end
+    else if(valid) begin
+      rdata <= pmem_read(addr);
+    end
+    else begin
+      rdata <= rdata
+    end
   end
 endmodule
 

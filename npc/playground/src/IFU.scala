@@ -111,7 +111,7 @@ case class ysyx_23060082_IFU() extends Component {
 
   val rdataReg = RegNextWhen(axiCtrl.io.readData, state === IfuState.WaitMem && axiCtrl.io.readEnd) init(0)  // 读完时更新数据
 
-  io.axi4 := axiCtrl.io.axi4
+  io.axi4 <> axiCtrl.io.axi4
   // ------------------------------------- 状态机 ------------------------------------- //
   switch(state) {
     is(IfuState.Idle) {

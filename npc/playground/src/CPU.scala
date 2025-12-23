@@ -82,13 +82,7 @@ case class CPU() extends Component {
 
 
   // ----------------------------------- 暂时的axi从机 ----------------------------------- //
-  ifu.io.axi4.r.valid.setAsReg() init(False)
-
-  // val readAddr  = RegNextWhen(axi4Slave.ar.addr, axi4Slave.ar.valid)  init(U"32'b0")
-  // val ar_id     = RegNextWhen(axi4Slave.ar.id, axi4Slave.ar.valid)    init(U"4'b0")
-  // val ar_len    = RegNextWhen(axi4Slave.ar.len, axi4Slave.ar.valid)   init(U"8'b0"  )        // 突发长度
-  // val ar_size   = RegNextWhen(axi4Slave.ar.size , axi4Slave.ar.valid) init(U"3'b010")        // 突发大小
-  // val ar_burst  = RegNextWhen(axi4Slave.ar.burst, axi4Slave.ar.valid) init(B"2'b01" )        // 突发类型
+  // ifu.io.axi4.r.valid.setAsReg() init(False)
   ifu.io.axi4.ar.ready := ifu.io.axi4.ar.valid
 
   val npcMemRead = NpcMemRead()

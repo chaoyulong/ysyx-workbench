@@ -161,7 +161,7 @@ case class ysyx_23060082_AXI_Ctrl_ReadOnly() extends Component {
   io.axi4.ar.len  .setAsReg() init(0)
   io.axi4.ar.size .setAsReg() init(0)
   io.axi4.ar.burst.setAsReg() init(0)
-  
+  io.axi4.r.valid.setAsReg() init(False)
 
   when(io.readReq) {
     io.axi4.ar.valid := True

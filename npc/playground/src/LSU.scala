@@ -2,6 +2,7 @@ package playground
 
 import spinal.core._
 import spinal.lib._    // 使用spinal的模块库
+import spinal.lib.bus.amba4.axi._
 
 case class Lsu2Wbu_data() extends Bundle {
   val pc            = UInt(32 bits)
@@ -15,6 +16,74 @@ object LsuState extends SpinalEnum {
   val Idle, WaitMem, Done = newElement()
 }
 
+// case class ysyx_23060082_LSU() extends Component {
+//   val io = new Bundle {
+//     val input     = slave  Flow(Exu2Lsu_data())
+//     val output    = master Stream(Lsu2Wbu_data()) 
+//   }
+//   val state = Reg(LsuState()) init(LsuState.Idle)   // 创建一个状态机
+//   val memAddr    = io.input.alu_result    // alu的输出结果就是访存地址
+//   val needMem = io.input.valid && (io.input.rf_ctrl.mem2reg || io.input.mem_ctrl.mem_wr) // 需要访问内存
+
+//   val dataProcess = ysyx_23060082_DataProcess()   // 数据处理
+//   val mem_rw = Mem_RW()
+//   val rdEnd = (state === LsuState.WaitMem) && mem_rw.io.rw_end && io.input.rf_ctrl.mem2reg  // 读内存结束，需要更新数据
+//   val rdata_reg = RegNextWhen(mem_rw.io.rdata, rdEnd) init(0)  // 是读内存指令并且已读完
+
+//     dataProcess.io.addrOp := memAddr(1 downto 0) ## io.input.mem_ctrl.mem_op      // 合并 addr + MemOp 生成 5 位索引
+//     dataProcess.io.wdata  := io.input.rf_read_data_2 // 写数据为寄存器2的数据
+//     dataProcess.io.rdata  := Mux(state === LsuState.WaitMem && mem_rw.io.rw_end, mem_rw.io.rdata, rdata_reg)
+
+//     mem_rw.io.valid := needMem && (state === LsuState.Idle)
+//     mem_rw.io.wen   := io.input.mem_ctrl.mem_wr
+//     mem_rw.io.addr  := U(memAddr(31 downto 2) ## U"00")   // 真实地址要对齐
+//     mem_rw.io.wdata := dataProcess.io.wdataReal
+//     mem_rw.io.wmask := dataProcess.io.wmask
+//   // ------------------------------------- 状态机 ------------------------------------- // 
+//   switch(state) {
+//     is(LsuState.Idle) {
+//       when(needMem) {state := LsuState.WaitMem}      
+//       .otherwise{state := state} 
+//     }
+//     is(LsuState.WaitMem) {
+//       when(mem_rw.io.rw_end) {
+//         when(io.output.fire){state := LsuState.Idle}     // 若已经握手成功，则返回到Idle状态
+//         .otherwise{state := LsuState.Done}
+//       }
+//       .otherwise{state := state}
+//     }
+//     is(LsuState.Done) {
+//       when(io.output.fire) {state := LsuState.Idle}   
+//       .otherwise{state := state}     
+//     }
+//   }
+//   // ----------------------------------- csr寄存器 ----------------------------------- // 
+//   val csr = ysyx_23060082_CSR()
+//     csr.io.csr_addr   := io.input.imm
+//     csr.io.csr_wdata  := io.input.rf_read_data_1
+//     csr.io.csr_cmd    := io.input.csr_ctrl.csr_cmd
+//     csr.io.trap_enter := io.input.csr_ctrl.trap_enter
+//     csr.io.trap_exit  := io.input.csr_ctrl.trap_exit
+//     csr.io.pc_in      := io.input.pc
+//     csr.io.cause_in   := io.input.rf_read_data_1
+
+//   // --------------------------------- 用于握手的部分 --------------------------------- //
+//   // willValid的意义就是当前周期就可以完成任务
+//   val willValid = (state === LsuState.WaitMem && mem_rw.io.rw_end) ||       // 需要访存并且访存成功
+//                   (state === LsuState.Done) ||
+//                   (state === LsuState.Idle && io.input.valid && !needMem)
+//   io.output.valid := io.input.valid && willValid  
+//   // ---------------------------------- 数据传输部分 ---------------------------------- //
+//   io.output.pc          := io.input.pc
+//   io.output.pc_next     := Mux(io.input.csr_ctrl.trap_enter, csr.io.mtvec,
+//                            Mux(io.input.csr_ctrl.trap_exit, csr.io.mepc,
+//                                io.input.pc_next))
+
+//   io.output.mem_data_out:= Mux(io.input.csr_ctrl.csr_cmd =/= U"3'd0", csr.io.csr_rdata, dataProcess.io.rdataReal)           // 借用mem_data_out来输出读出的值
+//   io.output.alu_data_out:= io.input.alu_result
+//   io.output.rf_ctrl     := io.input.rf_ctrl    
+// }
+
 case class ysyx_23060082_LSU() extends Component {
   val io = new Bundle {
     val input     = slave  Flow(Exu2Lsu_data())
@@ -22,19 +91,19 @@ case class ysyx_23060082_LSU() extends Component {
   }
   val state = Reg(LsuState()) init(LsuState.Idle)   // 创建一个状态机
   val memAddr    = io.input.alu_result    // alu的输出结果就是访存地址
-  val needMem = io.input.valid && (io.input.rf_ctrl.mem2reg || io.input.mem_ctrl.mem_wr) // 需要访问内存
+  val needMem = io.input.valid && (io.input.rf_ctrl.mem2reg || io.input.mem_ctrl.memWr) // 需要访问内存
 
   val dataProcess = ysyx_23060082_DataProcess()   // 数据处理
   val mem_rw = Mem_RW()
   val rdEnd = (state === LsuState.WaitMem) && mem_rw.io.rw_end && io.input.rf_ctrl.mem2reg  // 读内存结束，需要更新数据
   val rdata_reg = RegNextWhen(mem_rw.io.rdata, rdEnd) init(0)  // 是读内存指令并且已读完
 
-    dataProcess.io.addrOp := memAddr(1 downto 0) ## io.input.mem_ctrl.mem_op      // 合并 addr + MemOp 生成 5 位索引
+    dataProcess.io.addrOp := memAddr(1 downto 0) ## io.input.mem_ctrl.memOp      // 合并 addr + MemOp 生成 5 位索引
     dataProcess.io.wdata  := io.input.rf_read_data_2 // 写数据为寄存器2的数据
     dataProcess.io.rdata  := Mux(state === LsuState.WaitMem && mem_rw.io.rw_end, mem_rw.io.rdata, rdata_reg)
 
     mem_rw.io.valid := needMem && (state === LsuState.Idle)
-    mem_rw.io.wen   := io.input.mem_ctrl.mem_wr
+    mem_rw.io.wen   := io.input.mem_ctrl.memWr
     mem_rw.io.addr  := U(memAddr(31 downto 2) ## U"00")   // 真实地址要对齐
     mem_rw.io.wdata := dataProcess.io.wdataReal
     mem_rw.io.wmask := dataProcess.io.wmask
@@ -152,3 +221,166 @@ case class ysyx_23060082_DataProcess() extends Component {
   )
 }
 
+
+/* ****************************************************************
+  axi总线控制器
+**************************************************************** */
+case class ysyx_23060082_AXI_Ctrl() extends Component {
+  val io = new Bundle {
+    val readReq   = in Bool()
+    val writeReq  = in Bool()
+    val memOp     = in UInt(3 bits)
+    val readAddr  = in UInt(32 bits)
+    val writeAddr = in UInt(32 bits)
+    val writeData = in UInt(32 bits)
+    val writeMask = in UInt(4 bits)
+    val readEnd   = out Bool()
+    val readData  = out UInt(32 bits)
+    val writeEnd  = out Bool()
+    val axi4 = master(Axi4(AxiConfig.axiConfig))
+  }
+
+  // ------------------------------- 读操作 ------------------------------- //
+  io.axi4.ar.valid.setAsReg() init(False)
+  io.axi4.ar.addr .setAsReg() init(0)
+  io.axi4.ar.id   .setAsReg() init(0)
+  io.axi4.ar.len  .setAsReg() init(0)
+  io.axi4.ar.size .setAsReg() init(0)
+  io.axi4.ar.burst.setAsReg() init(0)
+
+  when(io.readReq) {
+    io.axi4.ar.valid := True
+  } elsewhen(io.axi4.ar.fire) {
+    io.axi4.ar.valid := False
+  } otherwise {
+    io.axi4.ar.valid := io.axi4.ar.valid
+  }
+
+  when(io.readReq) {
+    io.axi4.ar.addr := io.readAddr
+    io.axi4.ar.id   := U"4'b0"
+    io.axi4.ar.len  := U"8'b0"          // 突发长度1  
+    io.axi4.ar.size := io.memOp       
+    io.axi4.ar.burst:= B"2'b01"         // 突发类型INCR
+  } otherwise {
+    io.axi4.ar.addr := io.axi4.ar.addr 
+    io.axi4.ar.id   := io.axi4.ar.id 
+    io.axi4.ar.len  := io.axi4.ar.len   // 突发长度1  
+    io.axi4.ar.size := io.axi4.ar.size  
+    io.axi4.ar.burst:= io.axi4.ar.burst // 突发类型INCR
+  }
+
+  io.axi4.r.ready := io.axi4.r.valid
+  io.readEnd := io.axi4.r.fire
+  io.readData := io.axi4.r.data.asUInt
+
+  // ------------------------------- 写操作 ------------------------------- //
+
+// //************************************** 组合逻辑信号 ********************************************//
+//   assign error = bresp & rresp;
+ 
+// //************************************** 写地址状态机 ********************************************//  
+//   always @(posedge clk) begin
+//     if(rst) 
+//       awvalid <= 1'b0;      
+//     else if(WREQ) 
+//         awvalid <= 1'b1;     
+//     else if(awvalid && awready) 
+//       awvalid <= 1'b0;      
+//   end
+
+//   always @(posedge clk) begin
+//     if(rst) begin
+//       awaddr <= 32'h0;
+//       awid <= 4'b0;  
+//       awlen <= 8'h0;
+//       awsize <= 3'b0;
+//       awburst <= 2'b00;
+//     end    
+//     else if(WREQ) begin
+//       awaddr <= in_waddr;
+//       awid <= 4'b0;  
+//       awlen <= 8'h0;
+//       awsize <= MemOP;
+//       awburst <= 2'b10;
+//     end
+//     else if(awvalid && awready) begin
+//       awaddr <= 32'h0;
+//       awid <= 4'b0;  
+//       awlen <= 8'h0;
+//       awsize <= 3'b0;
+//       awburst <= 2'b00;
+//     end
+//   end
+// //************************************** 写数据状态机 ********************************************//
+
+//   always @(posedge clk) begin
+//     if(rst) 
+//       wvalid <= 1'b0;
+//     else if(WREQ) 
+//       wvalid <= 1'b1;     
+//     else if(wvalid && wready) 
+//       wvalid <= 1'b0;        
+//   end
+
+//   always @(posedge clk) begin
+//     if(rst) begin
+//       wdata <= 32'b0;
+//       wstrb <= 4'b0000;
+//       wlast <= 1'b0;
+//     end
+//     else if(wvalid && wready) begin
+//       wdata <= 32'b0;
+//       wstrb <= 4'b0000;
+//       wlast <= 1'b0;
+//     end
+//     else if(WREQ) begin
+//       wdata <= in_wdata;
+//       wstrb <= in_wmask;
+//       wlast <= 1'b1;
+//     end
+//   end
+// //************************************** 写响应状态机 ********************************************//
+//   assign bready = bvalid;
+
+// //************************************** 读地址状态机 ********************************************//
+//   always @(posedge clk) begin
+//     if(rst) 
+//       arvalid <= 1'b0;
+//     else if(arready && arvalid) 
+//       arvalid <= 1'b0;    
+//     else if(RREQ) 
+//       arvalid <= 1'b1;   
+//   end
+
+//   always @(posedge clk) begin
+//     if(rst) begin
+//       araddr <= 32'h0;
+//       arid <= 4'b0;
+//       arlen <= 8'h0;      // 突发长度1  
+//       arsize <= 3'b000;   // 突发大小
+//       arburst <= 2'b00;   // 突发类型INCR
+//     end
+//     else if(arvalid && arready) begin
+//       araddr <= 32'h0;
+//       arid <= 4'b0;
+//       arlen <= 8'h0;   
+//       arsize <= 3'b000;
+//       arburst <= 2'b00;
+//     end
+//     else if(RREQ) begin
+//       araddr <= in_raddr;
+//       arid <= 4'b0;
+//       arlen <= 8'h0;      // 突发长度1  
+//       arsize <= MemOP;   // 突发大小
+//       arburst <= 2'b01;   // 突发类型INCR
+//     end
+//   end
+// //************************************** 读数据状态机 ********************************************//
+
+//   assign rready = rvalid;
+
+//   assign read_end = rvalid && rready;
+//   assign write_end = bvalid && bready;
+//   assign out_rdata = read_end ? rdata : 32'b0;
+}

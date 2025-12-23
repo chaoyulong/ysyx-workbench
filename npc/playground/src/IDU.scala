@@ -27,8 +27,8 @@ case class AluCtrl() extends Bundle {   // EXU中消耗的控制信号
 }
 
 case class MemCtrl() extends Bundle {   // LSU中消耗的控制信号
-  val mem_wr   = Bool()         // 为1时写入存储器
-  val mem_op   = UInt(3 bits)   // 控制数据存储器读写格式，为010时为4字节读写，为001时为2字节读写带符号扩展，为000时为1字节读写带符号扩展，为101时为2字节读写无符号扩展，为100时为1字节读写无符号扩展
+  val memWr   = Bool()         // 为1时写入存储器
+  val memOp   = UInt(3 bits)   // 控制数据存储器读写格式，为010时为4字节读写，为001时为2字节读写带符号扩展，为000时为1字节读写带符号扩展，为101时为2字节读写无符号扩展，为100时为1字节读写无符号扩展
 }
 
 case class CsrCtrl() extends Bundle { // CSR寄存器的控制信号

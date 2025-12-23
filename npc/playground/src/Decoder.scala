@@ -133,8 +133,8 @@ case class Decoder() extends Component {
 
   io.ctrl.rf_si.mem2reg  := op(6 downto 2) === U"00000"       // i_lb | i_lh | i_lw | i_lbu | i_lhu
   io.ctrl.rf_si.csr2reg  := i_csrrw | i_csrrs
-  io.ctrl.mem_si.mem_wr  := type_S                            // i_sb | i_sh | i_sw
-  io.ctrl.mem_si.mem_op  := func3  
+  io.ctrl.mem_si.memWr  := type_S                            // i_sb | i_sh | i_sw
+  io.ctrl.mem_si.memOp  := func3  
   // ----------------------- csr寄存器 ----------------------- //
   // csrrw:    R(rd) = CSR[imm]; CSR[imm] = src1; 
   // csrrs:    R(rd) = CSR[imm]; CSR[imm] |= src1;

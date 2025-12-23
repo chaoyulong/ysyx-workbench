@@ -3,6 +3,7 @@ package playground
 import spinal.core._
 import spinal.lib._       // 使用spinal的模块库
 import spinal.lib.bus.amba4.axi._
+import spinal.lib.bus.amba4.axi.Axi4CrossbarFactory
 
 // axi的配置信息
 object AxiConfig {
@@ -99,6 +100,9 @@ case class CPU() extends Component {
     rvalid := rvalid
   }
   ifu.io.axi4.r.valid := rvalid
+
+  
+
 }
 
 case class ysyx_23060082_RegFile() extends Component {

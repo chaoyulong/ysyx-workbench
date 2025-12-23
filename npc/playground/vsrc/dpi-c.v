@@ -10,7 +10,7 @@ module NpcMemRead(
   input      [31:0] addr,
   output reg [31:0] rdata
 )
-  always @(*) begin
+  always @(valid) begin
     if(valid)
       rdata = pmem_read(addr);
   end

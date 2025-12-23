@@ -21,7 +21,7 @@ module NpcMemRead(
 endmodule
 
 module Mem_Rd(
-  input             clock,c
+  input             clock,
   input             reset,
   input             rd_req,
   input      [31:0] addr,

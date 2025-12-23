@@ -83,7 +83,7 @@ case class CPU() extends Component {
 
   // ----------------------------------- 暂时的axi从机 ----------------------------------- //
   val axi4Slave = slave(Axi4ReadOnly(AxiConfig.axiConfig))
-  axi4Slave <> ifu.io.axi4
+  ifu.io.axi4 <> axi4Slave
   axi4Slave.r.valid.setAsReg() init(False)
 
   // val readAddr  = RegNextWhen(axi4Slave.ar.addr, axi4Slave.ar.valid)  init(U"32'b0")

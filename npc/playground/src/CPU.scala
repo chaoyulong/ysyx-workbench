@@ -83,6 +83,7 @@ case class CPU() extends Component {
 
   // ----------------------------------- 暂时的axi从机 ----------------------------------- //
   // ifu.io.axi4.r.valid.setAsReg() init(False)
+  val rvalid = RegInit(False)
   ifu.io.axi4.ar.ready := ifu.io.axi4.ar.valid
 
   val npcMemRead = NpcMemRead()
@@ -91,12 +92,13 @@ case class CPU() extends Component {
 
   ifu.io.axi4.r.data := npcMemRead.io.rdata.asBits    // 数据
   when (ifu.io.axi4.ar.valid) {   // 读数据通道握手信号
-    ifu.io.axi4.r.valid := True
-  } elsewhen (ifu.io.axi4.r.ready) {
-    ifu.io.axi4.r.valid := False
+    rvalid := True
+  } elsewhen (ifu.io.axi4.r.fire) {
+    rvalid := False
   } otherwise {
-    ifu.io.axi4.r.valid := ifu.io.axi4.r.valid
+    rvalid := rvalid
   }
+  ifu.io.axi4.r.valid := rvalid
 }
 
 case class ysyx_23060082_RegFile() extends Component {

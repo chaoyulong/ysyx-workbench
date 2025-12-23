@@ -9,7 +9,7 @@ module NpcMemRead(
   input             valid,
   input      [31:0] addr,
   output reg [31:0] rdata
-)
+);
   always @(posedge clock or posedge reset) begin
     if (reset) begin 
       rdata <= 32'h0;
@@ -21,7 +21,7 @@ module NpcMemRead(
 endmodule
 
 module Mem_Rd(
-  input             clock,
+  input             clock,c
   input             reset,
   input             rd_req,
   input      [31:0] addr,

@@ -46,15 +46,18 @@ case class ysyx_23060082_IFU() extends Component {
   switch(state) {
     is(IfuState.Idle) {
       when(dataValid) {state := IfuState.WaitMem}     // 握手成功或者复位结束，都会触发读取 
+      .otherwise{state := state}
     }
     is(IfuState.WaitMem) {
       when(mem_rd.io.rd_end) {
         when(io.output.fire){state := IfuState.Idle}     // 若已经握手成功，则返回到Idle状态
         .otherwise{state := IfuState.Done}
       }
+      .otherwise{state := state}
     }
     is(IfuState.Done) {
-      when(io.output.fire) {state := IfuState.Idle}        
+      when(io.output.fire) {state := IfuState.Idle}    
+      .otherwise{state := state}    
     }
   }
   // ------------------------------------- AXI4 ------------------------------------- //
@@ -89,7 +92,9 @@ case class ysyx_23060082_AXI_Ctrl_ReadOnly() extends Component {
     arvalid := True
   } elsewhen(io.axi4.ar.fire) {
     arvalid := False
-  } 
+  } otherwise {
+    arvalid := arvalid
+  }
 
   // always @(posedge clk) begin
   //   if(rst) 

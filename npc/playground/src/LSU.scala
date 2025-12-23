@@ -41,16 +41,19 @@ case class ysyx_23060082_LSU() extends Component {
   // ------------------------------------- 状态机 ------------------------------------- // 
   switch(state) {
     is(LsuState.Idle) {
-      when(needMem) {state := LsuState.WaitMem}       
+      when(needMem) {state := LsuState.WaitMem}      
+      .otherwise{state := state} 
     }
     is(LsuState.WaitMem) {
       when(mem_rw.io.rw_end) {
         when(io.output.fire){state := LsuState.Idle}     // 若已经握手成功，则返回到Idle状态
         .otherwise{state := LsuState.Done}
       }
+      .otherwise{state := state}
     }
     is(LsuState.Done) {
-      when(io.output.fire) {state := LsuState.Idle}        
+      when(io.output.fire) {state := LsuState.Idle}   
+      .otherwise{state := state}     
     }
   }
   // ----------------------------------- csr寄存器 ----------------------------------- // 

@@ -83,8 +83,7 @@ case class CPU() extends Component {
 
 
   // ----------------------------------- 暂时的axi从机 ----------------------------------- //
-  // ifu.io.axi4.r.valid.setAsReg() init(False)
-  val rvalid = RegInit(False)
+  val ifuRValid = RegInit(False)
   ifu.io.axi4.ar.ready := ifu.io.axi4.ar.valid
 
   val npcMemRead = NpcMemRead()
@@ -93,16 +92,43 @@ case class CPU() extends Component {
 
   ifu.io.axi4.r.data := npcMemRead.io.rdata.asBits    // 数据
   when (ifu.io.axi4.ar.valid) {   // 读数据通道握手信号
-    rvalid := True
+    ifuRValid := True
   } elsewhen (ifu.io.axi4.r.fire) {
-    rvalid := False
+    ifuRValid := False
   } otherwise {
-    rvalid := rvalid
+    ifuRValid := ifuRValid
   }
-  ifu.io.axi4.r.valid := rvalid
+  ifu.io.axi4.r.valid := ifuRValid
+//******************************************************
+  val lsuRValid = RegInit(False)
+  val lsuBValid = RegInit(False)
+  val npcMemRW = NpcMemRW()
+  npcMemRW.io.wen   := lsu.io.axi4.aw.valid && lsu.io.axi4.w.valid
+  npcMemRW.io.valid := lsu.io.axi4.ar.valid || npcMemRW.io.wen
+  npcMemRW.io.addr  := npcMemRW.io.wen ? lsu.io.axi4.aw.addr | lsu.io.axi4.ar.addr
+  npcMemRW.io.wdata := lsu.io.axi4.w.data.asUInt
+  npcMemRW.io.wmask := lsu.io.axi4.w.strb.asUInt
 
-  
-
+  lsu.io.axi4.ar.ready := lsu.io.axi4.ar.valid
+  lsu.io.axi4.r.data := npcMemRW.io.rdata.asBits    // 数据
+  when (lsu.io.axi4.ar.valid) {   // 读数据通道握手信号
+    lsuRValid := True
+  } elsewhen (lsu.io.axi4.r.fire) {
+    lsuRValid := False
+  } otherwise {
+    lsuRValid := lsuRValid
+  }
+  lsu.io.axi4.r.valid := lsuRValid
+  //***************
+  lsu.io.axi4.aw.ready := lsu.io.axi4.aw.valid && lsu.io.axi4.w.valid
+  lsu.io.axi4.w.ready  := lsu.io.axi4.aw.valid && lsu.io.axi4.w.valid
+  when (lsu.io.axi4.aw.valid && lsu.io.axi4.w.valid) {   // 读数据通道握手信号
+    lsuBValid := True
+  } elsewhen (lsu.io.axi4.b.fire) {
+    lsuBValid := False
+  } otherwise {
+    lsuBValid := lsuBValid
+  }
 }
 
 case class ysyx_23060082_RegFile() extends Component {

@@ -8,8 +8,8 @@ case class Idu2Exu_data() extends Bundle {
 
   val ctrl = Ctrl()
   val imm            = UInt(32 bits)
-  val rf_read_data_1 = UInt(32 bits)
-  val rf_read_data_2 = UInt(32 bits)
+  val rfReadData1 = UInt(32 bits)
+  val rfReadData2 = UInt(32 bits)
 }
 
 case class RfCtrl() extends Bundle {   // WBU中消耗的控制信号
@@ -49,10 +49,10 @@ case class ysyx_23060082_IDU() extends Component {
     val input  = slave  Flow(Ifu2Idu_data())
     val output = master Stream(Idu2Exu_data()) 
 
-    val rf_read_addr_1 = out UInt(5 bits)
-    val rf_read_addr_2 = out UInt(5 bits)
-    val rf_read_data_1 = in  UInt(32 bits)
-    val rf_read_data_2 = in  UInt(32 bits)
+    val rfReadAddr1 = out UInt(5 bits)
+    val rfReadAddr2 = out UInt(5 bits)
+    val rfReadData1 = in  UInt(32 bits)
+    val rfReadData2 = in  UInt(32 bits)
   }
 
   val instr = io.input.instr
@@ -63,14 +63,14 @@ case class ysyx_23060082_IDU() extends Component {
   io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
   // io.input.ready := willValid
   // ----------------------- 数据传输部分 ----------------------- //
-  io.rf_read_addr_1 := decoder.io.ctrl.csr_si.trap_enter.mux(   // 如果是触发异常的指令，则选择a5(第15个寄存器)作为数据输入
+  io.rfReadAddr1  := decoder.io.ctrl.csr_si.trap_enter.mux(   // 如果是触发异常的指令，则选择a5(第15个寄存器)作为数据输入
                          True  -> U"5'd15", 
                          False -> instr(19 downto 15))
-  io.rf_read_addr_2 := instr(24 downto 20)  // 为了写起来简洁，写寄存器地址在decoder中赋值
+  io.rfReadAddr2  := instr(24 downto 20)  // 为了写起来简洁，写寄存器地址在decoder中赋值
   
   io.output.pc              := io.input.pc
-  io.output.rf_read_data_1  := io.rf_read_data_1
-  io.output.rf_read_data_2  := io.rf_read_data_2
+  io.output.rfReadData1  := io.rfReadData1
+  io.output.rfReadData2  := io.rfReadData2
   io.output.ctrl            := decoder.io.ctrl
   io.output.imm             := decoder.io.imm
   // io.input.ready := io.input.valid

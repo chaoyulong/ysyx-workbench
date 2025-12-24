@@ -11,8 +11,8 @@ case class Exu2Lsu_data() extends Bundle {
   val csr_ctrl       = CsrCtrl()   // 直通数据，在EXU中无作用 
 
   val imm            = UInt(12 bits)  // csr(位于LSU)模块中用于寄存器寻址
-  val rf_read_data_1 = UInt(32 bits)  // 从寄存器中读取的数据1,在EXU及csr(位于LSU)模块中均有作用
-  val rf_read_data_2 = UInt(32 bits)  // 从寄存器中读取的数据2,在EXU及后续模块中均有作用
+  val rfReadData1 = UInt(32 bits)  // 从寄存器中读取的数据1,在EXU及csr(位于LSU)模块中均有作用
+  val rfReadData2 = UInt(32 bits)  // 从寄存器中读取的数据2,在EXU及后续模块中均有作用
   val alu_result     = UInt(32 bits)
 }
 
@@ -28,10 +28,10 @@ case class ysyx_23060082_EXU() extends Component {
   alu.io.alu_ctr := io.input.ctrl.alu_si.alu_ctr
   alu.io.alu_in1 := io.input.ctrl.alu_si.alu_asrc.mux(// 为0时选择rs1，为1时选择PC。
     True  -> io.input.pc,
-    False -> io.input.rf_read_data_1
+    False -> io.input.rfReadData1
   )
   alu.io.alu_in2 := io.input.ctrl.alu_si.alu_bsrc.mux(          // 为00时选择rs2，为01时选择imm，为10时选择常数4（用于跳转时计算返回地址PC+4）
-    U"00" -> io.input.rf_read_data_2,
+    U"00" -> io.input.rfReadData2,
     U"01" -> io.input.imm,
     default -> U"32'h4"
   )
@@ -41,7 +41,7 @@ case class ysyx_23060082_EXU() extends Component {
   banchCond.io.zero   := alu.io.zero
 
   val pc_data_a = Mux(banchCond.io.pc_asrc, io.input.imm, U"32'd4")
-  val pc_data_b = Mux(banchCond.io.pc_bsrc, io.input.rf_read_data_1, io.input.pc)
+  val pc_data_b = Mux(banchCond.io.pc_bsrc, io.input.rfReadData1, io.input.pc)
 
   // ------------------ 用于握手的部分 ------------------ //
   val willValid = True
@@ -51,8 +51,8 @@ case class ysyx_23060082_EXU() extends Component {
   io.output.pc_next     := pc_data_a + pc_data_b
   io.output.alu_result  := alu.io.alu_result
   io.output.imm         := io.input.imm(11 downto 0)
-  io.output.rf_read_data_1 := io.input.rf_read_data_1
-  io.output.rf_read_data_2 := io.input.rf_read_data_2
+  io.output.rf_read_data_1 := io.input.rfReadData1
+  io.output.rf_read_data_2 := io.input.rfReadData2
   io.output.rf_ctrl  := io.input.ctrl.rf_si      // 直通数据，在EXU中无作用
   io.output.mem_ctrl  := io.input.ctrl.mem_si    // 直通数据，在EXU中无作用
   io.output.csr_ctrl  := io.input.ctrl.csr_si    // 直通数据，在EXU中无作用

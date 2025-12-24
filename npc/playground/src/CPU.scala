@@ -73,10 +73,10 @@ case class CPU() extends Component {
   wbu.io.output >> ifu.io.input
 
 
-  regFile.io.readAddr1 <> idu.io.rf_read_addr_1
-  regFile.io.readAddr2 <> idu.io.rf_read_addr_2
-  regFile.io.readData1 <> idu.io.rf_read_data_1
-  regFile.io.readData2 <> idu.io.rf_read_data_2
+  regFile.io.readAddr1 <> idu.io.rfReadAddr1
+  regFile.io.readAddr2 <> idu.io.rfReadAddr2
+  regFile.io.readData1 <> idu.io.rfReadData1
+  regFile.io.readData2 <> idu.io.rfReadData2
   regFile.io.writeAddr <> wbu.io.rf_write_addr
   regFile.io.writeData <> wbu.io.rf_write_data
   regFile.io.writeEn   <> wbu.io.rf_write_en  

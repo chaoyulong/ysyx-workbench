@@ -103,7 +103,7 @@ case class ysyx_23060082_LSU() extends Component {
   val wrEnd = (state === LsuState.WaitMem) && axiCtrl.io.writeEnd && io.input.mem_ctrl.memWr
   val rdataReg = RegNextWhen(axiCtrl.io.readData, rdEnd) init(0)  // 是读内存指令并且已读完
   dataProcess.io.addrOp := memAddr(1 downto 0) ## io.input.mem_ctrl.memOp      // 合并 addr + MemOp 生成 5 位索引
-  dataProcess.io.wdata  := io.input.rf_read_data_2 // 写数据为寄存器2的数据
+  dataProcess.io.wdata  := io.input.rfReadData2 // 写数据为寄存器2的数据
   dataProcess.io.rdata  := Mux(state === LsuState.WaitMem && rdEnd, axiCtrl.io.readData, rdataReg)
 
   io.axi4 <> axiCtrl.io.axi4
@@ -136,12 +136,12 @@ case class ysyx_23060082_LSU() extends Component {
   // ----------------------------------- csr寄存器 ----------------------------------- // 
   val csr = ysyx_23060082_CSR()
     csr.io.csr_addr   := io.input.imm
-    csr.io.csr_wdata  := io.input.rf_read_data_1
+    csr.io.csr_wdata  := io.input.rfReadData1
     csr.io.csr_cmd    := io.input.csr_ctrl.csr_cmd
     csr.io.trap_enter := io.input.csr_ctrl.trap_enter
     csr.io.trap_exit  := io.input.csr_ctrl.trap_exit
     csr.io.pc_in      := io.input.pc
-    csr.io.cause_in   := io.input.rf_read_data_1
+    csr.io.cause_in   := io.input.rfReadData1
 
   // --------------------------------- 用于握手的部分 --------------------------------- //
   // willValid的意义就是当前周期就可以完成任务

@@ -13,7 +13,7 @@ case class Exu2Lsu_data() extends Bundle {
   val imm            = UInt(12 bits)  // csr(位于LSU)模块中用于寄存器寻址
   val rfReadData1 = UInt(32 bits)  // 从寄存器中读取的数据1,在EXU及csr(位于LSU)模块中均有作用
   val rfReadData2 = UInt(32 bits)  // 从寄存器中读取的数据2,在EXU及后续模块中均有作用
-  val alu_result     = UInt(32 bits)
+  val aluResult     = UInt(32 bits)
 }
 
 case class ysyx_23060082_EXU() extends Component {
@@ -40,16 +40,16 @@ case class ysyx_23060082_EXU() extends Component {
   banchCond.io.less   := alu.io.less
   banchCond.io.zero   := alu.io.zero
 
-  val pc_data_a = Mux(banchCond.io.pc_asrc, io.input.imm, U"32'd4")
-  val pc_data_b = Mux(banchCond.io.pc_bsrc, io.input.rfReadData1, io.input.pc)
+  val pcDataA = Mux(banchCond.io.pc_asrc, io.input.imm, U"32'd4")
+  val pcDataB = Mux(banchCond.io.pc_bsrc, io.input.rfReadData1, io.input.pc)
 
   // ------------------ 用于握手的部分 ------------------ //
   val willValid = True
   io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
   // ------------------ 数据传输部分 ------------------ //
   io.output.pc          := io.input.pc
-  io.output.pc_next     := pc_data_a + pc_data_b
-  io.output.alu_result  := alu.io.alu_result
+  io.output.pc_next     := pcDataA + pcDataB
+  io.output.aluResult  := alu.io.aluResult
   io.output.imm         := io.input.imm(11 downto 0)
   io.output.rfReadData1 := io.input.rfReadData1
   io.output.rfReadData2 := io.input.rfReadData2
@@ -113,7 +113,7 @@ case class ysyx_23060082_ALU() extends Component {
 
     val less = out Bool()
     val zero = out Bool()
-    val alu_result = out UInt(32 bits) 
+    val aluResult = out UInt(32 bits) 
   }
 
   val sub_add = io.alu_ctr(1) | io.alu_ctr(3) // 加法器的加减,经过卡诺图化简

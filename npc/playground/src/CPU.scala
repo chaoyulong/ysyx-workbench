@@ -129,6 +129,7 @@ case class CPU() extends Component {
   } otherwise {
     lsuBValid := lsuBValid
   }
+  lsu.io.axi4.b.valid := lsuBValid
 }
 
 case class ysyx_23060082_RegFile() extends Component {

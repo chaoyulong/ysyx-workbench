@@ -25,12 +25,12 @@ case class ysyx_23060082_EXU() extends Component {
   val alu = ysyx_23060082_ALU()
   val banchCond = ysyx_23060082_BranchCond()
 
-  alu.io.alu_ctr := io.input.ctrl.alu_si.alu_ctr
-  alu.io.alu_in1 := io.input.ctrl.alu_si.alu_asrc.mux(// 为0时选择rs1，为1时选择PC。
+  alu.io.aluCtr := io.input.ctrl.alu_si.alu_ctr
+  alu.io.aluIn1 := io.input.ctrl.alu_si.alu_asrc.mux(// 为0时选择rs1，为1时选择PC。
     True  -> io.input.pc,
     False -> io.input.rfReadData1
   )
-  alu.io.alu_in2 := io.input.ctrl.alu_si.alu_bsrc.mux(          // 为00时选择rs2，为01时选择imm，为10时选择常数4（用于跳转时计算返回地址PC+4）
+  alu.io.aluIn2 := io.input.ctrl.alu_si.alu_bsrc.mux(          // 为00时选择rs2，为01时选择imm，为10时选择常数4（用于跳转时计算返回地址PC+4）
     U"00" -> io.input.rfReadData2,
     U"01" -> io.input.imm,
     default -> U"32'h4"
@@ -107,19 +107,19 @@ case class ysyx_23060082_BranchCond() extends Component {
 */
 case class ysyx_23060082_ALU() extends Component {
   val io = new Bundle {
-    val alu_in1 = in UInt(32 bits)
-    val alu_in2 = in UInt(32 bits)  
-    val alu_ctr = in UInt(4 bits) 
+    val aluIn1 = in UInt(32 bits)
+    val aluIn2 = in UInt(32 bits)  
+    val aluCtr = in UInt(4 bits) 
 
     val less = out Bool()
     val zero = out Bool()
     val aluResult = out UInt(32 bits) 
   }
 
-  val sub_add = io.alu_ctr(1) | io.alu_ctr(3) // 加法器的加减,经过卡诺图化简
+  val sub_add = io.aluCtr(1) | io.aluCtr(3) // 加法器的加减,经过卡诺图化简
   // ------------------ 加法器 ------------------ //
-  val adder_dat_a = io.alu_in1
-  val adder_dat_b = Mux(sub_add, ~io.alu_in2, io.alu_in2)
+  val adder_dat_a = io.aluIn1
+  val adder_dat_b = Mux(sub_add, ~io.aluIn2, io.aluIn2)
   val adder_cin = sub_add.asUInt
   val adder_result_33 = adder_dat_a.resize(33) + adder_dat_b.resize(33) + adder_cin.resize(33)    // 扩展为33位计算，便于查看溢出情况
 
@@ -128,26 +128,26 @@ case class ysyx_23060082_ALU() extends Component {
   val zero = (result_adder === U"32'h0")
   val overflow = (adder_dat_a(31) === adder_dat_b(31)) && (result_adder(31) =/= adder_dat_a(31));
   // ------------------ 移位寄存器 ------------------ //
-  val result_shift = io.alu_ctr(3 downto 2).mux(
-    U"01"   -> (io.alu_in1 |>> io.alu_in2(4 downto 0)),         // 逻辑右移
-    U"11"   -> (U(S(io.alu_in1) >> io.alu_in2(4 downto 0))),    // 算数右移
-    default -> (io.alu_in1 |<< io.alu_in2(4 downto 0))          // 左移,使用的逻辑左移
+  val result_shift = io.aluCtr(3 downto 2).mux(
+    U"01"   -> (io.aluIn1 |>> io.aluIn2(4 downto 0)),         // 逻辑右移
+    U"11"   -> (U(S(io.aluIn1) >> io.aluIn2(4 downto 0))),    // 算数右移
+    default -> (io.aluIn1 |<< io.aluIn2(4 downto 0))          // 左移,使用的逻辑左移
   )
   // ------------------ 小于比较判断 ------------------ //
   val less_0 = overflow ^ result_adder(31)
   val less_1 = carry ^ sub_add
-  val less = Mux(io.alu_ctr(3), less_1, less_0)
+  val less = Mux(io.aluCtr(3), less_1, less_0)
 
   // ------------------ 输出结果 ------------------ //
   val result_slt = less.asUInt.resize(32)       // 扩展为32位
-  val result_lui = io.alu_in2
-  val result_xor = io.alu_in1 ^ io.alu_in2;
-  val result_or  = io.alu_in1 | io.alu_in2;
-  val result_and = io.alu_in1 & io.alu_in2;
+  val result_lui = io.aluIn2
+  val result_xor = io.aluIn1 ^ io.aluIn2;
+  val result_or  = io.aluIn1 | io.aluIn2;
+  val result_and = io.aluIn1 & io.aluIn2;
 
   io.less := less
   io.zero := zero
-  io.alu_result := io.alu_ctr(2 downto 0).mux(
+  io.aluResult := io.aluCtr(2 downto 0).mux(
     U"3'b000" -> result_adder,
     U"3'b001" -> result_shift,
     U"3'b010" -> result_slt  ,

@@ -91,7 +91,7 @@ case class ysyx_23060082_LSU() extends Component {
     val axi4 = master(Axi4(AxiConfig.axiConfig))
   }
   val state = Reg(LsuState()) init(LsuState.Idle)   // 创建一个状态机
-  val memAddr    = io.input.alu_result    // alu的输出结果就是访存地址
+  val memAddr    = io.input.aluResult    // alu的输出结果就是访存地址
   val needRead  = io.input.valid && io.input.rf_ctrl.mem2reg  // 需要读内存
   val needWrite = io.input.valid && io.input.mem_ctrl.memWr   // 需要写内存
   val needMem   = needRead || needWrite                       // 需要访问内存

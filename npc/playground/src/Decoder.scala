@@ -101,7 +101,7 @@ case class Decoder() extends Component {
               type_B -> immB,
               True -> B"32'h0")).asUInt
 // ------------------------------------------------------- 控制信号生成 ----------------------------------------------------- // 
-  io.ctrl.rf_si.reg_wr    := type_U | type_J | type_I | type_R
+  io.ctrl.rf_si.regWr    := type_U | type_J | type_I | type_R
   io.ctrl.alu_si.alu_asrc := i_auipc | i_jal | i_jalr         // 0：选通rdata1，1：选通PC。
 
   io.ctrl.alu_si.alu_bsrc :=Mux(type_R | type_B, U"00",       // 选通rdata2

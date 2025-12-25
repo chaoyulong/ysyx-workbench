@@ -82,6 +82,8 @@ case class CPU() extends Component {
 
   // ----------------------------------- 暂时的axi从机 ----------------------------------- //
   val xbar = ysyx_23060082_AXI4Xbar()
+  val clint = ysyx_23060082_Clint()
+  xbar.io.clintAxi <> clint.io.clintAxi
   xbar.io.ifuAXI4 <> ifu.io.axi4
   xbar.io.lsuAXI4 <> lsu.io.axi4
 

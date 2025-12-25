@@ -41,8 +41,8 @@ case class ysyx_23060082_AXI4Adapter() extends Component {
   axi4Bus.ar.payload  := Mux(state === XbarState.IfuUsing, io.ifuAXI4.ar.payload, io.lsuAXI4.ar.payload)
   axi4Bus.ar.valid    := (state === XbarState.IfuUsing && io.ifuAXI4.ar.valid) ||
                          (state === XbarState.LsuUsing && io.lsuAXI4.ar.valid)
-  io.ifuAXI4.ar.ready := (state === XbarState.IfuUsing && io.ifuAXI4.ar.ready) 
-  io.lsuAXI4.ar.ready := (state === XbarState.LsuUsing && io.lsuAXI4.ar.ready) 
+  io.ifuAXI4.ar.ready := (state === XbarState.IfuUsing && axi4Bus.ar.ready) 
+  io.lsuAXI4.ar.ready := (state === XbarState.LsuUsing && axi4Bus.ar.ready) 
 
   io.ifuAXI4.r.payload := axi4Bus.r.payload
   io.lsuAXI4.r.payload := axi4Bus.r.payload

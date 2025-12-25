@@ -89,7 +89,7 @@ case class CPU() extends Component {
   val axiBValid = RegInit(False)
   val npcMemRW = NpcMemRW()
   npcMemRW.io.wen   := xbar.io.externalAxi.aw.valid && xbar.io.externalAxi.w.valid
-  npcMemRW.io.valid := lsu.io.axi4.ar.valid || npcMemRW.io.wen
+  npcMemRW.io.valid := xbar.io.externalAxi.ar.valid || npcMemRW.io.wen
   npcMemRW.io.addr  := npcMemRW.io.wen ? xbar.io.externalAxi.aw.addr | xbar.io.externalAxi.ar.addr
   npcMemRW.io.wdata := xbar.io.externalAxi.w.data.asUInt
   npcMemRW.io.wmask := xbar.io.externalAxi.w.strb.asUInt

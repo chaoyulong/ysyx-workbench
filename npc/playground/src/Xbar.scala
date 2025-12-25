@@ -38,7 +38,7 @@ case class ysyx_23060082_AXI4Adapter() extends Component {
     }
   }
 
-  axi4Bus.ar.payload  <> Mux(state === XbarState.IfuUsing, io.ifuAXI4.ar.payload, io.lsuAXI4.ar.payload)
+  axi4Bus.ar.payload  := Mux(state === XbarState.IfuUsing, io.ifuAXI4.ar.payload, io.lsuAXI4.ar.payload)
   axi4Bus.ar.valid    := (state === XbarState.IfuUsing && io.ifuAXI4.ar.valid) ||
                          (state === XbarState.LsuUsing && io.lsuAXI4.ar.valid)
   io.ifuAXI4.ar.ready := (state === XbarState.IfuUsing && io.ifuAXI4.ar.ready) 
@@ -51,9 +51,9 @@ case class ysyx_23060082_AXI4Adapter() extends Component {
   axi4Bus.r.ready    := (state === XbarState.IfuUsing && io.ifuAXI4.r.ready) ||
                         (state === XbarState.LsuUsing && io.lsuAXI4.r.ready)
 
-  // axi4Bus.aw <> io.lsuAXI4.aw   // 写通道直连
-  // axi4Bus.w <> io.lsuAXI4.w
-  // axi4Bus.b <> io.lsuAXI4.b
+  axi4Bus.aw <> io.lsuAXI4.aw   // 写通道直连
+  axi4Bus.w <> io.lsuAXI4.w
+  axi4Bus.b <> io.lsuAXI4.b
 
   // io.externalAxi <> axi4Bus
 }

@@ -13,12 +13,14 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
     val clintAxi    = master(Axi4(AxiConfig.axiConfig))
     val externalAxi = master(Axi4(AxiConfig.axiConfig))
   }
+
+  // val axi4Bus  = master(Axi4(AxiConfig.axiConfig))
+  val axi4Bus  = Axi4(AxiConfig.axiConfig)
 // --------------------------------------------------------- Arbiter ------------------------------------------------------ //
   object ArbiterState extends SpinalEnum {              // 定义状态机枚举
     val Idle, IfuUsing, LsuUsing = newElement()
   }
   val arbiterState = Reg(ArbiterState()) init(ArbiterState.Idle)   // 创建一个状态机
-  val axi4Bus  = master(Axi4(AxiConfig.axiConfig))
   // val axi4Bus = io.externalAxi
 
   switch(arbiterState) {

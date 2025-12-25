@@ -20,11 +20,6 @@ case class ysyx_23060082_AXI4Adapter() extends Component {
   val state = Reg(XbarState()) init(XbarState.Idle)   // 创建一个状态机
 
   val axi4Bus  = master(Axi4(AxiConfig.axiConfig))
-  axi4Bus.aw <> io.lsuAXI4.aw   // 写通道直连
-  axi4Bus.w <> io.lsuAXI4.w
-  axi4Bus.b <> io.lsuAXI4.b
-
-  val arMasterValid = RegNext(io.ifuAXI4.ar.valid || io.lsuAXI4.ar.valid)
 
   switch(state) {
     is(XbarState.Idle) {
@@ -42,20 +37,24 @@ case class ysyx_23060082_AXI4Adapter() extends Component {
     }
   }
 
-  val axi4ReadOnlyEnpty = master(Axi4ReadOnly(AxiConfig.axiConfig))   // 创建一个空的axi总线
-  axi4ReadOnlyEnpty.ar.valid = (state === XbarState.IfuUsing && io.ifuAXI4.ar.valid) ||
-                               (state === XbarState.LsuUsing && io.lsuAXI4.ar.valid)
+  axi4Bus.ar.payload  <> Mux(state === XbarState.IfuUsing, io.ifuAXI4.ar.payload, io.lsuAXI4.ar.payload)
+  axi4Bus.ar.valid    := (state === XbarState.IfuUsing && io.ifuAXI4.ar.valid) ||
+                         (state === XbarState.LsuUsing && io.lsuAXI4.ar.valid)
+  io.ifuAXI4.ar.ready := (state === XbarState.IfuUsing && io.ifuAXI4.ar.ready) 
+  io.lsuAXI4.ar.ready := (state === XbarState.LsuUsing && io.lsuAXI4.ar.ready) 
 
-  // axi4Bus.ar.payload <> Mux(state === XbarState.IfuUsing, io.ifuAXI4.ar.payload, io.lsuAXI4.ar.payload)
-  // axi4Bus.ar.valid := (state === XbarState.IfuUsing && io.ifuAXI4.ar.valid) ||
-  //                     (state === XbarState.LsuUsing && io.lsuAXI4.ar.valid)
-  // io.ifuAXI4.ar.ready := (state === XbarState.IfuUsing && io.ifuAXI4.ar.ready) 
-  // io.lsuAXI4.ar.ready := (state === XbarState.LsuUsing && io.lsuAXI4.ar.ready) 
+  io.ifuAXI4.r.payload := axi4Bus.r.payload
+  io.lsuAXI4.r.payload := axi4Bus.r.payload
+  io.ifuAXI4.r.valid := (state === XbarState.IfuUsing && axi4Bus.r.valid)
+  io.lsuAXI4.r.valid := (state === XbarState.LsuUsing && axi4Bus.r.valid)
+  axi4Bus.r.ready    := (state === XbarState.IfuUsing && io.ifuAXI4.r.ready) ||
+                        (state === XbarState.LsuUsing && io.lsuAXI4.r.ready)
 
-  // axi4Bus.r.payload <> Mux(state === XbarState.IfuUsing, io.ifuAXI4.r.payload, io.lsuAXI4.r.payload)
-  // io.ifuAXI4.r.valid := (state === XbarState.IfuUsing && axi4Bus.r.valid)
-  // io.lsuAXI4.r.valid := (state === XbarState.LsuUsing && axi4Bus.r.valid)
-  // io.axi4Bus.r.ready :=
+  axi4Bus.aw <> io.lsuAXI4.aw   // 写通道直连
+  axi4Bus.w <> io.lsuAXI4.w
+  axi4Bus.b <> io.lsuAXI4.b
+
+  io.externalAxi <> axi4Bus
 }
 
 // case class ysyx_23060082_AXI4Adapter() extends Component {

@@ -19,7 +19,8 @@ case class ysyx_23060082_AXI4Adapter() extends Component {
   }
   val state = Reg(XbarState()) init(XbarState.Idle)   // 创建一个状态机
 
-  val axi4Bus  = master(Axi4(AxiConfig.axiConfig))
+  // val axi4Bus  = master(Axi4(AxiConfig.axiConfig))
+  val axi4Bus = io.externalAxi
 
   switch(state) {
     is(XbarState.Idle) {
@@ -54,7 +55,7 @@ case class ysyx_23060082_AXI4Adapter() extends Component {
   axi4Bus.w <> io.lsuAXI4.w
   axi4Bus.b <> io.lsuAXI4.b
 
-  io.externalAxi <> axi4Bus
+  // io.externalAxi <> axi4Bus
 }
 
 // case class ysyx_23060082_AXI4Adapter() extends Component {

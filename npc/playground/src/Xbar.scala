@@ -4,7 +4,7 @@ import spinal.core._
 import spinal.lib._       // 使用spinal的模块库
 import spinal.lib.bus.amba4.axi._
 
-case class ysyx_23060082_AXI4Adapter() extends Component {
+case class ysyx_23060082_AXI4Xbar() extends Component {
   val io = new Bundle {
     val ifuAXI4     = slave(Axi4ReadOnly(AxiConfig.axiConfig))
     val ifuAXI4Req  = in Bool()

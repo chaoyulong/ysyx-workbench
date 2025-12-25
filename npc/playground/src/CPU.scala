@@ -81,55 +81,89 @@ case class CPU() extends Component {
   regFile.io.writeEn   <> wbu.io.rf_write_en  
 
   // ----------------------------------- 暂时的axi从机 ----------------------------------- //
-  val axiI4Adapter = ysyx_23060082_AXI4Adapter()
+  val xbar = ysyx_23060082_AXI4Xbar()
+  xbar.io.ifuAXI4 <> ifu.io.axi4
+  xbar.io.lsuAXI4 <> lsu.io.axi4
 
-  val ifuRValid = RegInit(False)
-  ifu.io.axi4.ar.ready := ifu.io.axi4.ar.valid
-
-  val npcMemRead = NpcMemRead()
-  npcMemRead.io.valid := ifu.io.axi4.ar.valid
-  npcMemRead.io.addr  := ifu.io.axi4.ar.addr
-
-  ifu.io.axi4.r.data := npcMemRead.io.rdata.asBits    // 数据
-  when (ifu.io.axi4.ar.valid) {   // 读数据通道握手信号
-    ifuRValid := True
-  } elsewhen (ifu.io.axi4.r.fire) {
-    ifuRValid := False
-  } otherwise {
-    ifuRValid := ifuRValid
-  }
-  ifu.io.axi4.r.valid := ifuRValid
-//******************************************************
-  val lsuRValid = RegInit(False)
-  val lsuBValid = RegInit(False)
+  val axiRValid = RegInit(False)
+  val axiBValid = RegInit(False)
   val npcMemRW = NpcMemRW()
-  npcMemRW.io.wen   := lsu.io.axi4.aw.valid && lsu.io.axi4.w.valid
+  npcMemRW.io.wen   := xbar.io.externalAxi.aw.valid && xbar.io.externalAxi.w.valid
   npcMemRW.io.valid := lsu.io.axi4.ar.valid || npcMemRW.io.wen
-  npcMemRW.io.addr  := npcMemRW.io.wen ? lsu.io.axi4.aw.addr | lsu.io.axi4.ar.addr
-  npcMemRW.io.wdata := lsu.io.axi4.w.data.asUInt
-  npcMemRW.io.wmask := lsu.io.axi4.w.strb.asUInt
+  npcMemRW.io.addr  := npcMemRW.io.wen ? xbar.io.externalAxi.aw.addr | xbar.io.externalAxi.ar.addr
+  npcMemRW.io.wdata := xbar.io.externalAxi.w.data.asUInt
+  npcMemRW.io.wmask := xbar.io.externalAxi.w.strb.asUInt
 
-  lsu.io.axi4.ar.ready := lsu.io.axi4.ar.valid
-  lsu.io.axi4.r.data := npcMemRW.io.rdata.asBits    // 数据
-  when (lsu.io.axi4.ar.valid) {   // 读数据通道握手信号
-    lsuRValid := True
-  } elsewhen (lsu.io.axi4.r.fire) {
-    lsuRValid := False
+  xbar.io.externalAxi.ar.ready := xbar.io.externalAxi.ar.valid
+  xbar.io.externalAxi.r.data := npcMemRW.io.rdata.asBits    // 数据
+  when (xbar.io.externalAxi.ar.valid) {   // 读数据通道握手信号
+    axiRValid := True
+  } elsewhen (xbar.io.externalAxi.r.fire) {
+    axiRValid := False
   } otherwise {
-    lsuRValid := lsuRValid
+    axiRValid := axiRValid
   }
-  lsu.io.axi4.r.valid := lsuRValid
+  xbar.io.externalAxi.r.valid := axiRValid
   //***************
-  lsu.io.axi4.aw.ready := lsu.io.axi4.aw.valid && lsu.io.axi4.w.valid
-  lsu.io.axi4.w.ready  := lsu.io.axi4.aw.valid && lsu.io.axi4.w.valid
-  when (lsu.io.axi4.aw.valid && lsu.io.axi4.w.valid) {   // 读数据通道握手信号
-    lsuBValid := True
-  } elsewhen (lsu.io.axi4.b.fire) {
-    lsuBValid := False
+  xbar.io.externalAxi.aw.ready := xbar.io.externalAxi.aw.valid && xbar.io.externalAxi.w.valid
+  xbar.io.externalAxi.w.ready  := xbar.io.externalAxi.aw.valid && xbar.io.externalAxi.w.valid
+  when (xbar.io.externalAxi.aw.valid && xbar.io.externalAxi.w.valid) {   // 读数据通道握手信号
+    axiBValid := True
+  } elsewhen (xbar.io.externalAxi.b.fire) {
+    axiBValid := False
   } otherwise {
-    lsuBValid := lsuBValid
+    axiBValid := axiBValid
   }
-  lsu.io.axi4.b.valid := lsuBValid 
+  xbar.io.externalAxi.b.valid := axiBValid 
+
+
+//   val ifuRValid = RegInit(False)
+//   ifu.io.axi4.ar.ready := ifu.io.axi4.ar.valid
+
+//   val npcMemRead = NpcMemRead()
+//   npcMemRead.io.valid := ifu.io.axi4.ar.valid
+//   npcMemRead.io.addr  := ifu.io.axi4.ar.addr
+
+//   ifu.io.axi4.r.data := npcMemRead.io.rdata.asBits    // 数据
+//   when (ifu.io.axi4.ar.valid) {   // 读数据通道握手信号
+//     ifuRValid := True
+//   } elsewhen (ifu.io.axi4.r.fire) {
+//     ifuRValid := False
+//   } otherwise {
+//     ifuRValid := ifuRValid
+//   }
+//   ifu.io.axi4.r.valid := ifuRValid
+// //******************************************************
+//   val lsuRValid = RegInit(False)
+//   val lsuBValid = RegInit(False)
+//   val npcMemRW = NpcMemRW()
+//   npcMemRW.io.wen   := lsu.io.axi4.aw.valid && lsu.io.axi4.w.valid
+//   npcMemRW.io.valid := lsu.io.axi4.ar.valid || npcMemRW.io.wen
+//   npcMemRW.io.addr  := npcMemRW.io.wen ? lsu.io.axi4.aw.addr | lsu.io.axi4.ar.addr
+//   npcMemRW.io.wdata := lsu.io.axi4.w.data.asUInt
+//   npcMemRW.io.wmask := lsu.io.axi4.w.strb.asUInt
+
+//   lsu.io.axi4.ar.ready := lsu.io.axi4.ar.valid
+//   lsu.io.axi4.r.data := npcMemRW.io.rdata.asBits    // 数据
+//   when (lsu.io.axi4.ar.valid) {   // 读数据通道握手信号
+//     lsuRValid := True
+//   } elsewhen (lsu.io.axi4.r.fire) {
+//     lsuRValid := False
+//   } otherwise {
+//     lsuRValid := lsuRValid
+//   }
+//   lsu.io.axi4.r.valid := lsuRValid
+//   //***************
+//   lsu.io.axi4.aw.ready := lsu.io.axi4.aw.valid && lsu.io.axi4.w.valid
+//   lsu.io.axi4.w.ready  := lsu.io.axi4.aw.valid && lsu.io.axi4.w.valid
+//   when (lsu.io.axi4.aw.valid && lsu.io.axi4.w.valid) {   // 读数据通道握手信号
+//     lsuBValid := True
+//   } elsewhen (lsu.io.axi4.b.fire) {
+//     lsuBValid := False
+//   } otherwise {
+//     lsuBValid := lsuBValid
+//   }
+//   lsu.io.axi4.b.valid := lsuBValid 
 
 }
 

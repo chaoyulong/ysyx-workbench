@@ -107,7 +107,7 @@ case class CPU() extends Component {
   //***************
   xbar.io.externalAxi.aw.ready := xbar.io.externalAxi.aw.valid && xbar.io.externalAxi.w.valid
   xbar.io.externalAxi.w.ready  := xbar.io.externalAxi.aw.valid && xbar.io.externalAxi.w.valid
-  when (xbar.io.externalAxi.aw.valid && xbar.io.externalAxi.w.valid) {   // 读数据通道握手信号
+  when (xbar.io.externalAxi.aw.valid && xbar.io.externalAxi.w.valid) {   
     axiBValid := True
   } elsewhen (xbar.io.externalAxi.b.fire) {
     axiBValid := False
@@ -193,4 +193,55 @@ case class ysyx_23060082_RegFile() extends Component {
   io.readData2 := rf(io.readAddr2(0 to 3)) 
 }
 
+case class ysyx_23060082_Clint() extends Component {
+  val io = new Bundle {
+    val clintAxi = slave(Axi4(AxiConfig.axiConfig))
+  }
 
+  val timeCount = RegInit(U"64'h0")
+  val timeCountLow = RegInit(U"32'h0")
+  val rValid = RegInit(False)
+  val bValid = RegInit(False)
+  val rdata = RegInit(U"32'h0")
+
+  timeCount := timeCount + 1
+
+  io.clintAxi.ar.ready := io.clintAxi.ar.valid
+  io.clintAxi.r.data := rdata.asBits    // 数据
+  when(io.clintAxi.ar.valid) {   // 读数据通道握手信号
+    rValid := True
+  } elsewhen (io.clintAxi.r.fire) {
+    rValid := False
+  } otherwise {
+    rValid := rValid
+  }
+
+  when(io.clintAxi.ar.fire) {   // 读数据通道握手信号
+    rdata := io.clintAxi.ar.addr.mux(
+      U"32'h02000004" -> timeCount(63 downto 32),
+      U"32'h02000000" -> timeCountLow,
+      default         -> U(0)
+    )
+  } otherwise {
+    rdata := rdata
+  }
+
+  when(io.clintAxi.ar.fire && (io.clintAxi.ar.addr === U"32'h02000004")) {
+    timeCountLow := timeCount(31 downto 0)
+  } otherwise {
+    timeCountLow := timeCountLow
+  }
+
+  io.clintAxi.r.valid := rValid
+  //***************
+  io.clintAxi.aw.ready := io.clintAxi.aw.valid && io.clintAxi.w.valid
+  io.clintAxi.w.ready  := io.clintAxi.aw.valid && io.clintAxi.w.valid
+  when (io.clintAxi.aw.valid && io.clintAxi.w.valid) {   
+    bValid := True
+  } elsewhen (io.clintAxi.b.fire) {
+    bValid := False
+  } otherwise {
+    bValid := bValid
+  }
+  io.clintAxi.b.valid := bValid 
+}

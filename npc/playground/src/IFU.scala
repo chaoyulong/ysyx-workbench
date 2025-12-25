@@ -76,7 +76,8 @@ case class ysyx_23060082_IFU() extends Component {
   val io = new Bundle {
     val input  = slave  Stream(Wbu2Ifu_data())
     val output = master Stream(Ifu2Idu_data())  
-    val axi4 = master(Axi4ReadOnly(AxiConfig.axiConfig))
+    val axi4   = master(Axi4ReadOnly(AxiConfig.axiConfig))
+    val axiBusReq = out Bool()     // 占用总线请求
   }
 
   object IfuState extends SpinalEnum {              // 定义状态机枚举
@@ -105,6 +106,14 @@ case class ysyx_23060082_IFU() extends Component {
   axiCtrl.io.readAddr:= pc
 
   val rdataReg = RegNextWhen(axiCtrl.io.readData, state === IfuState.WaitMem && axiCtrl.io.readEnd) init(0)  // 读完时更新数据
+
+  when(axiCtrl.io.readReq) {    // 发出请求信号
+    io.axiBusReq := True
+  } elsewhen(axiCtrl.io.readEnd) {
+    io.axiBusReq := False
+  } otherwise {
+    io.axiBusReq := io.axiBusReq
+  }
   // ------------------------------------- 状态机 ------------------------------------- //
   switch(state) {
     is(IfuState.Idle) {

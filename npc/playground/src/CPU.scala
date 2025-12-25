@@ -3,8 +3,6 @@ package playground
 import spinal.core._
 import spinal.lib._       // 使用spinal的模块库
 import spinal.lib.bus.amba4.axi._
-import spinal.lib.bus.misc.SizeMapping
-import spinal.lib.bus.amba4.axi.Axi4CrossbarFactory
 
 // axi的配置信息
 object AxiConfig {
@@ -162,48 +160,3 @@ case class ysyx_23060082_RegFile() extends Component {
 }
 
 
-case class ysyx_23060082_AXI4Adapter() extends Component {
-  val io = new Bundle {
-    val ifuAXI4      = slave(Axi4ReadOnly(AxiConfig.axiConfig))
-    val lsuAXI4      = slave(Axi4(AxiConfig.axiConfig))
-    val clintAxi     = master(Axi4(AxiConfig.axiConfig))
-    val externalAxi  = master(Axi4(AxiConfig.axiConfig))
-  }
-
-  // ===============================
-  // IFU ReadOnly → Full AXI
-  // ===============================
-  val ifuAdapt = new Component {
-    val io = new Bundle {
-      val ifu = slave(Axi4ReadOnly(AxiConfig.axiConfig))
-      val axi = master(Axi4(AxiConfig.axiConfig))
-    }
-
-    io.axi.ar <> io.ifu.ar
-    io.axi.r  <> io.ifu.r
-
-    io.axi.aw.valid := False
-    io.axi.w.valid  := False
-    io.axi.b.ready  := True
-
-    io.axi.aw.payload.assignDontCare()
-    io.axi.w.payload.assignDontCare()
-  }
-
-  ifuAdapt.io.ifu <> io.ifuAXI4
-
-  // ===============================
-  // Crossbar
-  // ===============================
-  val xbar = Axi4CrossbarFactory()
-
-  // Slaves
-  xbar.addSlave(io.clintAxi,SizeMapping(0x02000000L, 8 Byte))
-  xbar.addSlave(io.externalAxi,SizeMapping(0x00000000, 4 GB))
-
-  // Masters (order = priority)
-  xbar.addConnection(ifuAdapt.io.axi,List(io.clintAxi, io.externalAxi))
-  xbar.addConnection(io.lsuAXI4,List(io.clintAxi, io.externalAxi))
-
-  xbar.build()
-}

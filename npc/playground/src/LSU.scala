@@ -89,7 +89,6 @@ case class ysyx_23060082_LSU() extends Component {
     val input     = slave  Flow(Exu2Lsu_data())
     val output    = master Stream(Lsu2Wbu_data()) 
     val axi4 = master(Axi4(AxiConfig.axiConfig))
-    val axiBusReq = out Bool()     // 占用总线请求
   }
   val state = Reg(LsuState()) init(LsuState.Idle)   // 创建一个状态机
   val memAddr    = io.input.aluResult    // alu的输出结果就是访存地址
@@ -115,14 +114,6 @@ case class ysyx_23060082_LSU() extends Component {
   axiCtrl.io.writeAddr:= memAddr
   axiCtrl.io.writeData:= dataProcess.io.wdataReal // 处理后的数据
   axiCtrl.io.writeMask:= dataProcess.io.wmask
-
-  when(axiCtrl.io.readReq || axiCtrl.io.writeReq) {    // 发出请求信号
-    io.axiBusReq := True
-  } elsewhen(axiCtrl.io.readEnd) {
-    io.axiBusReq := False
-  } otherwise {
-    io.axiBusReq := io.axiBusReq
-  }
   // ------------------------------------- 状态机 ------------------------------------- // 
   switch(state) {
     is(LsuState.Idle) {

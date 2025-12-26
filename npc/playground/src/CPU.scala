@@ -152,6 +152,7 @@ case class ysyx_23060082_Clint() extends Component {
   val timeCount = RegInit(U"64'h0")
   val timeCountLow = RegNextWhen(timeCount(31 downto 0), io.clintAxi.ar.fire && (io.clintAxi.ar.addr === U"32'h02000004")) init(0)  // 当读取高位数据时暂存低位数据
   val rValid = RegInit(False)
+  io.clintAxi.r.valid.setAsReg()
   val bValid = RegInit(False)
   val rdata = RegInit(U"32'h0")
 
@@ -176,13 +177,6 @@ case class ysyx_23060082_Clint() extends Component {
   } otherwise {
     rdata := rdata
   }
-
-  // when(io.clintAxi.ar.fire && (io.clintAxi.ar.addr === U"32'h02000004")) {
-  //   timeCountLow := timeCount(31 downto 0)
-  // } otherwise {
-  //   timeCountLow := timeCountLow
-  // }
-
   io.clintAxi.r.valid := rValid
   //***************
   io.clintAxi.aw.ready := io.clintAxi.aw.valid && io.clintAxi.w.valid

@@ -84,41 +84,41 @@ case class CPU() extends Component {
   // ----------------------------------- 暂时的axi从机 ----------------------------------- //
   val xbar = ysyx_23060082_AXI4Xbar()
   val clint = ysyx_23060082_Clint()
-  io.externalAxi <> xbar.io.externalAxi
+  xbar.io.externalAxi <> io.externalAxi   // 引到外部
   xbar.io.clintAxi <> clint.io.clintAxi
   xbar.io.ifuAXI4 <> ifu.io.axi4
   xbar.io.lsuAXI4 <> lsu.io.axi4
 
-  val axiRValid = RegInit(False)
-  val axiBValid = RegInit(False)
-  val npcMemRW = NpcMemRW()
-  npcMemRW.io.wen   := xbar.io.externalAxi.aw.valid && xbar.io.externalAxi.w.valid
-  npcMemRW.io.valid := xbar.io.externalAxi.ar.valid || npcMemRW.io.wen
-  npcMemRW.io.addr  := npcMemRW.io.wen ? xbar.io.externalAxi.aw.addr | xbar.io.externalAxi.ar.addr
-  npcMemRW.io.wdata := xbar.io.externalAxi.w.data.asUInt
-  npcMemRW.io.wmask := xbar.io.externalAxi.w.strb.asUInt
+  // val axiRValid = RegInit(False)
+  // val axiBValid = RegInit(False)
+  // val npcMemRW = NpcMemRW()
+  // npcMemRW.io.wen   := xbar.io.externalAxi.aw.valid && xbar.io.externalAxi.w.valid
+  // npcMemRW.io.valid := xbar.io.externalAxi.ar.valid || npcMemRW.io.wen
+  // npcMemRW.io.addr  := npcMemRW.io.wen ? xbar.io.externalAxi.aw.addr | xbar.io.externalAxi.ar.addr
+  // npcMemRW.io.wdata := xbar.io.externalAxi.w.data.asUInt
+  // npcMemRW.io.wmask := xbar.io.externalAxi.w.strb.asUInt
 
-  xbar.io.externalAxi.ar.ready := xbar.io.externalAxi.ar.valid
-  xbar.io.externalAxi.r.data := npcMemRW.io.rdata.asBits    // 数据
-  when (xbar.io.externalAxi.ar.valid) {   // 读数据通道握手信号
-    axiRValid := True
-  } elsewhen (xbar.io.externalAxi.r.fire) {
-    axiRValid := False
-  } otherwise {
-    axiRValid := axiRValid
-  }
-  xbar.io.externalAxi.r.valid := axiRValid
-  //***************
-  xbar.io.externalAxi.aw.ready := xbar.io.externalAxi.aw.valid && xbar.io.externalAxi.w.valid
-  xbar.io.externalAxi.w.ready  := xbar.io.externalAxi.aw.valid && xbar.io.externalAxi.w.valid
-  when (xbar.io.externalAxi.aw.valid && xbar.io.externalAxi.w.valid) {   
-    axiBValid := True
-  } elsewhen (xbar.io.externalAxi.b.fire) {
-    axiBValid := False
-  } otherwise {
-    axiBValid := axiBValid
-  }
-  xbar.io.externalAxi.b.valid := axiBValid 
+  // xbar.io.externalAxi.ar.ready := xbar.io.externalAxi.ar.valid
+  // xbar.io.externalAxi.r.data := npcMemRW.io.rdata.asBits    // 数据
+  // when (xbar.io.externalAxi.ar.valid) {   // 读数据通道握手信号
+  //   axiRValid := True
+  // } elsewhen (xbar.io.externalAxi.r.fire) {
+  //   axiRValid := False
+  // } otherwise {
+  //   axiRValid := axiRValid
+  // }
+  // xbar.io.externalAxi.r.valid := axiRValid
+  // //***************
+  // xbar.io.externalAxi.aw.ready := xbar.io.externalAxi.aw.valid && xbar.io.externalAxi.w.valid
+  // xbar.io.externalAxi.w.ready  := xbar.io.externalAxi.aw.valid && xbar.io.externalAxi.w.valid
+  // when (xbar.io.externalAxi.aw.valid && xbar.io.externalAxi.w.valid) {   
+  //   axiBValid := True
+  // } elsewhen (xbar.io.externalAxi.b.fire) {
+  //   axiBValid := False
+  // } otherwise {
+  //   axiBValid := axiBValid
+  // }
+  // xbar.io.externalAxi.b.valid := axiBValid 
 }
 
 case class ysyx_23060082_RegFile() extends Component {

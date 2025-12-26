@@ -17,32 +17,32 @@ case class NPC_TOP() extends Component {
   val axiRValid = RegInit(False)
   val axiBValid = RegInit(False)
   val npcMemRW = NpcMemRW()
-  npcMemRW.io.wen   := cpu.io.axiMaster.aw.valid && cpu.io.axiMaster.w.valid
-  npcMemRW.io.valid := cpu.io.axiMaster.ar.valid || npcMemRW.io.wen
-  npcMemRW.io.addr  := npcMemRW.io.wen ? cpu.io.axiMaster.aw.addr | cpu.io.axiMaster.ar.addr
-  npcMemRW.io.wdata := cpu.io.axiMaster.w.data.asUInt
-  npcMemRW.io.wmask := cpu.io.axiMaster.w.strb.asUInt
+  npcMemRW.io.wen   := cpu.io.io_master.aw.valid && cpu.io.io_master.w.valid
+  npcMemRW.io.valid := cpu.io.io_master.ar.valid || npcMemRW.io.wen
+  npcMemRW.io.addr  := npcMemRW.io.wen ? cpu.io.io_master.aw.addr | cpu.io.io_master.ar.addr
+  npcMemRW.io.wdata := cpu.io.io_master.w.data.asUInt
+  npcMemRW.io.wmask := cpu.io.io_master.w.strb.asUInt
 
-  cpu.io.axiMaster.ar.ready := cpu.io.axiMaster.ar.valid
-  cpu.io.axiMaster.r.data := npcMemRW.io.rdata.asBits    // 数据
-  when (cpu.io.axiMaster.ar.valid) {   // 读数据通道握手信号
+  cpu.io.io_master.ar.ready := cpu.io.io_master.ar.valid
+  cpu.io.io_master.r.data := npcMemRW.io.rdata.asBits    // 数据
+  when (cpu.io.io_master.ar.valid) {   // 读数据通道握手信号
     axiRValid := True
-  } elsewhen (cpu.io.axiMaster.r.fire) {
+  } elsewhen (cpu.io.io_master.r.fire) {
     axiRValid := False
   } otherwise {
     axiRValid := axiRValid
   }
-  cpu.io.axiMaster.r.valid := axiRValid
+  cpu.io.io_master.r.valid := axiRValid
   //***************
-  cpu.io.axiMaster.aw.ready := cpu.io.axiMaster.aw.valid && cpu.io.axiMaster.w.valid
-  cpu.io.axiMaster.w.ready  := cpu.io.axiMaster.aw.valid && cpu.io.axiMaster.w.valid
-  when (cpu.io.axiMaster.aw.valid && cpu.io.axiMaster.w.valid) {   
+  cpu.io.io_master.aw.ready := cpu.io.io_master.aw.valid && cpu.io.io_master.w.valid
+  cpu.io.io_master.w.ready  := cpu.io.io_master.aw.valid && cpu.io.io_master.w.valid
+  when (cpu.io.io_master.aw.valid && cpu.io.io_master.w.valid) {   
     axiBValid := True
-  } elsewhen (cpu.io.axiMaster.b.fire) {
+  } elsewhen (cpu.io.io_master.b.fire) {
     axiBValid := False
   } otherwise {
     axiBValid := axiBValid
   }
-  cpu.io.axiMaster.b.valid := axiBValid 
+  cpu.io.io_master.b.valid := axiBValid 
 
 }

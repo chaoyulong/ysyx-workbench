@@ -27,15 +27,15 @@ object AxiConfig {
 
 case class ysyx_23060082() extends Component {
   val io = new Bundle {
-    val axiMaster = master(Axi4(AxiConfig.axiConfig))
-    val axiSlave  = slave (Axi4(AxiConfig.axiConfig))
+    val io_master = master(Axi4(AxiConfig.axiConfig))
+    val io_slave  = slave (Axi4(AxiConfig.axiConfig))
   }
 
   clockDomain.clock.setName("clock")  // 自定义时钟和复位信号名称，放在最顶层
   clockDomain.reset.setName("reset")
-  ClockDomainConfig(resetActiveLevel = HIGH)
-  Axi4SpecRenamer(io.axiMaster)
-  Axi4SpecRenamer(io.axiSlave)
+  ClockDomainConfig(resetActiveLevel = HIGH)  // 复位信号高有效
+  Axi4SpecRenamer(io.io_master)
+  Axi4SpecRenamer(io.io_slave)
   // ------------------------------------------------------ 定义级间寄存器函数 ------------------------------------------------------ //
   def pipelineConnect[T <: Data, T2 <: Data](
     prevOut: Stream[T],     // 前一级的输出

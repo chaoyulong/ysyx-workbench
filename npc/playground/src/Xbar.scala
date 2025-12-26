@@ -39,17 +39,17 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
   axi4Empty.aw.size  := U(0)
   axi4Empty.aw.burst := B(0)
 
-  axi4Empty.w.valid  := False
-  axi4Empty.w.ready  := False
-  axi4Empty.w.data   := B(0)
-  // axi4Empty.w.id     := U(0)
-  axi4Empty.w.strb   := B(0)
-  axi4Empty.w.last   := False
+  axi4Empty.w.valid := False
+  axi4Empty.w.ready := False
+  axi4Empty.w.data  := B(0)
+  // axi4Empty.w.id    := U(0)
+  axi4Empty.w.strb  := B(0)
+  axi4Empty.w.last  := False
 
   axi4Empty.b.valid  := False
   axi4Empty.b.ready  := False
-  axi4Empty.b.id     := U(0)
   axi4Empty.b.resp   := B(0)
+  axi4Empty.b.id   := U(0)
 
 // --------------------------------------------------------- Arbiter ------------------------------------------------------ //
   object ArbiterState extends SpinalEnum {              // 定义状态机枚举
@@ -127,12 +127,10 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
   // ------------------------------- 读数据 ------------------------------- //
   axi4Bus.r.valid  := (crossState === CrossState.Clint && io.clintAxi.r.valid) ||
                       (crossState === CrossState.External && io.externalAxi.r.valid)
-  axi4Bus.r.payload := crossState.mux(
-    CrossState.Clint -> io.clintAxi.r.payload,
-    CrossState.External -> io.externalAxi.r.payload,
-    default -> axi4Empty.r.payload
-  )
+  axi4Bus.r.payload := Mux(crossState === CrossState.Clint, io.clintAxi.r.payload, io.externalAxi.r.payload)
+
   io.clintAxi.r.ready := (crossState === CrossState.Clint) && axi4Bus.r.ready
+
   io.externalAxi.r.ready := (crossState === CrossState.External) && axi4Bus.r.ready
   // ------------------------------- 写地址 ------------------------------- //
   io.clintAxi.aw.valid := (crossState === CrossState.Clint && axi4Bus.aw.valid)

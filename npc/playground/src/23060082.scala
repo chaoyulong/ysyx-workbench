@@ -33,6 +33,7 @@ case class ysyx_23060082() extends Component {
 
   clockDomain.clock.setName("clock")  // 自定义时钟和复位信号名称，放在最顶层
   clockDomain.reset.setName("reset")
+  ClockDomainConfig(resetActiveLevel = HIGH)
   Axi4SpecRenamer(io.axiMaster)
   Axi4SpecRenamer(io.axiSlave)
   // ------------------------------------------------------ 定义级间寄存器函数 ------------------------------------------------------ //

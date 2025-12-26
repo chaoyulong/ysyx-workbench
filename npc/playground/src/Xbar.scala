@@ -122,68 +122,25 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
       .otherwise { crossState := crossState }
     }
   }
-  // ---------------------------------------------- 系统时钟的总线 ---------------------------------------------- //
-  // ------------------------------- 读地址 ------------------------------- //
-  io.clintAxi.ar.valid := (crossState === CrossState.Clint) && axi4Bus.ar.valid   
-  io.clintAxi.ar.payload := Mux(crossState === CrossState.Clint, axi4Bus.ar.payload, axi4Empty.ar.payload)
-
-  io.externalAxi.ar.valid := (crossState === CrossState.External) && axi4Bus.ar.valid
-  io.externalAxi.ar.payload := Mux(crossState === CrossState.External, axi4Bus.ar.payload, axi4Empty.ar.payload)
-
-  axi4Bus.ar.ready := (crossState === CrossState.Clint && io.clintAxi.ar.ready) ||
-                      (crossState === CrossState.External && io.externalAxi.ar.ready)
-  // ------------------------------- 读数据 ------------------------------- //
-  axi4Bus.r.valid  := (crossState === CrossState.Clint && io.clintAxi.r.valid) ||
-                      (crossState === CrossState.External && io.externalAxi.r.valid)
-  axi4Bus.r.payload := crossState.mux(
-    CrossState.Clint -> io.clintAxi.r.payload,
-    CrossState.External -> io.externalAxi.r.payload,
-    default -> axi4Empty.r.payload
-  )
-
-  io.clintAxi.r.ready := (crossState === CrossState.Clint) && axi4Bus.r.ready
-
-  io.externalAxi.r.ready := (crossState === CrossState.External) && axi4Bus.r.ready
-  // ------------------------------- 写地址 ------------------------------- //
-  io.clintAxi.aw.valid := (crossState === CrossState.Clint && axi4Bus.aw.valid)
-  io.clintAxi.aw.payload := axi4Bus.aw.payload
-
-  io.externalAxi.aw.valid := (crossState === CrossState.External && axi4Bus.aw.valid)
-  io.externalAxi.aw.payload := axi4Bus.aw.payload
-
-  axi4Bus.aw.ready := (crossState === CrossState.Clint && io.clintAxi.aw.ready) ||
-                      (crossState === CrossState.External && io.externalAxi.aw.ready)
-  // ------------------------------- 写数据 ------------------------------- //
-  io.clintAxi.w.valid := (crossState === CrossState.Clint && axi4Bus.w.valid)
-  io.clintAxi.w.payload := axi4Bus.w.payload
-
-  io.externalAxi.w.valid := (crossState === CrossState.External && axi4Bus.w.valid)
-  io.externalAxi.w.payload := axi4Bus.w.payload
-
-  axi4Bus.w.ready := (crossState === CrossState.Clint && io.clintAxi.w.ready) ||
-                     (crossState === CrossState.External && io.externalAxi.w.ready)
-  // ------------------------------- 写响应 ------------------------------- //
-  axi4Bus.b.valid := (crossState === CrossState.Clint && io.clintAxi.b.valid) ||
-                      (crossState === CrossState.External && io.externalAxi.b.valid)
-  axi4Bus.b.payload := Mux(crossState === CrossState.Clint, io.clintAxi.b.payload, io.externalAxi.b.payload)
-  io.clintAxi.b.ready := (crossState === CrossState.Clint && axi4Bus.b.ready)
-
-  io.externalAxi.b.ready := (crossState === CrossState.External && axi4Bus.b.ready)
-
   // // ---------------------------------------------- 系统时钟的总线 ---------------------------------------------- //
   // // ------------------------------- 读地址 ------------------------------- //
   // io.clintAxi.ar.valid := (crossState === CrossState.Clint) && axi4Bus.ar.valid   
-  // io.clintAxi.ar.payload := axi4Bus.ar.payload
+  // io.clintAxi.ar.payload := Mux(crossState === CrossState.Clint, axi4Bus.ar.payload, axi4Empty.ar.payload)
 
   // io.externalAxi.ar.valid := (crossState === CrossState.External) && axi4Bus.ar.valid
-  // io.externalAxi.ar.payload := axi4Bus.ar
+  // io.externalAxi.ar.payload := Mux(crossState === CrossState.External, axi4Bus.ar.payload, axi4Empty.ar.payload)
 
   // axi4Bus.ar.ready := (crossState === CrossState.Clint && io.clintAxi.ar.ready) ||
   //                     (crossState === CrossState.External && io.externalAxi.ar.ready)
   // // ------------------------------- 读数据 ------------------------------- //
   // axi4Bus.r.valid  := (crossState === CrossState.Clint && io.clintAxi.r.valid) ||
   //                     (crossState === CrossState.External && io.externalAxi.r.valid)
-  // axi4Bus.r.payload := Mux(crossState === CrossState.Clint, io.clintAxi.r.payload, io.externalAxi.r.payload)
+  // axi4Bus.r.payload := crossState.mux(
+  //   CrossState.Clint -> io.clintAxi.r.payload,
+  //   CrossState.External -> io.externalAxi.r.payload,
+  //   default -> axi4Empty.r.payload
+  // )
+
   // io.clintAxi.r.ready := (crossState === CrossState.Clint) && axi4Bus.r.ready
 
   // io.externalAxi.r.ready := (crossState === CrossState.External) && axi4Bus.r.ready
@@ -212,6 +169,49 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
   // io.clintAxi.b.ready := (crossState === CrossState.Clint && axi4Bus.b.ready)
 
   // io.externalAxi.b.ready := (crossState === CrossState.External && axi4Bus.b.ready)
+
+  // ---------------------------------------------- 系统时钟的总线 ---------------------------------------------- //
+  // ------------------------------- 读地址 ------------------------------- //
+  io.clintAxi.ar.valid := (crossState === CrossState.Clint) && axi4Bus.ar.valid   
+  io.clintAxi.ar.payload := axi4Bus.ar.payload
+
+  io.externalAxi.ar.valid := (crossState === CrossState.External) && axi4Bus.ar.valid
+  io.externalAxi.ar.payload := axi4Bus.ar
+
+  axi4Bus.ar.ready := (crossState === CrossState.Clint && io.clintAxi.ar.ready) ||
+                      (crossState === CrossState.External && io.externalAxi.ar.ready)
+  // ------------------------------- 读数据 ------------------------------- //
+  axi4Bus.r.valid  := (crossState === CrossState.Clint && io.clintAxi.r.valid) ||
+                      (crossState === CrossState.External && io.externalAxi.r.valid)
+  axi4Bus.r.payload := Mux(crossState === CrossState.Clint, io.clintAxi.r.payload, io.externalAxi.r.payload)
+  io.clintAxi.r.ready := (crossState === CrossState.Clint) && axi4Bus.r.ready
+
+  io.externalAxi.r.ready := (crossState === CrossState.External) && axi4Bus.r.ready
+  // ------------------------------- 写地址 ------------------------------- //
+  io.clintAxi.aw.valid := (crossState === CrossState.Clint && axi4Bus.aw.valid)
+  io.clintAxi.aw.payload := axi4Bus.aw.payload
+
+  io.externalAxi.aw.valid := (crossState === CrossState.External && axi4Bus.aw.valid)
+  io.externalAxi.aw.payload := axi4Bus.aw.payload
+
+  axi4Bus.aw.ready := (crossState === CrossState.Clint && io.clintAxi.aw.ready) ||
+                      (crossState === CrossState.External && io.externalAxi.aw.ready)
+  // ------------------------------- 写数据 ------------------------------- //
+  io.clintAxi.w.valid := (crossState === CrossState.Clint && axi4Bus.w.valid)
+  io.clintAxi.w.payload := axi4Bus.w.payload
+
+  io.externalAxi.w.valid := (crossState === CrossState.External && axi4Bus.w.valid)
+  io.externalAxi.w.payload := axi4Bus.w.payload
+
+  axi4Bus.w.ready := (crossState === CrossState.Clint && io.clintAxi.w.ready) ||
+                     (crossState === CrossState.External && io.externalAxi.w.ready)
+  // ------------------------------- 写响应 ------------------------------- //
+  axi4Bus.b.valid := (crossState === CrossState.Clint && io.clintAxi.b.valid) ||
+                      (crossState === CrossState.External && io.externalAxi.b.valid)
+  axi4Bus.b.payload := Mux(crossState === CrossState.Clint, io.clintAxi.b.payload, io.externalAxi.b.payload)
+  io.clintAxi.b.ready := (crossState === CrossState.Clint && axi4Bus.b.ready)
+
+  io.externalAxi.b.ready := (crossState === CrossState.External && axi4Bus.b.ready)
 
 
   // io.externalAxi <> axi4Bus

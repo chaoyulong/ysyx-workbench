@@ -2,7 +2,7 @@
 #include "simulation.h"
 #include "regfile.h"
 #include STR(TOP_NAME.h)    // 自动生成
-#include "VCPU___024root.h"
+#include "VNPC_TOP___024root.h"
 
 extern TOP_NAME* top;
 // VCPU___024root* rootp;

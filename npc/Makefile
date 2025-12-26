@@ -2,7 +2,7 @@
 SPINAL_TOPNAME = NPC_TOP
 ISA = RISCV32_E
 
-
+PARTFORM:=NPC
 # verilator相关
 TOPNAME = $(SPINAL_TOPNAME)
 YXYXSOC_VFILE =
@@ -52,7 +52,7 @@ VSRCS += $(SPINAL_VFILE)
 VSRCS += $(shell find $(abspath playground/vsrc) -name "*.v")
 CSRCS = $(shell find $(abspath csrc) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
 INCFLAGS = $(addprefix -I, $(INC_PATH))
-CXXFLAGS += $(INCFLAGS) -DTOP_NAME="\"V$(TOPNAME)\"" -D__$(ISA)__
+CXXFLAGS += $(INCFLAGS) -DTOP_NAME="\"V$(TOPNAME)\"" -D__$(ISA)__ -D__$(PARTFORM)__
 LDFLAGS += -lreadline
 override ARGS ?=
 IMG ?=

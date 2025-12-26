@@ -87,7 +87,7 @@ case class ysyx_23060082() extends Component {
   // ----------------------------------- 暂时的axi从机 ----------------------------------- //
   val xbar = ysyx_23060082_AXI4Xbar()
   val clint = ysyx_23060082_Clint()
-  xbar.io.externalAxi <> io.axiMaster   // 引到外部
+  xbar.io.externalAxi <> io.io_master   // 引到外部
   xbar.io.clintAxi <> clint.io.clintAxi
   xbar.io.ifuAXI4 <> ifu.io.axi4
   xbar.io.lsuAXI4 <> lsu.io.axi4

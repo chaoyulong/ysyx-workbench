@@ -160,12 +160,19 @@ case class ysyx_23060082_Clint() extends Component {
 
   io.clintAxi.ar.ready := io.clintAxi.ar.valid
   io.clintAxi.r.data := rdata.asBits    // 数据
+  // when(io.clintAxi.ar.valid) {   // 读数据通道握手信号
+  //   rValid := True
+  // } elsewhen (io.clintAxi.r.fire) {
+  //   rValid := False
+  // } otherwise {
+  //   rValid := rValid
+  // }
   when(io.clintAxi.ar.valid) {   // 读数据通道握手信号
-    rValid := True
+    io.clintAxi.r.valid := True
   } elsewhen (io.clintAxi.r.fire) {
-    rValid := False
+    io.clintAxi.r.valid := False
   } otherwise {
-    rValid := rValid
+    io.clintAxi.r.valid := io.clintAxi.r.valid
   }
 
   when(io.clintAxi.ar.fire) {   // 读数据通道握手信号
@@ -177,7 +184,7 @@ case class ysyx_23060082_Clint() extends Component {
   } otherwise {
     rdata := rdata
   }
-  io.clintAxi.r.valid := rValid
+  // io.clintAxi.r.valid := rValid
   //***************
   io.clintAxi.aw.ready := io.clintAxi.aw.valid && io.clintAxi.w.valid
   io.clintAxi.w.ready  := io.clintAxi.aw.valid && io.clintAxi.w.valid

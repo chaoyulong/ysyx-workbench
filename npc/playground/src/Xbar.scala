@@ -103,17 +103,33 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
 
   switch(crossState) {
     is(CrossState.Idle) {
-      when(axi4Bus.ar.valid || axi4Bus.aw.valid) { 
-        when(hitClint) { crossState := CrossState.Clint } 
+      when(axi4Bus.ar.valid) { 
+        when(axi4Bus.ar.addr >= U"32'h02000000" && axi4Bus.ar.addr <= U"32'h0200ffff") { crossState := CrossState.Clint } 
         .otherwise { crossState := CrossState.External }
-      }
-      .otherwise( crossState := CrossState.Idle)
+      } elsewhen(axi4Bus.aw.valid) { 
+        when(axi4Bus.aw.addr >= U"32'h02000000" && axi4Bus.aw.addr <= U"32'h0200ffff") { crossState := CrossState.Clint } 
+        .otherwise { crossState := CrossState.External }
+      } otherwise{crossState := CrossState.Idle} 
     }
     is (CrossState.Clint, CrossState.External){
       when(axi4Bus.r.fire || axi4Bus.b.fire) { crossState := CrossState.Idle }
-      .otherwise( crossState := crossState)
+      .otherwise { crossState := crossState }
     }
   }
+
+  // switch(crossState) {
+  //   is(CrossState.Idle) {
+  //     when(axi4Bus.ar.valid || axi4Bus.aw.valid) { 
+  //       when(hitClint) { crossState := CrossState.Clint } 
+  //       .otherwise { crossState := CrossState.External }
+  //     }
+  //     .otherwise( crossState := CrossState.Idle)
+  //   }
+  //   is (CrossState.Clint, CrossState.External){
+  //     when(axi4Bus.r.fire || axi4Bus.b.fire) { crossState := CrossState.Idle }
+  //     .otherwise( crossState := crossState)
+  //   }
+  // }
   // ---------------------------------------------- 系统时钟的总线 ---------------------------------------------- //
   // ------------------------------- 读地址 ------------------------------- //
   io.clintAxi.ar.valid := (crossState === CrossState.Clint) && axi4Bus.ar.valid   
@@ -127,7 +143,11 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
   // ------------------------------- 读数据 ------------------------------- //
   axi4Bus.r.valid  := (crossState === CrossState.Clint && io.clintAxi.r.valid) ||
                       (crossState === CrossState.External && io.externalAxi.r.valid)
-  axi4Bus.r.payload := Mux(crossState === CrossState.Clint, io.clintAxi.r.payload, io.externalAxi.r.payload)
+  axi4Bus.r.payload := crossState.mux(
+    CrossState.Clint -> io.clintAxi.r.payload,
+    CrossState.External -> io.externalAxi.r.payload,
+    default -> axi4Empty.r.payload
+  )
 
   io.clintAxi.r.ready := (crossState === CrossState.Clint) && axi4Bus.r.ready
 

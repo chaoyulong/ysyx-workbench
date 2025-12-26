@@ -42,7 +42,7 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
   axi4Empty.w.valid  := False
   axi4Empty.w.ready  := False
   axi4Empty.w.data   := B(0)
-  axi4Empty.w.id     := U(0)
+  // axi4Empty.w.id     := U(0)
   axi4Empty.w.strb   := B(0)
   axi4Empty.w.last   := False
 

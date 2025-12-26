@@ -20,12 +20,12 @@ const char unfind[] = "xxx";
 
 uint32_t Rpc(void)
 {
-  return top->rootp->CPU__DOT__ifu__DOT__pc;
+  return top->rootp->NPC_TOP__DOT__ifu__DOT__pc;
 }
 
 uint32_t gpr(int n)
 {  
-  static uint32_t *rf_base_addr = &(top->rootp->CPU__DOT__regFile__DOT__rf_0);
+  static uint32_t *rf_base_addr = &(top->rootp->NPC_TOP__DOT__regFile__DOT__rf_0);
   if(n >= REG_NUM)
   {
     printf("register only [0 - 15]");

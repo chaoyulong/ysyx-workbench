@@ -220,8 +220,11 @@ case class ysyx_23060082_Clint() extends Component {
 
   when(io.clintAxi.ar.fire) {   // 读数据通道握手信号
     rdata := io.clintAxi.ar.addr.mux(
-      U"32'h02000000" -> timeCount(63 downto 32),
-      U"32'h02000004" -> timeCountLow,
+      // U"32'h02000000" -> timeCount(63 downto 32),
+      // U"32'h02000004" -> timeCountLow,
+      // default         -> U(0)
+      U"32'h02000000" -> U"0x1111",
+      U"32'h02000004" -> U"0x2222",
       default         -> U(0)
     )
   } otherwise {

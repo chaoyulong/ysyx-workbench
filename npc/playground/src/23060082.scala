@@ -25,9 +25,10 @@ object AxiConfig {
   )
 }
 
-case class CPU() extends Component {
+case class ysyx_23060082() extends Component {
   val io = new Bundle {
-    val externalAxi = master(Axi4(AxiConfig.axiConfig))
+    val axiMaster = master(Axi4(AxiConfig.axiConfig))
+    val axiSlave  = slave (Axi4(AxiConfig.axiConfig))
   }
 
   clockDomain.clock.setName("clock")  // 自定义时钟和复位信号名称，放在最顶层
@@ -84,7 +85,7 @@ case class CPU() extends Component {
   // ----------------------------------- 暂时的axi从机 ----------------------------------- //
   val xbar = ysyx_23060082_AXI4Xbar()
   val clint = ysyx_23060082_Clint()
-  xbar.io.externalAxi <> io.externalAxi   // 引到外部
+  xbar.io.externalAxi <> io.axiMaster   // 引到外部
   xbar.io.clintAxi <> clint.io.clintAxi
   xbar.io.ifuAXI4 <> ifu.io.axi4
   xbar.io.lsuAXI4 <> lsu.io.axi4

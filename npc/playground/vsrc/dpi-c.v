@@ -43,6 +43,8 @@ module NpcMemRW(
       else begin
         if(addr == 32'h02000000)
           rdata <= 32'd1111;
+        else if(addr == 32'h02000004)
+          rdata <= 32'd2222;
         else
           rdata <= pmem_read(addr);
       end

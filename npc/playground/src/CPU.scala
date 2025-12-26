@@ -151,15 +151,14 @@ case class ysyx_23060082_Clint() extends Component {
 
   val timeCount = RegInit(U"64'h0")
   val timeCountLow = RegNextWhen(timeCount(31 downto 0), io.clintAxi.ar.fire && (io.clintAxi.ar.addr === U"32'h02000004")) init(0)  // 当读取高位数据时暂存低位数据
-  val rValid = RegInit(False)
-  io.clintAxi.r.valid.setAsReg()
-  val bValid = RegInit(False)
-  val rdata = RegInit(U"32'h0")
+  io.clintAxi.r.valid.setAsReg() init(False)
+  io.clintAxi.b.valid.setAsReg() init(False)
+  io.clintAxi.r.data .setAsReg() init(0)
 
   timeCount := timeCount + 1
 
   io.clintAxi.ar.ready := io.clintAxi.ar.valid
-  io.clintAxi.r.data := rdata.asBits    // 数据
+  // io.clintAxi.r.data := rdata.asBits    // 数据
   // when(io.clintAxi.ar.valid) {   // 读数据通道握手信号
   //   rValid := True
   // } elsewhen (io.clintAxi.r.fire) {
@@ -176,24 +175,24 @@ case class ysyx_23060082_Clint() extends Component {
   }
 
   when(io.clintAxi.ar.fire) {   // 读数据通道握手信号
-    rdata := io.clintAxi.ar.addr.mux(
+    io.clintAxi.r.data := io.clintAxi.ar.addr.mux(
       U"32'h02000004" -> timeCount(63 downto 32),
       U"32'h02000000" -> timeCountLow,
       default         -> U(0)
-    )
+    ).asBits
   } otherwise {
-    rdata := rdata
+    io.clintAxi.r.data := io.clintAxi.r.data
   }
   // io.clintAxi.r.valid := rValid
   //***************
   io.clintAxi.aw.ready := io.clintAxi.aw.valid && io.clintAxi.w.valid
   io.clintAxi.w.ready  := io.clintAxi.aw.valid && io.clintAxi.w.valid
   when (io.clintAxi.aw.valid && io.clintAxi.w.valid) {   
-    bValid := True
+    io.clintAxi.b.valid := True
   } elsewhen (io.clintAxi.b.fire) {
-    bValid := False
+    io.clintAxi.b.valid := False
   } otherwise {
-    bValid := bValid
+    io.clintAxi.b.valid := io.clintAxi.b.valid
   }
-  io.clintAxi.b.valid := bValid 
+  // io.clintAxi.b.valid := bValid 
 }

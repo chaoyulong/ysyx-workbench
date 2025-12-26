@@ -27,6 +27,7 @@ object AxiConfig {
 
 case class CPU() extends Component {
   val io = new Bundle {
+    val externalAxi = master(Axi4(AxiConfig.axiConfig))
   }
 
   clockDomain.clock.setName("clock")  // 自定义时钟和复位信号名称，放在最顶层
@@ -83,6 +84,7 @@ case class CPU() extends Component {
   // ----------------------------------- 暂时的axi从机 ----------------------------------- //
   val xbar = ysyx_23060082_AXI4Xbar()
   val clint = ysyx_23060082_Clint()
+  io.externalAxi <> xbar.io.externalAxi
   xbar.io.clintAxi <> clint.io.clintAxi
   xbar.io.ifuAXI4 <> ifu.io.axi4
   xbar.io.lsuAXI4 <> lsu.io.axi4
@@ -149,23 +151,16 @@ case class ysyx_23060082_Clint() extends Component {
     val clintAxi = slave(Axi4(AxiConfig.axiConfig))
   }
 
-  val timeCount = RegInit(U"64'h0")
+  val timeCount = RegInit(U"64'h0")   // 系统计时器
   val timeCountLow = RegNextWhen(timeCount(31 downto 0), io.clintAxi.ar.fire && (io.clintAxi.ar.addr === U"32'h02000004")) init(0)  // 当读取高位数据时暂存低位数据
+  timeCount := timeCount + 1
+
   io.clintAxi.r.valid.setAsReg() init(False)
   io.clintAxi.b.valid.setAsReg() init(False)
   io.clintAxi.r.data .setAsReg() init(0)
 
-  timeCount := timeCount + 1
-
+  // ---------- 读通道 ---------- //
   io.clintAxi.ar.ready := io.clintAxi.ar.valid
-  // io.clintAxi.r.data := rdata.asBits    // 数据
-  // when(io.clintAxi.ar.valid) {   // 读数据通道握手信号
-  //   rValid := True
-  // } elsewhen (io.clintAxi.r.fire) {
-  //   rValid := False
-  // } otherwise {
-  //   rValid := rValid
-  // }
   when(io.clintAxi.ar.valid) {   // 读数据通道握手信号
     io.clintAxi.r.valid := True
   } elsewhen (io.clintAxi.r.fire) {
@@ -183,16 +178,16 @@ case class ysyx_23060082_Clint() extends Component {
   } otherwise {
     io.clintAxi.r.data := io.clintAxi.r.data
   }
-  // io.clintAxi.r.valid := rValid
-  //***************
-  io.clintAxi.aw.ready := io.clintAxi.aw.valid && io.clintAxi.w.valid
-  io.clintAxi.w.ready  := io.clintAxi.aw.valid && io.clintAxi.w.valid
-  when (io.clintAxi.aw.valid && io.clintAxi.w.valid) {   
+  // ---------- 写通道 ---------- //
+  val wAllValid = io.clintAxi.aw.valid && io.clintAxi.w.valid
+  io.clintAxi.aw.ready := wAllValid
+  io.clintAxi.w.ready  := wAllValid
+  when(wAllValid) {   
     io.clintAxi.b.valid := True
   } elsewhen (io.clintAxi.b.fire) {
     io.clintAxi.b.valid := False
   } otherwise {
     io.clintAxi.b.valid := io.clintAxi.b.valid
   }
-  // io.clintAxi.b.valid := bValid 
+ 
 }

@@ -41,7 +41,10 @@ module NpcMemRW(
         pmem_write(addr, wdata, {4'b0, wmask});
       end
       else begin
-        rdata <= pmem_read(addr);
+        if(addr == 32'h02000000)
+          rdata <= 32'd1111;
+        else
+          rdata <= pmem_read(addr);
       end
     end
   end

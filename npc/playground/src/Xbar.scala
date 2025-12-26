@@ -57,7 +57,6 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
     val Idle, IfuUsing, LsuUsing = newElement()
   }
   val arbiterState = Reg(ArbiterState()) init(ArbiterState.Idle)   // 创建一个状态机
-  // val axi4Bus = io.externalAxi
 
   switch(arbiterState) {
     is(ArbiterState.Idle) {
@@ -163,6 +162,4 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
   io.clintAxi.b.ready := (crossState === CrossState.Clint && axi4Bus.b.ready)
 
   io.externalAxi.b.ready := (crossState === CrossState.External && axi4Bus.b.ready)
-
-
 }

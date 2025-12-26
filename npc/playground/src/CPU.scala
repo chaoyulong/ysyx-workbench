@@ -135,7 +135,6 @@ case class ysyx_23060082_RegFile() extends Component {
   when(io.writeEn){
     rf(io.writeAddr(3 downto 0)) := io.writeData
   }
-  .otherwise{rf := rf}
 
   when(True){
     rf(0) := U"32'h0"   // 0号寄存器固定为0
@@ -151,7 +150,7 @@ case class ysyx_23060082_Clint() extends Component {
   }
 
   val timeCount = RegInit(U"64'h0")
-  val timeCountLow = RegInit(U"32'h0")
+  val timeCountLow = RegNextWhen(timeCount(31 downto 0), io.clintAxi.ar.fire && (io.clintAxi.ar.addr === U"32'h02000004")) init(0)  // 当读取高位数据时暂存低位数据
   val rValid = RegInit(False)
   val bValid = RegInit(False)
   val rdata = RegInit(U"32'h0")
@@ -178,11 +177,11 @@ case class ysyx_23060082_Clint() extends Component {
     rdata := rdata
   }
 
-  when(io.clintAxi.ar.fire && (io.clintAxi.ar.addr === U"32'h02000004")) {
-    timeCountLow := timeCount(31 downto 0)
-  } otherwise {
-    timeCountLow := timeCountLow
-  }
+  // when(io.clintAxi.ar.fire && (io.clintAxi.ar.addr === U"32'h02000004")) {
+  //   timeCountLow := timeCount(31 downto 0)
+  // } otherwise {
+  //   timeCountLow := timeCountLow
+  // }
 
   io.clintAxi.r.valid := rValid
   //***************

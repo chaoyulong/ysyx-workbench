@@ -223,8 +223,8 @@ case class ysyx_23060082_Clint() extends Component {
       // U"32'h02000000" -> timeCount(63 downto 32),
       // U"32'h02000004" -> timeCountLow,
       // default         -> U(0)
-      U"32'h02000000" -> U"0x1111",
-      U"32'h02000004" -> U"0x2222",
+      U"32'h02000000" -> U"32'd1111",
+      U"32'h02000004" -> U"32'd2222",
       default         -> U(0)
     )
   } otherwise {

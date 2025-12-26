@@ -97,9 +97,7 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
   }
   val crossState = Reg(CrossState()) init(CrossState.Idle) 
 
-  // val hitClint = (axi4Bus.ar.addr >= U"32'h02000000") && (axi4Bus.ar.addr <= U"32'h0200ffff") ||    // 在Clint范围内
-  //                (axi4Bus.aw.addr >= U"32'h02000000") && (axi4Bus.aw.addr <= U"32'h0200ffff")
-  // val toExt   = !hitClint   // 通往外部
+  // val hitCc
 
   switch(crossState) {
     is(CrossState.Idle) {

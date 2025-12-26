@@ -97,39 +97,33 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
   }
   val crossState = Reg(CrossState()) init(CrossState.Idle) 
 
-  val hitClint = (axi4Bus.ar.addr >= U"32'h02000000") && (axi4Bus.ar.addr <= U"32'h0200ffff") ||    // 在Clint范围内
-                 (axi4Bus.aw.addr >= U"32'h02000000") && (axi4Bus.aw.addr <= U"32'h0200ffff")
-  val toExt   = !hitClint   // 通往外部
+  // val hitClint = (axi4Bus.ar.addr >= U"32'h02000000") && (axi4Bus.ar.addr <= U"32'h0200ffff") ||    // 在Clint范围内
+  //                (axi4Bus.aw.addr >= U"32'h02000000") && (axi4Bus.aw.addr <= U"32'h0200ffff")
+  // val toExt   = !hitClint   // 通往外部
 
   switch(crossState) {
     is(CrossState.Idle) {
       when(axi4Bus.ar.valid) { 
-        when(axi4Bus.ar.addr >= U"32'h02000000" && axi4Bus.ar.addr <= U"32'h0200ffff") { crossState := CrossState.Clint } 
-        .otherwise { crossState := CrossState.External }
+        when(axi4Bus.ar.addr >= U"32'h02000000" && axi4Bus.ar.addr <= U"32'h0200ffff") { 
+          crossState := CrossState.Clint 
+          } otherwise { 
+            crossState := CrossState.External 
+          }
       } elsewhen(axi4Bus.aw.valid) { 
-        when(axi4Bus.aw.addr >= U"32'h02000000" && axi4Bus.aw.addr <= U"32'h0200ffff") { crossState := CrossState.Clint } 
-        .otherwise { crossState := CrossState.External }
-      } otherwise{crossState := CrossState.Idle} 
+        when(axi4Bus.aw.addr >= U"32'h02000000" && axi4Bus.aw.addr <= U"32'h0200ffff") {
+           crossState := CrossState.Clint 
+        } otherwise { 
+          crossState := CrossState.External 
+        }
+      } otherwise {
+        crossState := CrossState.Idle
+      } 
     }
     is (CrossState.Clint, CrossState.External){
       when(axi4Bus.r.fire || axi4Bus.b.fire) { crossState := CrossState.Idle }
       .otherwise { crossState := crossState }
     }
   }
-
-  // switch(crossState) {
-  //   is(CrossState.Idle) {
-  //     when(axi4Bus.ar.valid || axi4Bus.aw.valid) { 
-  //       when(hitClint) { crossState := CrossState.Clint } 
-  //       .otherwise { crossState := CrossState.External }
-  //     }
-  //     .otherwise( crossState := CrossState.Idle)
-  //   }
-  //   is (CrossState.Clint, CrossState.External){
-  //     when(axi4Bus.r.fire || axi4Bus.b.fire) { crossState := CrossState.Idle }
-  //     .otherwise( crossState := crossState)
-  //   }
-  // }
   // ---------------------------------------------- 系统时钟的总线 ---------------------------------------------- //
   // ------------------------------- 读地址 ------------------------------- //
   io.clintAxi.ar.valid := (crossState === CrossState.Clint) && axi4Bus.ar.valid   

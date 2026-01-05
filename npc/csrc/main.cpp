@@ -6,7 +6,7 @@
 int main(int argc, char** argv) 
 {
   monitor_init(argc, argv);
-  cpu_reset(50);
+  
   monitor_mainloop();
 #ifdef __USE_NVBOARD__
   while(1) single_cycle();  // 若使用nvboard,运行就不会结束

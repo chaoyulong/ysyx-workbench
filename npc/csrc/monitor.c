@@ -3,7 +3,7 @@
 #include <sys/time.h>
 #include "common.h"
 #include "log.h"
-// #include "simulation.h"
+#include "simulation.h"
 #include "pmem.h"
 #include "monitor.h"
 #include "sdb.h"
@@ -133,6 +133,7 @@ void monitor_init(int argc, char *argv[])
   // init_difftest(diff_so_file, img_size, difftest_port);
   // init_sdb();
   sim_init(argc, argv);
+  cpu_reset(50);
   welcome();
 }
 

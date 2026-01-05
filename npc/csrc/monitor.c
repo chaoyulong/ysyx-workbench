@@ -131,9 +131,8 @@ void monitor_init(int argc, char *argv[])
   pmem_init();
   long img_size = load_img();
   // init_difftest(diff_so_file, img_size, difftest_port);
-  // init_sdb();
+  init_sdb();
   sim_init(argc, argv);
-  cpu_reset(50);
   welcome();
 }
 

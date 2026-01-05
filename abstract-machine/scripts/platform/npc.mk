@@ -15,7 +15,9 @@ LDFLAGS   += --gc-sections -e _start
 NPCFLAGS += -l $(shell dirname $(IMAGE).elf)/nemu-log.txt
 # NPCFLAGS += -b
 NPCFLAGS += -e $(IMAGE).elf
-
+ifneq ($(BATCH), )
+NPCFLAGS += -b
+endif
 MAINARGS_MAX_LEN = 64
 MAINARGS_PLACEHOLDER = the_insert-arg_rule_in_Makefile_will_insert_mainargs_here
 CFLAGS += -DMAINARGS_MAX_LEN=$(MAINARGS_MAX_LEN) -DMAINARGS_PLACEHOLDER=$(MAINARGS_PLACEHOLDER)

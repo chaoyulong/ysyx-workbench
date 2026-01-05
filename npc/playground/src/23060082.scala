@@ -34,7 +34,7 @@ case class ysyx_23060082() extends Component {
   clockDomain.clock.setName("clock")  // 自定义时钟和复位信号名称，放在最顶层
   clockDomain.reset.setName("reset")
   ClockDomainConfig(resetActiveLevel = HIGH)  // 复位信号高有效
-  Axi4SpecRenamer(io.io_master)
+  Axi4SpecRenamer(io.io_master)               // 命名变为标准格式
   Axi4SpecRenamer(io.io_slave)
   // ------------------------------------------------------ 定义级间寄存器函数 ------------------------------------------------------ //
   def pipelineConnect[T <: Data, T2 <: Data](

@@ -3,7 +3,7 @@
 #include <sys/time.h>
 #include "common.h"
 #include "log.h"
-#include "simulation.h"
+// #include "simulation.h"
 #include "pmem.h"
 #include "monitor.h"
 #include "sdb.h"

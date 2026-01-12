@@ -36,6 +36,8 @@ case class ysyx_23060082() extends Component {
   ClockDomainConfig(resetActiveLevel = HIGH)  // 复位信号高有效
   Axi4SpecRenamer(io.io_master)               // 命名变为标准格式
   Axi4SpecRenamer(io.io_slave)
+
+  io.io_slave.aw.ready := False
   // ------------------------------------------------------ 定义级间寄存器函数 ------------------------------------------------------ //
   def pipelineConnect[T <: Data, T2 <: Data](
     prevOut: Stream[T],     // 前一级的输出

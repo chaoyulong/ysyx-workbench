@@ -1,11 +1,16 @@
 # 最常修改的一个
-SPINAL_TOPNAME = NPC_TOP
+# SPINAL_TOPNAME = NPC_TOP
+SPINAL_TOPNAME = ysyx_23060082
 ISA = RISCV32_E
 
 PARTFORM:=NPC
+ 
 # verilator相关
-TOPNAME = $(SPINAL_TOPNAME)
-YXYXSOC_VFILE =
+# TOPNAME = $(SPINAL_TOPNAME)
+TOPNAME = ysyxSoCFull
+# SOC相关文件
+YSYXSOC_VFILE = $(abspath ../ysyxSoC/build/ysyxSoCFull.v)
+YSYXSOC_VFILE += $(shell find $(abspath ../ysyxSoC/perip) -name "*.v") 
 
 INC_PATH += $(abspath include)
 BUILD_DIR = ./build
@@ -49,6 +54,7 @@ include $(NVBOARD_HOME)/scripts/nvboard.mk
 
 # verilator相关
 VSRCS += $(SPINAL_VFILE)
+VSRCS += $(YSYXSOC_FILE)
 VSRCS += $(shell find $(abspath playground/vsrc) -name "*.v")
 CSRCS = $(shell find $(abspath csrc) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
 INCFLAGS = $(addprefix -I, $(INC_PATH))

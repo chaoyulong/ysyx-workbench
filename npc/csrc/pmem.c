@@ -52,6 +52,9 @@ extern "C" void pmem_write(uint32_t waddr, uint32_t wdata, uint8_t wmask) {
 
 }
 
+extern "C" void flash_read(int32_t addr, int32_t *data) { assert(0); }
+extern "C" void mrom_read(int32_t addr, int32_t *data) { assert(0); }
+
 void pmem_init(){
   *(word_t *)(pmem + sizeof(word_t) * 0) = 0x00000297;  // auipc t0,0
   *(word_t *)(pmem + sizeof(word_t) * 1) = 0x00028823;  // sb  zero,16(t0)

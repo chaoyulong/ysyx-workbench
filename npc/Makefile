@@ -20,7 +20,7 @@ SIM_WAVE = $(BUILD_DIR)/waveform.fst
 
 # spinal生成verilog相关
 SPINAL_PRJ = playground
-SPINAL_VFILE = $(abspath $(BUILD_DIR)/$(TOPNAME).v)
+SPINAL_VFILE = $(abspath $(BUILD_DIR)/$(SPINAL_TOPNAME).v)
 SPINAL_SIM_DIR = $(BUILD_DIR)/simulations
 
 ifneq ($(words $(CURDIR)),1)

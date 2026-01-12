@@ -47,6 +47,7 @@ case class ysyx_23060082() extends Component {
   io.io_slave.r.data   := B(0)
   io.io_slave.r.resp   := B(0)
   io.io_slave.r.last   := False
+  io.io_slave.r.id     := U(0)
   // ------------------------------------------------------ 定义级间寄存器函数 ------------------------------------------------------ //
   def pipelineConnect[T <: Data, T2 <: Data](
     prevOut: Stream[T],     // 前一级的输出

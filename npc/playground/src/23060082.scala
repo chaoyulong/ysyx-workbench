@@ -38,6 +38,8 @@ case class ysyx_23060082() extends Component {
   Axi4SpecRenamer(io.io_slave)
 
   io.io_slave.aw.ready := False
+  io.io_slave.w.ready  := False
+  io.io_slave.b.valid  := False
   // ------------------------------------------------------ 定义级间寄存器函数 ------------------------------------------------------ //
   def pipelineConnect[T <: Data, T2 <: Data](
     prevOut: Stream[T],     // 前一级的输出

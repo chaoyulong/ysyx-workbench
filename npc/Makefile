@@ -1,13 +1,18 @@
-# 最常修改的一个
-# SPINAL_TOPNAME = NPC_TOP
-SPINAL_TOPNAME = ysyx_23060082
+
+$(echo $(ISA))
 ISA = RISCV32_E
 
-PARTFORM:=YSYXSOC
- 
-# verilator相关
-# TOPNAME = $(SPINAL_TOPNAME)
+PARTFORM?=NPC
+ifeq ($(PARTFORM),YSYXSOC)
+SPINAL_TOPNAME = ysyx_23060082
 TOPNAME = ysyxSoCFull
+else
+SPINAL_TOPNAME = NPC_TOP
+TOPNAME = $(SPINAL_TOPNAME)
+endif
+# verilator相关
+# 
+
 # SOC相关文件
 YSYXSOC_VSRCS = $(abspath ../ysyxSoC/build/ysyxSoCFull.v)
 YSYXSOC_VSRCS += $(shell find $(abspath ../ysyxSoC/perip) -name "*.v") 

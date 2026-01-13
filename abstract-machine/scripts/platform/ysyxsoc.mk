@@ -1,10 +1,10 @@
-AM_SRCS := riscv/npc/start.S \
-           riscv/npc/trm.c \
-           riscv/npc/ioe.c \
-           riscv/npc/timer.c \
-           riscv/npc/input.c \
-           riscv/npc/cte.c \
-           riscv/npc/trap.S \
+AM_SRCS := riscv/ysyxsoc/start.S \
+           riscv/ysyxsoc/trm.c \
+           riscv/ysyxsoc/ioe.c \
+           riscv/ysyxsoc/timer.c \
+           riscv/ysyxsoc/input.c \
+           riscv/ysyxsoc/cte.c \
+           riscv/ysyxsoc/trap.S \
            platform/dummy/vme.c \
            platform/dummy/mpe.c
 
@@ -12,10 +12,10 @@ CFLAGS    += -fdata-sections -ffunction-sections
 LDSCRIPTS += $(AM_HOME)/scripts/linker.ld
 LDFLAGS   += --defsym=_pmem_start=0x80000000 --defsym=_entry_offset=0x0
 LDFLAGS   += --gc-sections -e _start
-NPCFLAGS += -l $(shell dirname $(IMAGE).elf)/npc-log.txt
-NPCFLAGS += -e $(IMAGE).elf
+YSYXSOCFLAGS += -l $(shell dirname $(IMAGE).elf)/ysyxsoc-log.txt
+YSYXSOCFLAGS += -e $(IMAGE).elf
 ifneq ($(BATCH), )
-NPCFLAGS += -b
+YSYXSOCFLAGS += -b
 endif
 MAINARGS_MAX_LEN = 64
 MAINARGS_PLACEHOLDER = the_insert-arg_rule_in_Makefile_will_insert_mainargs_here
@@ -30,12 +30,12 @@ image: image-dep
 	@$(OBJCOPY) -S --set-section-flags .bss=alloc,contents -O binary $(IMAGE).elf $(IMAGE).bin
 
 run: insert-arg
-	$(MAKE) -C $(NPC_HOME) ISA=$(ISA) run ARGS="$(NPCFLAGS)" IMG=$(IMAGE).bin PARTFORM=NPC
+	$(MAKE) -C $(NPC_HOME) ISA=$(ISA) run ARGS="$(YSYXSOCFLAGS)" IMG=$(IMAGE).bin PARTFORM=YSYXSOC
 
 sim: insert-arg
-	$(MAKE) -C $(NPC_HOME) ISA=$(ISA) sim ARGS="$(NPCFLAGS)" IMG=$(IMAGE).bin PARTFORM=NPC
+	$(MAKE) -C $(NPC_HOME) ISA=$(ISA) sim ARGS="$(YSYXSOCFLAGS)" IMG=$(IMAGE).bin PARTFORM=YSYXSOC
 
 wave: insert-arg
-	$(MAKE) -C $(NPC_HOME) ISA=$(ISA) wave ARGS="$(NPCFLAGS)" IMG=$(IMAGE).bin PARTFORM=NPC
+	$(MAKE) -C $(NPC_HOME) ISA=$(ISA) wave ARGS="$(YSYXSOCFLAGS)" IMG=$(IMAGE).bin PARTFORM=YSYXSOC
 
 .PHONY: insert-arg

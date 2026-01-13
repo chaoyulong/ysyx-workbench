@@ -1,6 +1,6 @@
 
 $(echo ISA = $(ISA))
-ISA = RISCV32_E
+# ISA = RISCV32_E
 
 PARTFORM?=NPC
 ifeq ($(PARTFORM),YSYXSOC)
@@ -115,6 +115,7 @@ run: $(CSRCS) $(VSRCS) $(NVBOARD_ARCHIVE) $(SRC_AUTO_BIND)
 
 # 用于单步执行
 sim: $(CSRCS) $(VSRCS)
+	$(echo ISA = $(ISA))
 	@$(call build_target, $^, )
 
 # 运行并记录波形

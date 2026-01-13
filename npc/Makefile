@@ -115,7 +115,7 @@ run: $(CSRCS) $(VSRCS) $(NVBOARD_ARCHIVE) $(SRC_AUTO_BIND)
 
 # 用于单步执行
 sim: $(CSRCS) $(VSRCS)
-	$(echo ISA = $(ISA))
+	echo ISA = $(ISA)
 	@$(call build_target, $^, )
 
 # 运行并记录波形

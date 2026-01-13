@@ -1,5 +1,5 @@
 
-$(echo $(ISA))
+$(echo ISA = $(ISA))
 ISA = RISCV32_E
 
 PARTFORM?=NPC

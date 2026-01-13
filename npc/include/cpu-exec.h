@@ -22,11 +22,7 @@ typedef struct decode{
 #endif
 
 typedef struct cpu_state{
-#ifdef __RISCV32_E__
-  word_t gpr[16];       // 寄存器
-#else
-  word_t gpr[32];  
-#endif
+  word_t gpr[REG_NUM MUXDEF(__riscv32e__, 16, 32)];       // 寄存器
   paddr_t pc;           // pc
   paddr_t pc_o;         // 与指令同步的对应的pc,用于itrace
   word_t instr;         // 指令

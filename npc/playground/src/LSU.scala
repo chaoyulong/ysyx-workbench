@@ -211,7 +211,7 @@ case class ysyx_23060082_AXI_Ctrl() extends Component {
 
   assert(
     assertion = !(io.axi4.ar.valid && io.axi4.ar.size > U"b10"),
-    message   = "ar.size = ${io.axi4.ar.size}",
+    message   = s"ar.size = ${io.axi4.ar.size}",
     severity  = ERROR
   )
   // ---------------- 读数据 ---------------- //

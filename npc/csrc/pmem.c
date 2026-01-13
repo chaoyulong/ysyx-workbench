@@ -54,8 +54,16 @@ extern "C" void pmem_write(uint32_t waddr, uint32_t wdata, uint8_t wmask) {
 
 extern "C" void flash_read(int32_t addr, int32_t *data) { printf("flash read\n"); assert(0); }
 extern "C" void mrom_read(int32_t addr, int32_t *data) { assert(0); }
-extern "C" void psram_read(uint32_t raddr, uint32_t *rdata) {assert(0);}
-extern "C" void psram_write(uint32_t waddr, uint32_t wdata, uint32_t wmask) {assert(0);}
+extern "C" void psram_read(uint32_t raddr, uint32_t *rdata) {
+  uint32_t real_addr = ((uint32_t)raddr & (uint32_t)(~0x3u));
+  *rdata = *(uint32_t *)(pmem + real_addr);
+}
+extern "C" void psram_write(uint32_t waddr, uint32_t wdata, uint32_t wmask) {
+  uint32_t real_addr = ((uint32_t)waddr & (uint32_t)(~0x3u));
+  word_t old_data = *(uint32_t *)(pmem + real_addr) & ~wmask;    // 先读出以前数据再对对应位清除
+  word_t real_wdata = old_data + (wdata & wmask);
+  *(uint32_t *)(pmem + real_addr) = real_wdata;
+}
 
 void pmem_init(){
   *(word_t *)(pmem + sizeof(word_t) * 0) = 0x00000297;  // auipc t0,0

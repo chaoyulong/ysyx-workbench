@@ -2,6 +2,7 @@
 #define __cpu_exec_h__
 
 #include "common.h"
+#include "regfile.h"
 
 typedef enum { NPC_RUNNING, NPC_STOP, NPC_END, NPC_ABORT, NPC_QUIT }npc_state_enum;
 
@@ -22,7 +23,7 @@ typedef struct decode{
 #endif
 
 typedef struct cpu_state{
-  word_t gpr[REG_NUM MUXDEF(__riscv32e__, 16, 32)];       // 寄存器
+  word_t gpr[REG_NUM];       // 寄存器
   paddr_t pc;           // pc
   paddr_t pc_o;         // 与指令同步的对应的pc,用于itrace
   word_t instr;         // 指令

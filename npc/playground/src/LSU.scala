@@ -209,11 +209,10 @@ case class ysyx_23060082_AXI_Ctrl() extends Component {
     io.axi4.ar.burst:= io.axi4.ar.burst // 突发类型INCR
   }
 
-  assert(
-    assertion = !(io.axi4.ar.valid && io.axi4.ar.size > U"b10"),
-    message   = s"ar.size = ${io.axi4.ar.size.toString}",
-    severity  = ERROR
-  )
+  when(io.axi4.ar.valid && io.axi4.ar.size > U"b10") {
+    report(Seq("ar.size =", io.axi4.ar.size ))
+  }
+
   // ---------------- 读数据 ---------------- //
   io.axi4.r.ready := io.axi4.r.valid
   io.readEnd := io.axi4.r.fire

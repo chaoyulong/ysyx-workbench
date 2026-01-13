@@ -1,21 +1,17 @@
-
-$(echo ISA = $(ISA))
-# ISA = RISCV32_E
-
+ISA ?= riscv32e
 PARTFORM?=NPC
+
+# NPC环境下，spinalhdl编译的顶层与verilator仿真的顶层一样为NPC_TOP
+# NPC环境下，spinalhdl编译的顶层ysyx_23060082,verilator仿真ysyxSoCFull
 ifeq ($(PARTFORM),YSYXSOC)
 SPINAL_TOPNAME = ysyx_23060082
 TOPNAME = ysyxSoCFull
+VSRCS += $(abspath ../ysyxSoC/build/ysyxSoCFull.v)
+VSRCS += $(shell find $(abspath ../ysyxSoC/perip) -name "*.v") 
 else
 SPINAL_TOPNAME = NPC_TOP
 TOPNAME = $(SPINAL_TOPNAME)
 endif
-# verilator相关
-# 
-
-# SOC相关文件
-YSYXSOC_VSRCS = $(abspath ../ysyxSoC/build/ysyxSoCFull.v)
-YSYXSOC_VSRCS += $(shell find $(abspath ../ysyxSoC/perip) -name "*.v") 
 
 INC_PATH += $(abspath include)
 BUILD_DIR = ./build
@@ -59,7 +55,6 @@ include $(NVBOARD_HOME)/scripts/nvboard.mk
 
 # verilator相关
 VSRCS += $(SPINAL_VFILE)
-VSRCS += $(YSYXSOC_VSRCS)
 VSRCS += $(shell find $(abspath playground/vsrc) -name "*.v")
 CSRCS = $(shell find $(abspath csrc) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
 INCFLAGS = $(addprefix -I, $(INC_PATH))
@@ -115,7 +110,6 @@ run: $(CSRCS) $(VSRCS) $(NVBOARD_ARCHIVE) $(SRC_AUTO_BIND)
 
 # 用于单步执行
 sim: $(CSRCS) $(VSRCS)
-	echo ISA = $(ISA)
 	@$(call build_target, $^, )
 
 # 运行并记录波形

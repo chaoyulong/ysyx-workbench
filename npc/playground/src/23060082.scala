@@ -29,6 +29,7 @@ case class ysyx_23060082() extends Component {
   val io = new Bundle {
     val io_master = master(Axi4(AxiConfig.axiConfig))
     val io_slave  = slave (Axi4(AxiConfig.axiConfig))
+    val interrupt = in Bool()
   }
 
   clockDomain.clock.setName("clock")  // 自定义时钟和复位信号名称，放在最顶层

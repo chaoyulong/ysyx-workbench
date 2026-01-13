@@ -1,7 +1,10 @@
 #include <am.h>
-#include "npc.h"
+#include "ysyxsoc.h"
+
+uint64_t time_base = 0;
 
 void __am_timer_init() {
+  time_base = ((uint64_t)inl(RTC_MSB) << 32) + ((uint64_t)inl(RTC_LSB));
 }
 
 void __am_timer_config(AM_TIMER_CONFIG_T *cfg) {
@@ -9,8 +12,7 @@ void __am_timer_config(AM_TIMER_CONFIG_T *cfg) {
 }
 
 void __am_timer_uptime(AM_TIMER_UPTIME_T *uptime) {
-  // uptime->us = ((uint64_t)inl(RTC_ADDR + 4) << 32) + (uint64_t)inl(RTC_ADDR);
-  uptime->us = ((uint64_t)inl(RTC_ADDR + 4) << 32) + (uint64_t)inl(RTC_ADDR);
+  uptime->us = ((uint64_t)inl(RTC_MSB) << 32) + (uint64_t)inl(RTC_LSB) - time_base;
 }
 
 void __am_timer_rtc(AM_TIMER_RTC_T *rtc) {

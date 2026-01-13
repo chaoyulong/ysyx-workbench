@@ -199,7 +199,7 @@ case class ysyx_23060082_AXI_Ctrl() extends Component {
     io.axi4.ar.addr := io.readAddr
     io.axi4.ar.id   := U"4'b0"
     io.axi4.ar.len  := U"8'b0"          // 突发长度1  
-    io.axi4.ar.size := (U(0) ## io.memOp(1 downto 0)).asUInt     
+    io.axi4.ar.size := (False ## io.memOp(1 downto 0)).asUInt     
     io.axi4.ar.burst:= B"2'b01"         // 突发类型INCR
   } otherwise {
     io.axi4.ar.addr := io.axi4.ar.addr 

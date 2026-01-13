@@ -9,8 +9,8 @@ PARTFORM:=NPC
 # TOPNAME = $(SPINAL_TOPNAME)
 TOPNAME = ysyxSoCFull
 # SOC相关文件
-YSYXSOC_VFILE = $(abspath ../ysyxSoC/build/ysyxSoCFull.v)
-YSYXSOC_VFILE += $(shell find $(abspath ../ysyxSoC/perip) -name "*.v") 
+YSYXSOC_VSRCS = $(abspath ../ysyxSoC/build/ysyxSoCFull.v)
+YSYXSOC_VSRCS += $(shell find $(abspath ../ysyxSoC/perip) -name "*.v") 
 
 INC_PATH += $(abspath include)
 BUILD_DIR = ./build
@@ -54,7 +54,7 @@ include $(NVBOARD_HOME)/scripts/nvboard.mk
 
 # verilator相关
 VSRCS += $(SPINAL_VFILE)
-VSRCS += $(YSYXSOC_FILE)
+VSRCS += $(YSYXSOC_VSRCS)
 VSRCS += $(shell find $(abspath playground/vsrc) -name "*.v")
 CSRCS = $(shell find $(abspath csrc) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
 INCFLAGS = $(addprefix -I, $(INC_PATH))

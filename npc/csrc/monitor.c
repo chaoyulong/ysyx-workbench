@@ -43,9 +43,9 @@ static void welcome()
 }
 
 // 加载程序
-extern uint8_t pmem[];
 static long load_img() 
 {
+  extern uint8_t pmem[];
   if (img_file == NULL) {
     Log("No image is given. Use the default build-in image.");
     return 4096; // built-in image size
@@ -127,7 +127,6 @@ void monitor_init(int argc, char *argv[])
   IFDEF(CONFIG_ITRACE, disasm_init());
   init_log(log_file);
   cpu_state_init();
-  // init_mem();
   pmem_init();
   long img_size = load_img();
   // init_difftest(diff_so_file, img_size, difftest_port);

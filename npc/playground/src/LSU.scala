@@ -209,15 +209,11 @@ case class ysyx_23060082_AXI_Ctrl() extends Component {
     io.axi4.ar.burst:= io.axi4.ar.burst // 突发类型INCR
   }
 
-  val displayLogic = new Area {
-    val displayCode = VerilogSyntax(s"""
-      |always @(posedge clock) begin
-      |  if (${io.readReq.getName()}) begin
-      |    $$display("in there");
-      |  end
-      |end
-      """.stripMargin)
-  }
+  assert(
+    assertion = !(io.axi4.ar.valid && io.axi4.ar.size > U"b10"),
+    message   = "in assert",
+    severity  = ERROR
+  )
   // ---------------- 读数据 ---------------- //
   io.axi4.r.ready := io.axi4.r.valid
   io.readEnd := io.axi4.r.fire

@@ -15,7 +15,7 @@ static const char mainargs[MAINARGS_MAX_LEN] = TOSTRING(MAINARGS_PLACEHOLDER); /
 
 void putch(char ch) {
   // uart_tx(ch);
-    while(!(inb(UART_LSR) & 0x20));    // 等待发送fifo为空
+  while(!(inb(UART_LSR) & 0x20));    // 等待发送fifo为空
   outb(SERIAL_PORT, ch);
 }
 
@@ -27,7 +27,7 @@ void halt(int code) {
 }
 
 void _trm_init() {
-  // uart_init();
+  uart_init();
   int ret = main(mainargs);
   halt(ret);
 }

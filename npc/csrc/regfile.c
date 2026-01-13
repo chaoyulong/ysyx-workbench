@@ -2,8 +2,14 @@
 #include "simulation.h"
 #include "regfile.h"
 #include STR(TOP_NAME.h)    // 自动生成
-#include "VNPC_TOP___024root.h"
 
+#ifdef __YSYXSOC__
+
+#else
+#include "VNPC_TOP___024root.h"
+#define cpu_pc top->rootp->NPC_TOP__DOT__cpu__DOT__ifu__DOT__pc;
+#define cpu_rf top->rootp->NPC_TOP__DOT__cpu__DOT__regFile__DOT__rf_0
+#endif
 extern TOP_NAME* top;
 // VCPU___024root* rootp;
 
@@ -20,12 +26,12 @@ const char unfind[] = "xxx";
 
 uint32_t Rpc(void)
 {
-  return top->rootp->NPC_TOP__DOT__cpu__DOT__ifu__DOT__pc;
+  return cpu_pc;
 }
 
 uint32_t gpr(int n)
 {  
-  static uint32_t *rf_base_addr = &(top->rootp->NPC_TOP__DOT__cpu__DOT__regFile__DOT__rf_0);
+  static uint32_t *rf_base_addr = &(cpu_rf);
   if(n >= REG_NUM)
   {
     printf("register only [0 - 15]");

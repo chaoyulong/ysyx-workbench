@@ -14,7 +14,9 @@ Area heap = RANGE(&_heap_start, PMEM_END);
 static const char mainargs[MAINARGS_MAX_LEN] = TOSTRING(MAINARGS_PLACEHOLDER); // defined in CFLAGS
 
 void putch(char ch) {
-  uart_tx(ch);
+  // uart_tx(ch);
+    // while(!(inb(UART_LSR) & 0x20));    // 等待发送fifo为空
+  outb(SERIAL_PORT, ch);
 }
 
 void halt(int code) {
@@ -25,7 +27,7 @@ void halt(int code) {
 }
 
 void _trm_init() {
-  uart_init();
+  // uart_init();
   int ret = main(mainargs);
   halt(ret);
 }

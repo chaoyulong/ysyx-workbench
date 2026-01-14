@@ -43,6 +43,7 @@ typedef struct {
 extern "C" {
 #endif
 
+uint32_t get_ysyxid();
 // ----------------------- TRM: Turing Machine -----------------------
 extern   Area        heap;
 void     putch       (char ch);

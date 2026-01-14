@@ -1,6 +1,7 @@
 #include <am.h>
 #include <klib-macros.h>
 #include <riscv/riscv.h>
+#include <klib.h>
 #include "npc.h"
 
 extern char _heap_start;
@@ -12,6 +13,27 @@ extern char _pmem_start;
 
 Area heap = RANGE(&_heap_start, PMEM_END);
 static const char mainargs[MAINARGS_MAX_LEN] = TOSTRING(MAINARGS_PLACEHOLDER); // defined in CFLAGS
+
+void ysyxsoc_dis_id()
+{
+  char temp[4];
+  char real[5];
+
+  uint32_t id0, id1; 
+  asm volatile("csrr t0, mvendorid");
+  asm volatile ("mv %0, t0" : "=r" (id0));
+  asm volatile("csrr t0, marchid");
+  asm volatile ("mv %0, t0" : "=r" (id1));
+
+  *(uint32_t *)temp = id0;
+  real[0] = temp[3];
+  real[1] = temp[2];
+  real[2] = temp[1];
+  real[3] = temp[0];
+  real[4] = '\0';
+
+  printf("ID = %s_%d\n", real, id1);
+}
 
 void putch(char ch) {
   outb(SERIAL_PORT, ch);
@@ -25,6 +47,7 @@ void halt(int code) {
 }
 
 void _trm_init() {
+  ysyxsoc_dis_id();
   int ret = main(mainargs);
   halt(ret);
 }

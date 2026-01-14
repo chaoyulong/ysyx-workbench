@@ -5,7 +5,7 @@
 
 #if !defined(__ISA_NATIVE__) || defined(__NATIVE_USE_KLIB__)
 
-#define PRINT_BUF_SIZE 256
+#define PRINT_BUF_SIZE 512
 
 const char hex_ascii[]="0123456789abcdef";
 // char tmp[PRINT_BUF_SIZE];

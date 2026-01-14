@@ -32,7 +32,7 @@ void ysyxsoc_dis_id()
   real[3] = temp[0];
   real[4] = '\0';
 
-  printf("ID is %s_%d\n", real, id1);
+  printf("ID = %s_%d\n", real, id1);
 }
 
 void putch(char ch) {

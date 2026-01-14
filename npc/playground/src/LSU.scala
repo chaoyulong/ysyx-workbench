@@ -41,7 +41,7 @@ case class ysyx_23060082_LSU() extends Component {
   io.axi4 <> axiCtrl.io.axi4
   axiCtrl.io.readReq  := needRead  && (state === LsuState.Idle)
   axiCtrl.io.writeReq := needWrite && (state === LsuState.Idle)
-  axiCtrl.io.memOp    := io.input.mem_ctrl.memOp
+  axiCtrl.io.size     := (False ## io.input.mem_ctrl.memOp(1 downto 0)).asUInt   
   axiCtrl.io.readAddr := memAddr
   axiCtrl.io.writeAddr:= memAddr
   axiCtrl.io.writeData:= dataProcess.io.wdataReal // 处理后的数据
@@ -168,7 +168,7 @@ case class ysyx_23060082_AXI_Ctrl() extends Component {
   val io = new Bundle {
     val readReq   = in Bool()
     val writeReq  = in Bool()
-    val memOp     = in UInt(3 bits)
+    val size      = in UInt(3 bits)
     val readAddr  = in UInt(32 bits)
     val writeAddr = in UInt(32 bits)
     val writeData = in UInt(32 bits)
@@ -199,7 +199,7 @@ case class ysyx_23060082_AXI_Ctrl() extends Component {
     io.axi4.ar.addr := io.readAddr
     io.axi4.ar.id   := U"4'b0"
     io.axi4.ar.len  := U"8'b0"          // 突发长度1  
-    io.axi4.ar.size := (False ## io.memOp(1 downto 0)).asUInt     
+    io.axi4.ar.size := io.size  
     io.axi4.ar.burst:= B"2'b01"         // 突发类型INCR
   } otherwise {
     io.axi4.ar.addr := io.axi4.ar.addr 
@@ -246,7 +246,7 @@ case class ysyx_23060082_AXI_Ctrl() extends Component {
     io.axi4.aw.addr := io.writeAddr
     io.axi4.aw.id   := U"4'b0"
     io.axi4.aw.len  := U"8'b0"          // 突发长度1  
-    io.axi4.aw.size := io.memOp       
+    io.axi4.aw.size := io.size       
     io.axi4.aw.burst:= B"2'b01"         // 突发类型INCR
   } otherwise {
     io.axi4.aw.addr := io.axi4.aw.addr 

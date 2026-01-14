@@ -5,8 +5,7 @@
 
 // *********************************** mem *********************************** //
 #define PSRAM_SIZE   (paddr_t)128*1024*1024
-// #define CONFIG_MSIZE (paddr_t)0x8000000
-#define CONFIG_MSIZE (paddr_t)4*1024*1024
+#define CONFIG_MSIZE (paddr_t)0x8000000
 #define CONFIG_MBASE (paddr_t)0x80000000
 
 #define PMEM_LEFT  ((paddr_t)CONFIG_MBASE)

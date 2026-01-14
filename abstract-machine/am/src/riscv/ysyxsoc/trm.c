@@ -56,7 +56,7 @@ void halt(int code) {
 
 void _trm_init() {
   uart_init();
-  ysyxsoc_dis_id();
+  // ysyxsoc_dis_id();
   int ret = main(mainargs);
   halt(ret);
 }

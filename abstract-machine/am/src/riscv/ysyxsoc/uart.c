@@ -8,20 +8,12 @@ void __am_uart_config(AM_UART_CONFIG_T *cfg) {
 }
 
 void __am_uart_rx(AM_UART_RX_T *rx){
-  if(inb(UART_LSR) & 0x01)
-  {
-    rx->data = inb(UART_DR);
-  }
-  else
-  {
-    rx->data = 0xff;
-  }
+  rx->data = uart_rx();
 }
 
 void __am_uart_tx(AM_UART_TX_T *tx) 
 {
-  while(!(inb(UART_LSR) & 0x20));    // 等待发送fifo为空
-  outb(SERIAL_PORT, tx->data);
+  uart_tx(tx->data);
 }
 
 void uart_init(){

@@ -14,6 +14,14 @@ extern char _pmem_start;
 Area heap = RANGE(&_heap_start, PMEM_END);
 static const char mainargs[MAINARGS_MAX_LEN] = TOSTRING(MAINARGS_PLACEHOLDER); // defined in CFLAGS
 
+uint32_t get_ysyxid()
+{
+  uint32_t num; 
+  asm volatile("csrr t0, marchid");
+  asm volatile ("mv %0, t0" : "=r" (num));
+  return num;
+}
+
 void ysyxsoc_dis_id()
 {
   char temp[4];

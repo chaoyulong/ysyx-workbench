@@ -1,5 +1,5 @@
 ISA ?= riscv32e
-PARTFORM?=NPC
+PARTFORM ?= NPC
 
 # NPC环境下，spinalhdl编译的顶层与verilator仿真的顶层一样为NPC_TOP
 # NPC环境下，spinalhdl编译的顶层ysyx_23060082,verilator仿真ysyxSoCFull

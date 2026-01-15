@@ -22,37 +22,49 @@ typedef struct {
   volatile uint8_t LSR;         // 0x05 通信状态寄存器
 } UART_TypeDef;
 
-#define UART_BASE   0x10000000UL
-#define UART        ((UART_TypeDef *)UART_BASE)
+#define UART_BASE     0x10000000UL
+#define UART          ((UART_TypeDef *)UART_BASE)
+
 
 typedef struct {
   volatile uint32_t LSB;   // 0x00
   volatile uint32_t MSB;   // 0x04
 } RTC_TypeDef;
 
-#define RTC_BASE   0x02000000UL
-#define RTC        ((RTC_TypeDef *)RTC_BASE)
+#define RTC_BASE      0x02000000UL
+#define RTC           ((RTC_TypeDef *)RTC_BASE)
 
-#define KBD_BASE        0x10011000
-  #define KBD_CODE          (KBD_BASE + 0x00)
 
-#define SPI_BASE        0x10001000
-  #define SPI_Rx0           (SPI_BASE + 0x00)
-  #define SPI_Rx1           (SPI_BASE + 0x04)
-  #define SPI_Rx2           (SPI_BASE + 0x08)
-  #define SPI_Rx3           (SPI_BASE + 0x0c)
-  #define SPI_Tx0           (SPI_BASE + 0x00)
-  #define SPI_Tx1           (SPI_BASE + 0x04)
-  #define SPI_Tx2           (SPI_BASE + 0x08)
-  #define SPI_Tx3           (SPI_BASE + 0x0c)
-  #define SPI_CTRL          (SPI_BASE + 0x10)
-  #define SPI_DIVIDER       (SPI_BASE + 0x14)
-  #define SPI_SS            (SPI_BASE + 0x18)
+typedef struct {
+  volatile uint32_t CODE;   // 0x00
+} KBD_TypeDef;
 
-#define VGA_BUF_BASE    0x21000000
+#define KBD_BASE      0x10011000UL
+#define KBD           ((KBD_TypeDef *)KBD_BASE)
 
-#define GPIO_BASE       0x10002000
-  #define GPIO_ODR          (GPIO_BASE + 0x00)
-  #define GPIO_IDR          (GPIO_BASE + 0x04)
-  #define GPIO_ODR_SEG      (GPIO_BASE + 0x08)
+typedef struct {
+  union {
+    volatile uint32_t Rx[4];    // 0x00~0x0f  接收寄存器0~3,每个占4Byte
+    volatile uint32_t Tx[4];    //            发送寄存器0~3
+  };
+  volatile uint32_t CTRL;     // 0x10 控制寄存器
+  volatile uint32_t DIVIDER;  // 0x14 分频寄存器
+  volatile uint32_t SS;       // 0x18 片选寄存器
+} SPI_TypeDef;
+
+#define SPI_BASE      0x10001000UL
+#define SPI           ((SPI_TypeDef *)SPI_BASE)
+
+#define VGA_BUF_BASE  0x21000000UL
+#define VGA_BUF32     ((volatile uint32_t *)VGA_BUF_BASE)
+
+typedef struct {
+  volatile uint32_t ODR;      // 0x00 输出数据寄存器
+  volatile uint32_t IDR;      // 0x04 输入数据寄存器
+  volatile uint32_t ODR_SEG;  // 0x08 数码管输出
+} GPIO_TypeDef;
+
+#define GPIO_BASE     0x10002000UL
+#define GPIO          ((GPIO_TypeDef *)GPIO_BASE)
+
 #endif

@@ -4,7 +4,6 @@
 #include <klib.h>
 #include "ysyxsoc.h"
 
-extern char _heap_start;
 int main(const char *args);
 
 extern char _heap_start;
@@ -92,38 +91,29 @@ void _second_stage_bootloader()
 
 uint32_t flash_read(uint32_t raddr)
 {
-  uint8_t temp[4]; 
   uint8_t real[4];
-  outl(SPI_DIVIDER, 0);
-  outl(SPI_Tx0, 0);  
-  outl(SPI_Tx1, 0x03000000 | (raddr & 0x00ffffff)); 
-  outl(SPI_SS, (1 << 0));  
-  outl(SPI_CTRL, 0x140);    // bit9 :Rx_NEG,可能会用到
-  while(inl(SPI_CTRL) & 0x100);
-  outl(SPI_SS, 0);
-  *(uint32_t *)temp = inl(SPI_Rx0);
-  real[0] = temp[3];
-  real[1] = temp[2];
-  real[2] = temp[1];
-  real[3] = temp[0];
+  SPI->DIVIDER  = 0;
+  SPI->Tx[0]    = 0;  
+  SPI->Tx[1]    = 0x03000000 | (raddr & 0x00ffffff); 
+  SPI->SS       = (1 << 0);  
+  SPI->CTRL   = 0x140;    // bit9 :Rx_NEG,可能会用到
+  while(SPI->CTRL & 0x100);
+  SPI->SS = 0;
+  real[0] = SPI->Rx[3];
+  real[1] = SPI->Rx[2];
+  real[2] = SPI->Rx[1];
+  real[3] = SPI->Rx[0];
   return *(uint32_t *)real;
 }
 
-void spi_init()
-{
-  outl(SPI_DIVIDER, 0);
-}
-
-uint32_t get_ysyxid()
-{
+uint32_t get_ysyxid(){
   uint32_t num; 
   asm volatile("csrr t0, marchid");
   asm volatile ("mv %0, t0" : "=r" (num));
   return num;
 }
 
-void ysyxsoc_dis_id()
-{
+void ysyxsoc_dis_id(){
   char temp[4];
   char real[5];
 

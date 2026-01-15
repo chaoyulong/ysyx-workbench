@@ -29,13 +29,13 @@ void __am_input_config(AM_INPUT_CONFIG_T *cfg) {
 }
 
 void __am_input_keybrd(AM_INPUT_KEYBRD_T *kbd) {
-  uint32_t code = inl(KBD_CODE);  
+  uint32_t code = KBD->CODE;  
 
   if(code == 0xe0){                                 // 如果是扩展码部分，需要再读一位并从扩展码数组获取键值          
-    do{code = inl(KBD_CODE);}while(code == 0);      // nvboard的键盘发码较慢，有时会出现读到前面的标志位的码但下一位读出0的情况，此时则需要轮询等待接收      
+    do{code = KBD->CODE;}while(code == 0);      // nvboard的键盘发码较慢，有时会出现读到前面的标志位的码但下一位读出0的情况，此时则需要轮询等待接收      
     if(code == 0xf0){                               // 如果是断码（抬起按键）            
       kbd->keydown = 0;
-      do{code = inl(KBD_CODE);}while(code == 0);    // 需要获取真正的键值        
+      do{code = KBD->CODE;}while(code == 0);    // 需要获取真正的键值        
     }
     else{    
       kbd->keydown =1;
@@ -45,7 +45,7 @@ void __am_input_keybrd(AM_INPUT_KEYBRD_T *kbd) {
   else{
     if(code == 0xf0){                               // 如果是断码（抬起按键）     
       kbd->keydown = 0;
-      do{code = inl(KBD_CODE);}while(code == 0);    // 需要获取真正的键值
+      do{code = KBD->CODE;}while(code == 0);    // 需要获取真正的键值
     }
     else{  
       kbd->keydown =1;

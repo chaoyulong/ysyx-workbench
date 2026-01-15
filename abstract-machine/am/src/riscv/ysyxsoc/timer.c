@@ -4,7 +4,7 @@
 static uint64_t time_base = 0;
 
 void __am_timer_init() {
-  time_base = ((uint64_t)inl(RTC_MSB) << 32) + ((uint64_t)inl(RTC_LSB));
+  time_base = ((uint64_t)RTC->MSB << 32) + ((uint64_t)RTC->LSB);
 }
 
 void __am_timer_config(AM_TIMER_CONFIG_T *cfg) {
@@ -12,7 +12,7 @@ void __am_timer_config(AM_TIMER_CONFIG_T *cfg) {
 }
 
 void __am_timer_uptime(AM_TIMER_UPTIME_T *uptime) {
-  uptime->us = ((uint64_t)inl(RTC_MSB) << 32) + (uint64_t)inl(RTC_LSB) - time_base;
+  uptime->us = ((uint64_t)RTC->MSB << 32) + (uint64_t)RTC->LSB - time_base;
 }
 
 void __am_timer_rtc(AM_TIMER_RTC_T *rtc) {

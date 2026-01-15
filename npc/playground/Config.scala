@@ -49,6 +49,10 @@ object SpinalToVerilog extends App {
   }
 }
 
+// object SpinalToVhdl extends App {
+//   Config.spinal.generateVhdl(Top())
+// }
+
 // object SpinalToVerilog extends App {
 
 //   // === 颜色 ANSI 转义码 ===

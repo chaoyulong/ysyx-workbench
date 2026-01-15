@@ -104,37 +104,6 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig(BigInt("30000000", 16))) 
   xbar.io.clintAxi <> clint.io.clintAxi
   xbar.io.ifuAXI4 <> ifu.io.axi4
   xbar.io.lsuAXI4 <> lsu.io.axi4
-
-  // val axiRValid = RegInit(False)
-  // val axiBValid = RegInit(False)
-  // val npcMemRW = NpcMemRW()
-  // npcMemRW.io.wen   := xbar.io.externalAxi.aw.valid && xbar.io.externalAxi.w.valid
-  // npcMemRW.io.valid := xbar.io.externalAxi.ar.valid || npcMemRW.io.wen
-  // npcMemRW.io.addr  := npcMemRW.io.wen ? xbar.io.externalAxi.aw.addr | xbar.io.externalAxi.ar.addr
-  // npcMemRW.io.wdata := xbar.io.externalAxi.w.data.asUInt
-  // npcMemRW.io.wmask := xbar.io.externalAxi.w.strb.asUInt
-
-  // xbar.io.externalAxi.ar.ready := xbar.io.externalAxi.ar.valid
-  // xbar.io.externalAxi.r.data := npcMemRW.io.rdata.asBits    // 数据
-  // when (xbar.io.externalAxi.ar.valid) {   // 读数据通道握手信号
-  //   axiRValid := True
-  // } elsewhen (xbar.io.externalAxi.r.fire) {
-  //   axiRValid := False
-  // } otherwise {
-  //   axiRValid := axiRValid
-  // }
-  // xbar.io.externalAxi.r.valid := axiRValid
-  // //***************
-  // xbar.io.externalAxi.aw.ready := xbar.io.externalAxi.aw.valid && xbar.io.externalAxi.w.valid
-  // xbar.io.externalAxi.w.ready  := xbar.io.externalAxi.aw.valid && xbar.io.externalAxi.w.valid
-  // when (xbar.io.externalAxi.aw.valid && xbar.io.externalAxi.w.valid) {   
-  //   axiBValid := True
-  // } elsewhen (xbar.io.externalAxi.b.fire) {
-  //   axiBValid := False
-  // } otherwise {
-  //   axiBValid := axiBValid
-  // }
-  // xbar.io.externalAxi.b.valid := axiBValid 
 }
 
 case class ysyx_23060082_RegFile() extends Component {
@@ -150,13 +119,12 @@ case class ysyx_23060082_RegFile() extends Component {
   }
 
   val rf = Vec(Reg(UInt(32 bits)),16)    // riscv32e,有16个通用寄存器
-  when(io.writeEn){
+
+  rf(0) := U"32'h0" 
+  when(io.writeEn && (io.writeAddr(3 downto 0) =/= U(0))){
     rf(io.writeAddr(3 downto 0)) := io.writeData
   }
 
-  when(True){
-    rf(0) := U"32'h0"   // 0号寄存器固定为0
-  }
 
   io.readData1 := rf(io.readAddr1(0 to 3))
   io.readData2 := rf(io.readAddr2(0 to 3)) 

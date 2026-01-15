@@ -69,7 +69,7 @@ void _second_stage_bootloader()
   }
 
 
-// #define __INSERT_EXTRA__
+#define __INSERT_EXTRA__
 
 #ifdef __INSERT_EXTRA__
   extern char _data_extra_start;

@@ -54,18 +54,18 @@ void _second_stage_bootloader()
   }
   
   n = (uintptr_t)(&_rodata_end - &_rodata_start);
-  for(i = 0; i < n; i++){
-    *(char *)((uintptr_t)&_rodata_start + i) = *(char *)((uintptr_t)&_rodata_load_start + i);
+  for(i = 0; i < n; i+=4){
+    *(uint32_t *)((uintptr_t)&_rodata_start + i) = *(uint32_t *)((uintptr_t)&_rodata_load_start + i);
   }
 
   n = (uintptr_t)(&_data_end - &_data_start);
-  for(i = 0; i < n; i++){
-    *(char *)((uintptr_t)&_data_start + i) = *(char *)((uintptr_t)&_data_load_start + i);
+  for(i = 0; i < n; i+=4){
+    *(uint32_t *)((uintptr_t)&_data_start + i) = *(uint32_t *)((uintptr_t)&_data_load_start + i);
   }
 
   n = (uintptr_t)(&_bss_end - &_bss_start);
-  for(i = 0; i < n; i++){
-    *(char *)((uintptr_t)&_bss_start + i) = 0;
+  for(i = 0; i < n; i+=4){
+    *(uint32_t *)((uintptr_t)&_bss_start + i) = 0;
   }
 
 

@@ -1,4 +1,12 @@
-/* ================= ysyxsoc Linker Script ================= */
+/* =====================================================
+ * ysyxsoc Linker Script - 完整版
+ * 支持：
+ *   - 一级 Bootloader (FSBL)
+ *   - 二级 Bootloader (SSBL)
+ *   - Application (.text/.rodata/.data/.bss)
+ *   - RT-Thread extra sections (.data.extra/.bss.extra)
+ *   - copy.table / zero.table 自动初始化
+ * ===================================================== */
 
 MEMORY {
   mrom  : ORIGIN = 0x20000000, LENGTH = 4K
@@ -12,8 +20,9 @@ ENTRY(_bootloader)
 
 SECTIONS {
 
-  /* ================= Boot in flash ================= */
-
+  /* =====================================================
+   * Bootloader in Flash
+   * ===================================================== */
   . = ORIGIN(flash);
 
   .bootloader : {
@@ -37,8 +46,9 @@ SECTIONS {
   _ssbl_end = .;
   _ssbl_load_start = LOADADDR(.ssbl);
 
-  /* ================= Application in SDRAM ================= */
-
+  /* =====================================================
+   * Application in SDRAM
+   * ===================================================== */
   .text : {
     . = ALIGN(8);
     _text_start = .;
@@ -59,19 +69,50 @@ SECTIONS {
   _rodata_end = .;
   _rodata_load_start = LOADADDR(.rodata);
 
-  /* ================= RT-Thread extra data ================= */
-
+  /* =====================================================
+   * RT-Thread extra data section
+   * ===================================================== */
   .data.extra : {
     . = ALIGN(8);
     _data_extra_start = .;
-    *(.data.extra*)
-    _data_extra_end = .;
+
+    /* finsh shell */
+    __fsymtab_start = .;
+    KEEP(*(FSymTab))
+    __fsymtab_end = .;
     . = ALIGN(8);
+
+    __vsymtab_start = .;
+    KEEP(*(VSymTab))
+    __vsymtab_end = .;
+    . = ALIGN(8);
+
+    /* initial functions */
+    __rt_init_start = .;
+    KEEP(*(SORT(.rti_fn*)))
+    __rt_init_end = .;
+    . = ALIGN(8);
+
+    /* unit test table */
+    __rt_utest_tc_tab_start = .;
+    KEEP(*(UtestTcTab))
+    __rt_utest_tc_tab_end = .;
+    . = ALIGN(8);
+
+    /* application extra data */
+    __am_apps_data_start = .;
+    *(__am_apps.data*)
+    *(__am_apps.sdata*)
+    __am_apps_data_end = .;
+
+    . = ALIGN(8);
+    _data_extra_end = .;
   } > sdram AT> flash
   _data_extra_load_start = LOADADDR(.data.extra);
 
-  /* ================= Normal data ================= */
-
+  /* =====================================================
+   * Normal data section
+   * ===================================================== */
   .data : {
     . = ALIGN(8);
     _data_start = .;
@@ -82,8 +123,9 @@ SECTIONS {
   _data_end = .;
   _data_load_start = LOADADDR(.data);
 
-  /* ================= RT-Thread extra bss ================= */
-
+  /* =====================================================
+   * RT-Thread extra BSS
+   * ===================================================== */
   .bss.extra (NOLOAD) : {
     . = ALIGN(8);
     _bss_extra_start = .;
@@ -92,8 +134,9 @@ SECTIONS {
     . = ALIGN(8);
   } > sdram
 
-  /* ================= Normal bss ================= */
-
+  /* =====================================================
+   * Normal BSS
+   * ===================================================== */
   .bss (NOLOAD) : {
     . = ALIGN(8);
     _bss_start = .;
@@ -104,8 +147,14 @@ SECTIONS {
   } > sdram
   _bss_end = .;
 
-  /* ================= Copy Table ================= */
+  /* =====================================================
+   * Align before copy / zero tables
+   * ===================================================== */
+  . = ALIGN(8);
 
+  /* =====================================================
+   * Copy Table (for data / extra initialization)
+   * ===================================================== */
   .copy.table : {
     __copy_table_start = .;
 
@@ -132,8 +181,9 @@ SECTIONS {
     __copy_table_end = .;
   } > flash
 
-  /* ================= Zero Table ================= */
-
+  /* =====================================================
+   * Zero Table (for BSS initialization)
+   * ===================================================== */
   .zero.table : {
     __zero_table_start = .;
 
@@ -148,8 +198,9 @@ SECTIONS {
     __zero_table_end = .;
   } > flash
 
-  /* ================= Stack / Heap ================= */
-
+  /* =====================================================
+   * Stack / Heap
+   * ===================================================== */
   _stack_top = ORIGIN(sdram) + LENGTH(sdram);
   . = _stack_top + 0x8000;
   _stack_pointer = .;

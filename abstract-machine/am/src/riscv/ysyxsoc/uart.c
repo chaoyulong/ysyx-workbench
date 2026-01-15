@@ -3,16 +3,16 @@
 #include "ysyxsoc.h"
 
 void __am_uart_init() {
-  UART->FCR     = 0xc6;
-  UART->LCR     = 0x80;     // 允许访问除数锁存器
-  UART->DIV_MSB = 0;
-  UART->DIV_LSB = 1;
-  UART->LCR     = 0x03;     // 禁止访问除数锁存器
-  // outb(UART_FCR, 0xc6);
-  // outb(UART_LCR, 0x80);     // 允许访问除数锁存器
-  // outb(UART_DIV_MSB, 0);
-  // outb(UART_DIV_LSB, 1);
-  // outb(UART_LCR, 0x03);     // 禁止访问除数锁存器
+  // UART->FCR     = 0xc6;
+  // UART->LCR     = 0x80;     // 允许访问除数锁存器
+  // UART->DIV_MSB = 0;
+  // UART->DIV_LSB = 1;
+  // UART->LCR     = 0x03;     // 禁止访问除数锁存器
+  outb(UART_FCR, 0xc6);
+  outb(UART_LCR, 0x80);     // 允许访问除数锁存器
+  outb(UART_DIV_MSB, 0);
+  outb(UART_DIV_LSB, 1);
+  outb(UART_LCR, 0x03);     // 禁止访问除数锁存器
 }
 
 void __am_uart_config(AM_UART_CONFIG_T *cfg) {
@@ -33,8 +33,8 @@ void __am_uart_rx(AM_UART_RX_T *rx){
 }
 
 void __am_uart_tx(AM_UART_TX_T *tx) {
-  while(!(UART->LSR & 0x20));    // 等待发送fifo为空
-  outb(UART->DR, tx->data);
-  // while(!(inb(UART_LSR) & 0x20));    // 等待发送fifo为空
-  // outb(SERIAL_PORT, tx->data);
+  // while(!(UART->LSR & 0x20));    // 等待发送fifo为空
+  // outb(UART->DR, tx->data);
+  while(!(inb(UART_LSR) & 0x20));    // 等待发送fifo为空
+  outb(SERIAL_PORT, tx->data);
 }

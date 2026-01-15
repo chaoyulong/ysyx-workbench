@@ -7,14 +7,14 @@
 
 #define ysyxsoc_trap(code) asm volatile("mv a0, %0; ebreak" : :"r"(code))
 
-// #define SERIAL_PORT     0x10000000
-//   #define UART_DR       (SERIAL_PORT)
-//   #define UART_IER      (SERIAL_PORT + 1)
-//   #define UART_FCR      (SERIAL_PORT + 2) 
-//   #define UART_LCR      (SERIAL_PORT + 3)     // 通信格式设置寄存器
-//   #define UART_LSR      (SERIAL_PORT + 5)     // 通信状态寄存器
-//   #define UART_DIV_LSB  (SERIAL_PORT)
-//   #define UART_DIV_MSB  (SERIAL_PORT + 1)
+#define SERIAL_PORT     0x10000000
+  #define UART_DR       (SERIAL_PORT)
+  #define UART_IER      (SERIAL_PORT + 1)
+  #define UART_FCR      (SERIAL_PORT + 2) 
+  #define UART_LCR      (SERIAL_PORT + 3)     // 通信格式设置寄存器
+  #define UART_LSR      (SERIAL_PORT + 5)     // 通信状态寄存器
+  #define UART_DIV_LSB  (SERIAL_PORT)
+  #define UART_DIV_MSB  (SERIAL_PORT + 1)
 
 typedef struct {
   union {

@@ -19,7 +19,7 @@ LDSCRIPTS += $(AM_HOME)/scripts/linker_ysyxsoc.ld
 LDFLAGS   += --gc-sections -e _bootloader
 YSYXSOCFLAGS += -l $(shell dirname $(IMAGE).elf)/ysyxsoc-log.txt
 YSYXSOCFLAGS += -e $(IMAGE).elf
-ifeq ($(SDB), N)
+ifeq ($(SDB), N n)
 YSYXSOCFLAGS += -b
 endif
 MAINARGS_MAX_LEN = 64

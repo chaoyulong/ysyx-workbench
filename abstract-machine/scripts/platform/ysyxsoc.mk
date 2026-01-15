@@ -14,15 +14,15 @@ AM_SRCS := riscv/ysyxsoc/start.S \
 
 CFLAGS    += -fdata-sections -ffunction-sections
 LDSCRIPTS += $(AM_HOME)/scripts/linker_ysyxsoc.ld
-# LDFLAGS   += --defsym=_pmem_start=0x80000000 --defsym=_entry_offset=0x0
-# LDFLAGS   += --gc-sections -e _start
 LDFLAGS   += --gc-sections -e _bootloader
 YSYXSOCFLAGS += -l $(shell dirname $(IMAGE).elf)/ysyxsoc-log.txt
 YSYXSOCFLAGS += -e $(IMAGE).elf
-# ifeq ($(SDB), N)
-ifeq ($(filter $(SDB),N n),$(SDB))
-YSYXSOCFLAGS += -b
+
+SDB_VAL := $(SDB) $(sdb)
+ifneq ($(filter N n, $(SDB_VAL)),)
+  YSYXSOCFLAGS += -b
 endif
+
 MAINARGS_MAX_LEN = 64
 MAINARGS_PLACEHOLDER = the_insert-arg_rule_in_Makefile_will_insert_mainargs_here
 CFLAGS += -DMAINARGS_MAX_LEN=$(MAINARGS_MAX_LEN) -DMAINARGS_PLACEHOLDER=$(MAINARGS_PLACEHOLDER)

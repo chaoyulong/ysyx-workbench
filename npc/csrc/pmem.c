@@ -51,15 +51,19 @@ extern "C" void pmem_write(uint32_t waddr, uint32_t wdata, uint8_t wmask) {
     case SERIAL_PORT: putc((uint8_t)wdata, stderr); break;
     default: out_of_bound(waddr, 1); break;
   }
-
 }
 
-extern "C" void flash_read(int32_t addr, int32_t *data) { printf("flash read\n"); assert(0); }
+extern "C" void flash_read(int32_t addr, int32_t *data) {
+  uint32_t real_addr = ((uint32_t)addr & (uint32_t)(~0x3u));
+  *data = *(uint32_t *)(flash + real_addr);
+}
 extern "C" void mrom_read(int32_t addr, int32_t *data) { assert(0); }
+
 extern "C" void psram_read(uint32_t raddr, uint32_t *rdata) {
   uint32_t real_addr = ((uint32_t)raddr & (uint32_t)(~0x3u));
   *rdata = *(uint32_t *)(psram + real_addr);
 }
+
 extern "C" void psram_write(uint32_t waddr, uint32_t wdata, uint32_t wmask) {
   uint32_t real_addr = ((uint32_t)waddr & (uint32_t)(~0x3u));
   word_t old_data = *(uint32_t *)(psram + real_addr) & ~wmask;    // 先读出以前数据再对对应位清除

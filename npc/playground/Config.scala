@@ -42,7 +42,7 @@ object SpinalToVerilog extends App {
   Config.spinal.generateVerilog{
     val top = topName match {
       case "NPC_TOP" => NPC_TOP(CpuConfig(resetPc))
-      case "ysyxsocfull" => ysyx_23060082(CpuConfig(resetPc))
+      case "ysyx_23060082" => ysyx_23060082(CpuConfig(resetPc))
       case _ => throw new Exception(s"Unknown TOP_NAME: $topName")
     }
     top

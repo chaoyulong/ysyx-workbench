@@ -1,7 +1,9 @@
 #include "pmem.h"
 #include "device.h"
 
-uint8_t pmem[CONFIG_MSIZE];
+// uint8_t pmem[CONFIG_MSIZE];
+uint8_t flash[FLASH_SIZE];
+uint8_t psram[PSRAM_SIZE];
 
 static void out_of_bound(int addr, int rw) 
 {
@@ -11,8 +13,8 @@ static void out_of_bound(int addr, int rw)
   assert(0);
 }
 
-uint8_t* guest_to_host(paddr_t paddr) { return pmem + paddr - CONFIG_MBASE; }
-paddr_t host_to_guest(uint8_t *haddr) { return haddr - pmem + CONFIG_MBASE; }
+uint8_t* guest_to_host(paddr_t paddr) { return flash + paddr - CONFIG_MBASE; }
+paddr_t host_to_guest(uint8_t *haddr) { return haddr - flash + CONFIG_MBASE; }
 
 extern "C" uint32_t pmem_read(uint32_t raddr) {
   // 总是读取地址为`raddr & ~0x3u`的4字节返回
@@ -56,19 +58,19 @@ extern "C" void flash_read(int32_t addr, int32_t *data) { printf("flash read\n")
 extern "C" void mrom_read(int32_t addr, int32_t *data) { assert(0); }
 extern "C" void psram_read(uint32_t raddr, uint32_t *rdata) {
   uint32_t real_addr = ((uint32_t)raddr & (uint32_t)(~0x3u));
-  *rdata = *(uint32_t *)(pmem + real_addr);
+  *rdata = *(uint32_t *)(psram + real_addr);
 }
 extern "C" void psram_write(uint32_t waddr, uint32_t wdata, uint32_t wmask) {
   uint32_t real_addr = ((uint32_t)waddr & (uint32_t)(~0x3u));
-  word_t old_data = *(uint32_t *)(pmem + real_addr) & ~wmask;    // 先读出以前数据再对对应位清除
+  word_t old_data = *(uint32_t *)(psram + real_addr) & ~wmask;    // 先读出以前数据再对对应位清除
   word_t real_wdata = old_data + (wdata & wmask);
-  *(uint32_t *)(pmem + real_addr) = real_wdata;
+  *(uint32_t *)(psram + real_addr) = real_wdata;
 }
 
 void pmem_init(){
-  *(word_t *)(pmem + sizeof(word_t) * 0) = 0x00000297;  // auipc t0,0
-  *(word_t *)(pmem + sizeof(word_t) * 1) = 0x00028823;  // sb  zero,16(t0)
-  *(word_t *)(pmem + sizeof(word_t) * 2) = 0x0102c503;  // lbu a0,16(t0)
-  *(word_t *)(pmem + sizeof(word_t) * 3) = 0x00100073;  // ebreak (used as nemu_trap)
-  *(word_t *)(pmem + sizeof(word_t) * 4) = 0x00000297;  // some data
+  *(word_t *)(flash + sizeof(word_t) * 0) = 0x00000297;  // auipc t0,0
+  *(word_t *)(flash + sizeof(word_t) * 1) = 0x00028823;  // sb  zero,16(t0)
+  *(word_t *)(flash + sizeof(word_t) * 2) = 0x0102c503;  // lbu a0,16(t0)
+  *(word_t *)(flash + sizeof(word_t) * 3) = 0x00100073;  // ebreak (used as nemu_trap)
+  *(word_t *)(flash + sizeof(word_t) * 4) = 0x00000297;  // some data
 }

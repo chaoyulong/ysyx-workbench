@@ -45,7 +45,7 @@ static void welcome()
 // 加载程序
 static long load_img() 
 {
-  extern uint8_t pmem[];
+  extern uint8_t flash[];
   if (img_file == NULL) {
     Log("No image is given. Use the default build-in image.");
     return 4096; // built-in image size
@@ -64,7 +64,7 @@ static long load_img()
   Log("The image is %s, size = %ld", img_file, size);
 
   fseek(fp, 0, SEEK_SET);
-  int ret = fread(pmem, size, 1, fp);
+  int ret = fread(flash, size, 1, fp);
   assert(ret == 1);
 
   fclose(fp);

@@ -17,18 +17,18 @@ static const char mainargs[MAINARGS_MAX_LEN] = TOSTRING(MAINARGS_PLACEHOLDER); /
 extern char _ssbl_start;
 extern char _ssbl_end;
 extern char _ssbl_load_start;
-// 各个段的首尾
-extern char _text_start;
-extern char _text_end;
-extern char _rodata_start;
-extern char _rodata_end;
-extern char _data_start;
-extern char _data_end;
-extern char _bss_start;
-extern char _bss_end;
-extern char _text_load_start;
-extern char _rodata_load_start;
-extern char _data_load_start;
+// // 各个段的首尾
+// extern char _text_start;
+// extern char _text_end;
+// extern char _rodata_start;
+// extern char _rodata_end;
+// extern char _data_start;
+// extern char _data_end;
+// extern char _bss_start;
+// extern char _bss_end;
+// extern char _text_load_start;
+// extern char _rodata_load_start;
+// extern char _data_load_start;
 
 // 一级bootloader，将二级bootloader装载进sram
 void _first_stage_bootloader (void) __attribute__ ((section ("fsbl")));
@@ -42,52 +42,88 @@ void _first_stage_bootloader()
   }
 }
 
-// 二级bootloader， 装载程序
+extern uint32_t __copy_table_start;
+extern uint32_t __copy_table_end;
+extern uint32_t __zero_table_start;
+extern uint32_t __zero_table_end;
+
 void _second_stage_bootloader (void) __attribute__ ((section ("ssbl")));
 void _second_stage_bootloader() 
 {
-  uintptr_t i, n;
-  
-  n = (uintptr_t)(&_text_end - &_text_start);
-  for(i = 0; i < n; i+=4){
-    *(uint32_t *)((uintptr_t)&_text_start + i) = *(uint32_t *)((uintptr_t)&_text_load_start + i);
-  }
-  
-  n = (uintptr_t)(&_rodata_end - &_rodata_start);
-  for(i = 0; i < n; i+=4){
-    *(uint32_t *)((uintptr_t)&_rodata_start + i) = *(uint32_t *)((uintptr_t)&_rodata_load_start + i);
-  }
+    uint32_t *p;
 
-  n = (uintptr_t)(&_data_end - &_data_start);
-  for(i = 0; i < n; i+=4){
-    *(uint32_t *)((uintptr_t)&_data_start + i) = *(uint32_t *)((uintptr_t)&_data_load_start + i);
-  }
+    /* ================= copy table =================
+     * format: src, dst, size
+     */
+    for (p = &__copy_table_start; p < &__copy_table_end; ) {
+        uint32_t *src  = (uint32_t *)(*p++);
+        uint32_t *dst  = (uint32_t *)(*p++);
+        uint32_t size  = *p++;
 
-  n = (uintptr_t)(&_bss_end - &_bss_start);
-  for(i = 0; i < n; i+=4){
-    *(uint32_t *)((uintptr_t)&_bss_start + i) = 0;
-  }
+        for (uint32_t i = 0; i < size / 4; i++) {
+            dst[i] = src[i];
+        }
+    }
 
+    /* ================= zero table =================
+     * format: dst, size
+     */
+    for (p = &__zero_table_start; p < &__zero_table_end; ) {
+        uint32_t *dst  = (uint32_t *)(*p++);
+        uint32_t size  = *p++;
 
-#define __INSERT_EXTRA__
-
-#ifdef __INSERT_EXTRA__
-  extern char _data_extra_start;
-  extern char _data_extra_end;
-  extern char _data_extra_load_start;
-  extern char _bss_extra_start;
-  extern char _bss_extra_end;
-
-  n = (uintptr_t)(&_data_extra_end - &_data_extra_start);
-  for(i = 0; i < n; i++){
-    *(char *)((uintptr_t)&_data_extra_start + i) = *(char *)((uintptr_t)&_data_extra_load_start + i);
-  }
-  n = (uintptr_t)(&_bss_extra_end - &_bss_extra_start);
-  for(i = 0; i < n; i++){
-    *(char *)((uintptr_t)&_bss_extra_start + i) = 0;
-  }
-#endif
+        for (uint32_t i = 0; i < size / 4; i++) {
+            dst[i] = 0;
+        }
+    }
 }
+
+// 二级bootloader， 装载程序
+// void _second_stage_bootloader (void) __attribute__ ((section ("ssbl")));
+// void _second_stage_bootloader() 
+// {
+//   uintptr_t i, n;
+  
+//   n = (uintptr_t)(&_text_end - &_text_start);
+//   for(i = 0; i < n; i+=4){
+//     *(uint32_t *)((uintptr_t)&_text_start + i) = *(uint32_t *)((uintptr_t)&_text_load_start + i);
+//   }
+  
+//   n = (uintptr_t)(&_rodata_end - &_rodata_start);
+//   for(i = 0; i < n; i+=4){
+//     *(uint32_t *)((uintptr_t)&_rodata_start + i) = *(uint32_t *)((uintptr_t)&_rodata_load_start + i);
+//   }
+
+//   n = (uintptr_t)(&_data_end - &_data_start);
+//   for(i = 0; i < n; i+=4){
+//     *(uint32_t *)((uintptr_t)&_data_start + i) = *(uint32_t *)((uintptr_t)&_data_load_start + i);
+//   }
+
+//   n = (uintptr_t)(&_bss_end - &_bss_start);
+//   for(i = 0; i < n; i+=4){
+//     *(uint32_t *)((uintptr_t)&_bss_start + i) = 0;
+//   }
+
+
+// #define __INSERT_EXTRA__
+
+// #ifdef __INSERT_EXTRA__
+//   extern char _data_extra_start;
+//   extern char _data_extra_end;
+//   extern char _data_extra_load_start;
+//   extern char _bss_extra_start;
+//   extern char _bss_extra_end;
+
+//   n = (uintptr_t)(&_data_extra_end - &_data_extra_start);
+//   for(i = 0; i < n; i++){
+//     *(char *)((uintptr_t)&_data_extra_start + i) = *(char *)((uintptr_t)&_data_extra_load_start + i);
+//   }
+//   n = (uintptr_t)(&_bss_extra_end - &_bss_extra_start);
+//   for(i = 0; i < n; i++){
+//     *(char *)((uintptr_t)&_bss_extra_start + i) = 0;
+//   }
+// #endif
+// }
 
 uint32_t flash_read(uint32_t raddr)
 {

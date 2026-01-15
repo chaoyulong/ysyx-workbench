@@ -1,7 +1,7 @@
 #include <am.h>
 #include "ysyxsoc.h"
 
-uint64_t time_base = 0;
+static uint64_t time_base = 0;
 
 void __am_timer_init() {
   time_base = ((uint64_t)inl(RTC_MSB) << 32) + ((uint64_t)inl(RTC_LSB));

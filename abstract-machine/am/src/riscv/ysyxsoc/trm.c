@@ -145,19 +145,19 @@ void ysyxsoc_dis_id()
 }
 
 void putch(char ch) {
-  uart_tx(ch);
+  extern void __am_uart_tx(AM_UART_TX_T *tx);
+  __am_uart_tx((AM_UART_TX_T *)(&ch));
 }
 
 void halt(int code) {
   ysyxsoc_trap(code);
-  
   // should not reach here
   while (1);  
 }
 
 void _trm_init() {
-  uart_init();
-  spi_init();
+  extern void __am_uart_init();
+  __am_uart_init();
   ysyxsoc_dis_id();
   int ret = main(mainargs);
   halt(ret);

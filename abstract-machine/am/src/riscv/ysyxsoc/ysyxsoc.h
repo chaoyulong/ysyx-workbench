@@ -43,7 +43,3 @@
   #define GPIO_IDR          (GPIO_BASE + 0x04)
   #define GPIO_ODR_SEG      (GPIO_BASE + 0x08)
 #endif
-
-void uart_init();
-uint8_t uart_rx();
-void uart_tx(uint8_t ch);

@@ -7,7 +7,7 @@
 #define FLASH_SIZE   (paddr_t)128*1024*1024
 #define PSRAM_SIZE   (paddr_t)4*1024*1024
 
-#define CONFIG_MSIZE (paddr_t)0x8000000
+#define CONFIG_MSIZE FLASH_SIZE
 #define CONFIG_MBASE (paddr_t)0x80000000
 
 #define PMEM_LEFT  ((paddr_t)CONFIG_MBASE)
@@ -30,8 +30,6 @@ static inline bool in_pmem(paddr_t addr) {
   return (addr >= PMEM_LEFT) && (addr <= PMEM_RIGHT);
 }
 
-// int pmem_read(int raddr);
-// void pmem_write(int waddr, int wdata, char wmask);
 void pmem_init(void);
 
 #endif

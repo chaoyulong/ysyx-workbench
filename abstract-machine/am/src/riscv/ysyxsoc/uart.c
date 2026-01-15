@@ -33,8 +33,8 @@ void __am_uart_rx(AM_UART_RX_T *rx){
 }
 
 void __am_uart_tx(AM_UART_TX_T *tx) {
-  // while(!(UART->LSR & 0x20));    // 等待发送fifo为空
-  // outb(UART->DR, tx->data);
-  while(!(inb(UART_LSR) & 0x20));    // 等待发送fifo为空
-  outb(SERIAL_PORT, tx->data);
+  while(!(UART->LSR & 0x20));    // 等待发送fifo为空
+  UART->DR = tx->data;
+  // while(!(inb(UART_LSR) & 0x20));    // 等待发送fifo为空
+  // outb(SERIAL_PORT, tx->data);
 }

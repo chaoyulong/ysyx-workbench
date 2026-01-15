@@ -40,13 +40,20 @@ object SpinalToVerilog extends App {
   val resetPc = BigInt(resetPcStr.replace("0x", ""), 16)
 
   // 根据SPINAL_TOPNAME决定用哪个Top
-  val top = topName match {
-    case "NPC_TOP" => NPC_TOP(CpuConfig(resetPc))
-    case "ysyxsocfull" => ysyx_23060082(CpuConfig(resetPc))
-    case _ => throw new Exception(s"Unknown TOP_NAME: $topName")
-  }
+  // val top = topName match {
+  //   case "NPC_TOP" => NPC_TOP(CpuConfig(resetPc))
+  //   case "ysyxsocfull" => ysyx_23060082(CpuConfig(resetPc))
+  //   case _ => throw new Exception(s"Unknown TOP_NAME: $topName")
+  // }
 
-  Config.spinal.generateVerilog(top)
+  Config.spinal.generateVerilog{
+    val top = topName match {
+      case "NPC_TOP" => NPC_TOP(CpuConfig(resetPc))
+      case "ysyxsocfull" => ysyx_23060082(CpuConfig(resetPc))
+      case _ => throw new Exception(s"Unknown TOP_NAME: $topName")
+    }
+    top
+  }
 }
 
 // object SpinalToVerilog extends App {

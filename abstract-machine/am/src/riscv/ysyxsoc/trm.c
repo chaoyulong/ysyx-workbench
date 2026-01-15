@@ -31,14 +31,6 @@ extern char _text_load_start;
 extern char _rodata_load_start;
 extern char _data_load_start;
 
-
-#ifdef __INSERT_EXTRA__
-extern char _data_extra_start;
-extern char _data_extra_end;
-extern char _data_extra_load_start;
-extern char _bss_extra_start;
-extern char _bss_extra_end;
-#endif
 // 一级bootloader，将二级bootloader装载进sram
 void _first_stage_bootloader (void) __attribute__ ((section ("fsbl")));
 void _first_stage_bootloader() 
@@ -77,14 +69,21 @@ void _second_stage_bootloader()
     *(char *)((uintptr_t)&_bss_start + i) = 0;
   }
 
-#ifdef __INSERT_EXTRA__
-  n = (uintptr_t)(&_data_extra_end - &_data_extra_start);
 
+#define __INSERT_EXTRA__
+
+#ifdef __INSERT_EXTRA__
+  extern char _data_extra_start;
+  extern char _data_extra_end;
+  extern char _data_extra_load_start;
+  extern char _bss_extra_start;
+  extern char _bss_extra_end;
+
+  n = (uintptr_t)(&_data_extra_end - &_data_extra_start);
   for(i = 0; i < n; i++){
     *(char *)((uintptr_t)&_data_extra_start + i) = *(char *)((uintptr_t)&_data_extra_load_start + i);
   }
   n = (uintptr_t)(&_bss_extra_end - &_bss_extra_start);
-
   for(i = 0; i < n; i++){
     *(char *)((uintptr_t)&_bss_extra_start + i) = 0;
   }

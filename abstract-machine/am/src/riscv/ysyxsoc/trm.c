@@ -7,12 +7,113 @@
 extern char _heap_start;
 int main(const char *args);
 
-extern char _pmem_start;
-#define PMEM_SIZE (4 * 1024 * 1024)
-#define PMEM_END  ((uintptr_t)&_pmem_start + PMEM_SIZE)
+extern char _heap_start;
+extern char _heap_end;
+Area heap = RANGE(&_heap_start, &_heap_end);
 
-Area heap = RANGE(&_heap_start, PMEM_END);
 static const char mainargs[MAINARGS_MAX_LEN] = TOSTRING(MAINARGS_PLACEHOLDER); // defined in CFLAGS
+
+
+// 二级bootlader的首尾
+extern char _ssbl_start;
+extern char _ssbl_end;
+extern char _ssbl_load_start;
+// 各个段的首尾
+extern char _text_start;
+extern char _text_end;
+extern char _rodata_start;
+extern char _rodata_end;
+extern char _data_start;
+extern char _data_end;
+extern char _bss_start;
+extern char _bss_end;
+extern char _text_load_start;
+extern char _rodata_load_start;
+extern char _data_load_start;
+
+
+#ifdef __INSERT_EXTRA__
+extern char _data_extra_start;
+extern char _data_extra_end;
+extern char _data_extra_load_start;
+extern char _bss_extra_start;
+extern char _bss_extra_end;
+#endif
+// 一级bootloader，将二级bootloader装载进sram
+void _first_stage_bootloader (void) __attribute__ ((section ("fsbl")));
+void _first_stage_bootloader() 
+{
+  uintptr_t i, n;
+
+  n = (uintptr_t)(&_ssbl_end - &_ssbl_start);
+  for(i = 0; i < n; i += 4){
+    *(uint32_t *)((uintptr_t)&_ssbl_start + i) = *(uint32_t *)((uintptr_t)&_ssbl_load_start + i);
+  }
+}
+
+// 二级bootloader， 装载程序
+void _second_stage_bootloader (void) __attribute__ ((section ("ssbl")));
+void _second_stage_bootloader() 
+{
+  uintptr_t i, n;
+  
+  n = (uintptr_t)(&_text_end - &_text_start);
+  for(i = 0; i < n; i+=4){
+    *(uint32_t *)((uintptr_t)&_text_start + i) = *(uint32_t *)((uintptr_t)&_text_load_start + i);
+  }
+  
+  n = (uintptr_t)(&_rodata_end - &_rodata_start);
+  for(i = 0; i < n; i++){
+    *(char *)((uintptr_t)&_rodata_start + i) = *(char *)((uintptr_t)&_rodata_load_start + i);
+  }
+
+  n = (uintptr_t)(&_data_end - &_data_start);
+  for(i = 0; i < n; i++){
+    *(char *)((uintptr_t)&_data_start + i) = *(char *)((uintptr_t)&_data_load_start + i);
+  }
+
+  n = (uintptr_t)(&_bss_end - &_bss_start);
+  for(i = 0; i < n; i++){
+    *(char *)((uintptr_t)&_bss_start + i) = 0;
+  }
+
+#ifdef __INSERT_EXTRA__
+  n = (uintptr_t)(&_data_extra_end - &_data_extra_start);
+
+  for(i = 0; i < n; i++){
+    *(char *)((uintptr_t)&_data_extra_start + i) = *(char *)((uintptr_t)&_data_extra_load_start + i);
+  }
+  n = (uintptr_t)(&_bss_extra_end - &_bss_extra_start);
+
+  for(i = 0; i < n; i++){
+    *(char *)((uintptr_t)&_bss_extra_start + i) = 0;
+  }
+#endif
+}
+
+uint32_t flash_read(uint32_t raddr)
+{
+  uint8_t temp[4]; 
+  uint8_t real[4];
+  outl(SPI_DIVIDER, 0);
+  outl(SPI_Tx0, 0);  
+  outl(SPI_Tx1, 0x03000000 | (raddr & 0x00ffffff)); 
+  outl(SPI_SS, (1 << 0));  
+  outl(SPI_CTRL, 0x140);    // bit9 :Rx_NEG,可能会用到
+  while(inl(SPI_CTRL) & 0x100);
+  outl(SPI_SS, 0);
+  *(uint32_t *)temp = inl(SPI_Rx0);
+  real[0] = temp[3];
+  real[1] = temp[2];
+  real[2] = temp[1];
+  real[3] = temp[0];
+  return *(uint32_t *)real;
+}
+
+void spi_init()
+{
+  outl(SPI_DIVIDER, 0);
+}
 
 uint32_t get_ysyxid()
 {
@@ -56,6 +157,7 @@ void halt(int code) {
 
 void _trm_init() {
   uart_init();
+  spi_init();
   // ysyxsoc_dis_id();
   int ret = main(mainargs);
   halt(ret);

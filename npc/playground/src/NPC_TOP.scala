@@ -5,14 +5,14 @@ import spinal.lib._
 import spinal.lib.bus.amba4.axi._
 
 // NPC使用的顶层模块
-case class NPC_TOP() extends Component {
+case class NPC_TOP(config: CpuConfig) extends Component {
   val io = new Bundle {
   }
 
   clockDomain.clock.setName("clock")  // 自定义时钟和复位信号名称，放在最顶层
   clockDomain.reset.setName("reset")
 
-  val cpu = ysyx_23060082()
+  val cpu = ysyx_23060082(config)
 
   val axiRValid = RegInit(False)
   val axiBValid = RegInit(False)

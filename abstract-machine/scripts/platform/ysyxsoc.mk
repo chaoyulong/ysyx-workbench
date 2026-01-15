@@ -1,4 +1,5 @@
 AM_SRCS := riscv/ysyxsoc/start.S \
+           riscv/ysyxsoc/bootloader.S \
            riscv/ysyxsoc/trm.c \
            riscv/ysyxsoc/ioe.c \
            riscv/ysyxsoc/uart.c \
@@ -13,8 +14,9 @@ AM_SRCS := riscv/ysyxsoc/start.S \
 
 CFLAGS    += -fdata-sections -ffunction-sections
 LDSCRIPTS += $(AM_HOME)/scripts/linker_ysyxsoc.ld
-LDFLAGS   += --defsym=_pmem_start=0x80000000 --defsym=_entry_offset=0x0
-LDFLAGS   += --gc-sections -e _start
+# LDFLAGS   += --defsym=_pmem_start=0x80000000 --defsym=_entry_offset=0x0
+# LDFLAGS   += --gc-sections -e _start
+LDFLAGS   += --gc-sections -e _bootloader
 YSYXSOCFLAGS += -l $(shell dirname $(IMAGE).elf)/ysyxsoc-log.txt
 YSYXSOCFLAGS += -e $(IMAGE).elf
 ifneq ($(BATCH), )
@@ -33,12 +35,12 @@ image: image-dep
 	@$(OBJCOPY) -S --set-section-flags .bss=alloc,contents -O binary $(IMAGE).elf $(IMAGE).bin
 
 run: insert-arg
-	$(MAKE) -C $(NPC_HOME) ISA=$(ISA) run ARGS="$(YSYXSOCFLAGS)" IMG=$(IMAGE).bin PARTFORM=YSYXSOC
+	$(MAKE) -C $(NPC_HOME) ISA=$(ISA) run ARGS="$(YSYXSOCFLAGS)" IMG=$(IMAGE).bin PARTFORM=ysyxsoc
 
 sim: insert-arg
-	$(MAKE) -C $(NPC_HOME) ISA=$(ISA) sim ARGS="$(YSYXSOCFLAGS)" IMG=$(IMAGE).bin PARTFORM=YSYXSOC
+	$(MAKE) -C $(NPC_HOME) ISA=$(ISA) sim ARGS="$(YSYXSOCFLAGS)" IMG=$(IMAGE).bin PARTFORM=ysyxsoc
 
 wave: insert-arg
-	$(MAKE) -C $(NPC_HOME) ISA=$(ISA) wave ARGS="$(YSYXSOCFLAGS)" IMG=$(IMAGE).bin PARTFORM=YSYXSOC
+	$(MAKE) -C $(NPC_HOME) ISA=$(ISA) wave ARGS="$(YSYXSOCFLAGS)" IMG=$(IMAGE).bin PARTFORM=ysyxsoc
 
 .PHONY: insert-arg

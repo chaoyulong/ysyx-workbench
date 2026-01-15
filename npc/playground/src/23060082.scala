@@ -25,7 +25,7 @@ object AxiConfig {
   )
 }
 
-case class ysyx_23060082() extends Component {
+case class ysyx_23060082(config: CpuConfig) extends Component {
   val io = new Bundle {
     val interrupt = in Bool()
     val io_master = master(Axi4(AxiConfig.axiConfig))
@@ -75,7 +75,7 @@ case class ysyx_23060082() extends Component {
   // ------------------------------------------------------------------------------------------------------------------------- //
 
   val regFile = ysyx_23060082_RegFile()
-  val ifu = ysyx_23060082_IFU()
+  val ifu = ysyx_23060082_IFU(config)
   val idu = ysyx_23060082_IDU()
   val exu = ysyx_23060082_EXU()
   val lsu = ysyx_23060082_LSU()

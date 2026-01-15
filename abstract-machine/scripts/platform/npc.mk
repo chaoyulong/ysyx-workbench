@@ -14,7 +14,7 @@ LDFLAGS   += --defsym=_pmem_start=0x80000000 --defsym=_entry_offset=0x0
 LDFLAGS   += --gc-sections -e _start
 NPCFLAGS += -l $(shell dirname $(IMAGE).elf)/npc-log.txt
 NPCFLAGS += -e $(IMAGE).elf
-ifneq ($(BATCH), )
+ifeq ($(SDB), N)
 NPCFLAGS += -b
 endif
 MAINARGS_MAX_LEN = 64

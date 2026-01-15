@@ -19,7 +19,7 @@ LDSCRIPTS += $(AM_HOME)/scripts/linker_ysyxsoc.ld
 LDFLAGS   += --gc-sections -e _bootloader
 YSYXSOCFLAGS += -l $(shell dirname $(IMAGE).elf)/ysyxsoc-log.txt
 YSYXSOCFLAGS += -e $(IMAGE).elf
-ifneq ($(BATCH), )
+ifeq ($(SDB), N)
 YSYXSOCFLAGS += -b
 endif
 MAINARGS_MAX_LEN = 64
@@ -35,7 +35,7 @@ image: image-dep
 	@$(OBJCOPY) -S --set-section-flags .bss=alloc,contents -O binary $(IMAGE).elf $(IMAGE).bin
 
 run: insert-arg
-	$(MAKE) -C $(NPC_HOME) ISA=$(ISA) run ARGS="$(YSYXSOCFLAGS)" IMG=$(IMAGE).bin PARTFORM=ysyxsoc
+	$(MAKE) -C $(NPC_HOME) ISA=$(ISA) run ARGS="$(YSYXSOCFLAGS) -b" IMG=$(IMAGE).bin PARTFORM=ysyxsoc
 
 sim: insert-arg
 	$(MAKE) -C $(NPC_HOME) ISA=$(ISA) sim ARGS="$(YSYXSOCFLAGS)" IMG=$(IMAGE).bin PARTFORM=ysyxsoc

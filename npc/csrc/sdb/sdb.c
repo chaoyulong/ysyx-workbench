@@ -19,7 +19,7 @@ static char* rl_gets()
     line_read = NULL;
   }
 
-  line_read = readline("(npc) ");
+  line_read = readline(MUXDEF(__ysyxsoc__, "(ysyxsoc) ", "(npc) "));
 
   if (line_read && *line_read) {
     add_history(line_read);

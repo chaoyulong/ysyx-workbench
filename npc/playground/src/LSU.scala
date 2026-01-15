@@ -181,11 +181,11 @@ case class ysyx_23060082_AXI_Ctrl() extends Component {
 
   // ------------------------------- 读操作 ------------------------------- //
   io.axi4.ar.valid.setAsReg() init(False)
-  io.axi4.ar.addr .setAsReg() init(0)
-  io.axi4.ar.id   .setAsReg() init(0)
-  io.axi4.ar.len  .setAsReg() init(0)
-  io.axi4.ar.size .setAsReg() init(0)
-  io.axi4.ar.burst.setAsReg() init(0)
+  io.axi4.ar.addr .setAsReg()
+  io.axi4.ar.id   .setAsReg()
+  io.axi4.ar.len  .setAsReg()
+  io.axi4.ar.size .setAsReg()
+  io.axi4.ar.burst.setAsReg()
   // ---------------- 读地址 ---------------- //
   when(io.readReq) {
     io.axi4.ar.valid := True
@@ -223,16 +223,16 @@ case class ysyx_23060082_AXI_Ctrl() extends Component {
 
   // ------------------------------- 写操作 ------------------------------- //
   io.axi4.aw.valid.setAsReg() init(False)
-  io.axi4.aw.addr .setAsReg() init(0)
-  io.axi4.aw.id   .setAsReg() init(0)
-  io.axi4.aw.len  .setAsReg() init(0)
-  io.axi4.aw.size .setAsReg() init(0)
-  io.axi4.aw.burst.setAsReg() init(0)
+  io.axi4.aw.addr .setAsReg()
+  io.axi4.aw.id   .setAsReg()
+  io.axi4.aw.len  .setAsReg()
+  io.axi4.aw.size .setAsReg()
+  io.axi4.aw.burst.setAsReg()
 
   io.axi4.w.valid .setAsReg() init(False)
-  io.axi4.w.data  .setAsReg() init(0)
-  io.axi4.w.strb  .setAsReg() init(0)
-  io.axi4.w.last  .setAsReg() init(False)
+  io.axi4.w.data  .setAsReg()
+  io.axi4.w.strb  .setAsReg()
+  io.axi4.w.last  .setAsReg()
   // ---------------- 写地址 ---------------- //
   when(io.writeReq) {
     io.axi4.aw.valid := True

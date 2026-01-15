@@ -110,10 +110,9 @@ case class ysyx_23060082_RegFile() extends Component {
   val io = new Bundle {
     val readAddr1 = in UInt(5 bits)
     val readAddr2 = in UInt(5 bits)
-    val writeAddr  = in UInt(5 bits)
-    val writeData  = in UInt(32 bits)
-    val writeEn    = in Bool()
-
+    val writeAddr = in UInt(5 bits)
+    val writeData = in UInt(32 bits)
+    val writeEn   = in Bool()
     val readData1 = out UInt(32 bits)
     val readData2 = out UInt(32 bits)
   }
@@ -125,9 +124,8 @@ case class ysyx_23060082_RegFile() extends Component {
     rf(io.writeAddr(3 downto 0)) := io.writeData
   }
 
-
-  io.readData1 := rf(io.readAddr1(0 to 3))
-  io.readData2 := rf(io.readAddr2(0 to 3)) 
+  io.readData1 := rf(io.readAddr1(3 downto 0))
+  io.readData2 := rf(io.readAddr2(3 downto 0)) 
 }
 
 case class ysyx_23060082_Clint() extends Component {
@@ -141,7 +139,7 @@ case class ysyx_23060082_Clint() extends Component {
 
   io.clintAxi.r.valid.setAsReg() init(False)
   io.clintAxi.b.valid.setAsReg() init(False)
-  io.clintAxi.r.data .setAsReg() init(0)
+  io.clintAxi.r.data .setAsReg()
 
   // ---------- 读通道 ---------- //
   io.clintAxi.ar.ready := io.clintAxi.ar.valid

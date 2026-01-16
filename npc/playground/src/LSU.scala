@@ -29,23 +29,23 @@ case class ysyx_23060082_LSU() extends Component {
   val needMem   = needRead || needWrite                       // 需要访问内存
   // ------------------------------------- 内存控制器 ------------------------------------- // 
   val dataProcess = ysyx_23060082_DataProcess()   // 数据处理
-  val axiCtrl = ysyx_23060082_AXI_Ctrl()          // AXI总线控制
+  val axi4Ctrler = ysyx_23060082_Axi4_Ctrler()          // AXI总线控制
 
-  val rdEnd = (state === LsuState.WaitMem) && axiCtrl.io.readEnd && io.input.rf_ctrl.mem2reg  // 读内存结束，需要更新数据
-  val wrEnd = (state === LsuState.WaitMem) && axiCtrl.io.writeEnd && io.input.mem_ctrl.memWr
-  val rdataReg = RegNextWhen(axiCtrl.io.readData, rdEnd) init(0)  // 是读内存指令并且已读完
+  val rdEnd = (state === LsuState.WaitMem) && axi4Ctrler.io.readEnd && io.input.rf_ctrl.mem2reg  // 读内存结束，需要更新数据
+  val wrEnd = (state === LsuState.WaitMem) && axi4Ctrler.io.writeEnd && io.input.mem_ctrl.memWr
+  val rdataReg = RegNextWhen(axi4Ctrler.io.readData, rdEnd) init(0)  // 是读内存指令并且已读完
   dataProcess.io.addrOp := memAddr(1 downto 0) ## io.input.mem_ctrl.memOp      // 合并 addr + MemOp 生成 5 位索引
   dataProcess.io.wdata  := io.input.rfReadData2 // 写数据为寄存器2的数据
-  dataProcess.io.rdata  := Mux(state === LsuState.WaitMem && rdEnd, axiCtrl.io.readData, rdataReg)
+  dataProcess.io.rdata  := Mux(state === LsuState.WaitMem && rdEnd, axi4Ctrler.io.readData, rdataReg)
 
-  io.axi4 <> axiCtrl.io.axi4
-  axiCtrl.io.readReq  := needRead  && (state === LsuState.Idle)
-  axiCtrl.io.writeReq := needWrite && (state === LsuState.Idle)
-  axiCtrl.io.size     := (False ## io.input.mem_ctrl.memOp(1 downto 0)).asUInt   
-  axiCtrl.io.readAddr := memAddr
-  axiCtrl.io.writeAddr:= memAddr
-  axiCtrl.io.writeData:= dataProcess.io.wdataReal // 处理后的数据
-  axiCtrl.io.writeMask:= dataProcess.io.wmask
+  io.axi4 <> axi4Ctrler.io.axi4
+  axi4Ctrler.io.readReq  := needRead  && (state === LsuState.Idle)
+  axi4Ctrler.io.writeReq := needWrite && (state === LsuState.Idle)
+  axi4Ctrler.io.size     := (False ## io.input.mem_ctrl.memOp(1 downto 0)).asUInt   
+  axi4Ctrler.io.readAddr := memAddr
+  axi4Ctrler.io.writeAddr:= memAddr
+  axi4Ctrler.io.writeData:= dataProcess.io.wdataReal // 处理后的数据
+  axi4Ctrler.io.writeMask:= dataProcess.io.wmask
   // ------------------------------------- 状态机 ------------------------------------- // 
   switch(state) {
     is(LsuState.Idle) {
@@ -164,7 +164,7 @@ case class ysyx_23060082_DataProcess() extends Component {
 /* ****************************************************************
   axi总线控制器
 **************************************************************** */
-case class ysyx_23060082_AXI_Ctrl() extends Component {
+case class ysyx_23060082_Axi4_Ctrler() extends Component {
   val io = new Bundle {
     val readReq   = in Bool()
     val writeReq  = in Bool()

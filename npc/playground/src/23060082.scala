@@ -101,7 +101,7 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig(BigInt("30000000", 16))) 
   val xbar = ysyx_23060082_AXI4Xbar()
   val clint = ysyx_23060082_Clint()
   xbar.io.externalAxi <> io.io_master   // 引到外部
-  xbar.io.clintAxi <> clint.io.clintAxi
+  xbar.io.clintAxi4 <> clint.io.clintAxi4
   xbar.io.ifuAXI4 <> ifu.io.axi4
   xbar.io.lsuAXI4 <> lsu.io.axi4
 }
@@ -130,47 +130,47 @@ case class ysyx_23060082_RegFile() extends Component {
 
 case class ysyx_23060082_Clint() extends Component {
   val io = new Bundle {
-    val clintAxi = slave(Axi4(AxiConfig.axiConfig))
+    val clintAxi4 = slave(Axi4(AxiConfig.axiConfig))
   }
 
   val timeCount = RegInit(U"64'h0")   // 系统计时器
-  val timeCountLow = RegNextWhen(timeCount(31 downto 0), io.clintAxi.ar.fire && (io.clintAxi.ar.addr === U"32'h02000004")) init(0)  // 当读取高位数据时暂存低位数据
+  val timeCountLow = RegNextWhen(timeCount(31 downto 0), io.clintAxi4.ar.fire && (io.clintAxi4.ar.addr === U"32'h02000004")) init(0)  // 当读取高位数据时暂存低位数据
   timeCount := timeCount + 1
 
-  io.clintAxi.r.valid.setAsReg() init(False)
-  io.clintAxi.b.valid.setAsReg() init(False)
-  io.clintAxi.r.data .setAsReg()
+  io.clintAxi4.r.valid.setAsReg() init(False)
+  io.clintAxi4.b.valid.setAsReg() init(False)
+  io.clintAxi4.r.data .setAsReg()
 
   // ---------- 读通道 ---------- //
-  io.clintAxi.ar.ready := io.clintAxi.ar.valid
-  when(io.clintAxi.ar.valid) {   // 读数据通道握手信号
-    io.clintAxi.r.valid := True
-  } elsewhen (io.clintAxi.r.fire) {
-    io.clintAxi.r.valid := False
+  io.clintAxi4.ar.ready := io.clintAxi4.ar.valid
+  when(io.clintAxi4.ar.valid) {   // 读数据通道握手信号
+    io.clintAxi4.r.valid := True
+  } elsewhen (io.clintAxi4.r.fire) {
+    io.clintAxi4.r.valid := False
   } otherwise {
-    io.clintAxi.r.valid := io.clintAxi.r.valid
+    io.clintAxi4.r.valid := io.clintAxi4.r.valid
   }
 
-  io.clintAxi.r.last := io.clintAxi.r.valid
-  when(io.clintAxi.ar.fire) {   // 读数据通道握手信号
-    io.clintAxi.r.data := io.clintAxi.ar.addr.mux(
+  io.clintAxi4.r.last := io.clintAxi4.r.valid
+  when(io.clintAxi4.ar.fire) {   // 读数据通道握手信号
+    io.clintAxi4.r.data := io.clintAxi4.ar.addr.mux(
       U"32'h02000004" -> timeCount(63 downto 32),
       U"32'h02000000" -> timeCountLow,
       default         -> U(0)
     ).asBits
   } otherwise {
-    io.clintAxi.r.data := io.clintAxi.r.data
+    io.clintAxi4.r.data := io.clintAxi4.r.data
   }
   // ---------- 写通道 ---------- //
-  val wAllValid = io.clintAxi.aw.valid && io.clintAxi.w.valid
-  io.clintAxi.aw.ready := wAllValid
-  io.clintAxi.w.ready  := wAllValid
+  val wAllValid = io.clintAxi4.aw.valid && io.clintAxi4.w.valid
+  io.clintAxi4.aw.ready := wAllValid
+  io.clintAxi4.w.ready  := wAllValid
   when(wAllValid) {   
-    io.clintAxi.b.valid := True
-  } elsewhen (io.clintAxi.b.fire) {
-    io.clintAxi.b.valid := False
+    io.clintAxi4.b.valid := True
+  } elsewhen (io.clintAxi4.b.fire) {
+    io.clintAxi4.b.valid := False
   } otherwise {
-    io.clintAxi.b.valid := io.clintAxi.b.valid
+    io.clintAxi4.b.valid := io.clintAxi4.b.valid
   }
  
 }

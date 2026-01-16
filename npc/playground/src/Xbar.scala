@@ -42,9 +42,9 @@ import spinal.lib.bus.amba4.axi._
 
 case class ysyx_23060082_AXI4Xbar() extends Component {
   val io = new Bundle {
-    val ifuAXI4     = slave(Axi4ReadOnly(AxiConfig.axiConfig))
-    val lsuAXI4     = slave(Axi4(AxiConfig.axiConfig))
-    val clintAxi    = master(Axi4(AxiConfig.axiConfig))
+    val ifuAxi4     = slave(Axi4ReadOnly(AxiConfig.axiConfig))
+    val lsuAxi4     = slave(Axi4(AxiConfig.axiConfig))
+    val clintAxi4   = master(Axi4(AxiConfig.axiConfig))
     val externalAxi = master(Axi4(AxiConfig.axiConfig))
   }
 
@@ -58,36 +58,36 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
 
   switch(arbiterState) {
     is(ArbiterState.Idle) {
-      when(io.ifuAXI4.ar.valid) { arbiterState := ArbiterState.IfuUsing }
-      .elsewhen (io.lsuAXI4.ar.valid) { arbiterState := ArbiterState.LsuUsing }
+      when(io.ifuAxi4.ar.valid) { arbiterState := ArbiterState.IfuUsing }
+      .elsewhen (io.lsuAxi4.ar.valid) { arbiterState := ArbiterState.LsuUsing }
       .otherwise( arbiterState := ArbiterState.Idle)
     }
     is (ArbiterState.IfuUsing){
-      when(io.ifuAXI4.r.fire) { arbiterState := ArbiterState.Idle }
+      when(io.ifuAxi4.r.fire) { arbiterState := ArbiterState.Idle }
       .otherwise( arbiterState := ArbiterState.IfuUsing)
     }
     is (ArbiterState.LsuUsing){
-      when(io.lsuAXI4.r.fire) { arbiterState := ArbiterState.Idle }
+      when(io.lsuAxi4.r.fire) { arbiterState := ArbiterState.Idle }
       .otherwise( arbiterState := ArbiterState.LsuUsing)
     }
   }
 
-  axi4Bus.ar.payload  := Mux(arbiterState === ArbiterState.IfuUsing, io.ifuAXI4.ar.payload, io.lsuAXI4.ar.payload)
-  axi4Bus.ar.valid    := (arbiterState === ArbiterState.IfuUsing && io.ifuAXI4.ar.valid) ||
-                         (arbiterState === ArbiterState.LsuUsing && io.lsuAXI4.ar.valid)
-  io.ifuAXI4.ar.ready := (arbiterState === ArbiterState.IfuUsing && axi4Bus.ar.ready) 
-  io.lsuAXI4.ar.ready := (arbiterState === ArbiterState.LsuUsing && axi4Bus.ar.ready) 
+  axi4Bus.ar.payload  := Mux(arbiterState === ArbiterState.IfuUsing, io.ifuAxi4.ar.payload, io.lsuAxi4.ar.payload)
+  axi4Bus.ar.valid    := (arbiterState === ArbiterState.IfuUsing && io.ifuAxi4.ar.valid) ||
+                         (arbiterState === ArbiterState.LsuUsing && io.lsuAxi4.ar.valid)
+  io.ifuAxi4.ar.ready := (arbiterState === ArbiterState.IfuUsing && axi4Bus.ar.ready) 
+  io.lsuAxi4.ar.ready := (arbiterState === ArbiterState.LsuUsing && axi4Bus.ar.ready) 
 
-  io.ifuAXI4.r.payload := axi4Bus.r.payload
-  io.lsuAXI4.r.payload := axi4Bus.r.payload
-  io.ifuAXI4.r.valid := (arbiterState === ArbiterState.IfuUsing && axi4Bus.r.valid)
-  io.lsuAXI4.r.valid := (arbiterState === ArbiterState.LsuUsing && axi4Bus.r.valid)
-  axi4Bus.r.ready    := (arbiterState === ArbiterState.IfuUsing && io.ifuAXI4.r.ready) ||
-                        (arbiterState === ArbiterState.LsuUsing && io.lsuAXI4.r.ready)
+  io.ifuAxi4.r.payload := axi4Bus.r.payload
+  io.lsuAxi4.r.payload := axi4Bus.r.payload
+  io.ifuAxi4.r.valid := (arbiterState === ArbiterState.IfuUsing && axi4Bus.r.valid)
+  io.lsuAxi4.r.valid := (arbiterState === ArbiterState.LsuUsing && axi4Bus.r.valid)
+  axi4Bus.r.ready    := (arbiterState === ArbiterState.IfuUsing && io.ifuAxi4.r.ready) ||
+                        (arbiterState === ArbiterState.LsuUsing && io.lsuAxi4.r.ready)
 
-  axi4Bus.aw <> io.lsuAXI4.aw   // 写通道直连
-  axi4Bus.w <> io.lsuAXI4.w
-  axi4Bus.b <> io.lsuAXI4.b
+  axi4Bus.aw <> io.lsuAxi4.aw   // 写通道直连
+  axi4Bus.w <> io.lsuAxi4.w
+  axi4Bus.b <> io.lsuAxi4.b
 
 // --------------------------------------------------------- crossbar ------------------------------------------------------ //
   object CrossState extends SpinalEnum {              // 定义状态机枚举
@@ -120,44 +120,44 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
 
   // ---------------------------------------------- 系统时钟的总线 ---------------------------------------------- //
   // ------------------------------- 读地址 ------------------------------- //
-  io.clintAxi.ar.valid := (crossState === CrossState.Clint) && axi4Bus.ar.valid   
-  io.clintAxi.ar.payload := axi4Bus.ar.payload
+  io.clintAxi4.ar.valid := (crossState === CrossState.Clint) && axi4Bus.ar.valid   
+  io.clintAxi4.ar.payload := axi4Bus.ar.payload
 
   io.externalAxi.ar.valid := (crossState === CrossState.External) && axi4Bus.ar.valid
   io.externalAxi.ar.payload := axi4Bus.ar
 
-  axi4Bus.ar.ready := (crossState === CrossState.Clint && io.clintAxi.ar.ready) ||
+  axi4Bus.ar.ready := (crossState === CrossState.Clint && io.clintAxi4.ar.ready) ||
                       (crossState === CrossState.External && io.externalAxi.ar.ready)
   // ------------------------------- 读数据 ------------------------------- //
-  axi4Bus.r.valid  := (crossState === CrossState.Clint && io.clintAxi.r.valid) ||
+  axi4Bus.r.valid  := (crossState === CrossState.Clint && io.clintAxi4.r.valid) ||
                       (crossState === CrossState.External && io.externalAxi.r.valid)
-  axi4Bus.r.payload := Mux(crossState === CrossState.Clint, io.clintAxi.r.payload, io.externalAxi.r.payload)
-  io.clintAxi.r.ready := (crossState === CrossState.Clint) && axi4Bus.r.ready
+  axi4Bus.r.payload := Mux(crossState === CrossState.Clint, io.clintAxi4.r.payload, io.externalAxi.r.payload)
+  io.clintAxi4.r.ready := (crossState === CrossState.Clint) && axi4Bus.r.ready
 
   io.externalAxi.r.ready := (crossState === CrossState.External) && axi4Bus.r.ready
   // ------------------------------- 写地址 ------------------------------- //
-  io.clintAxi.aw.valid := (crossState === CrossState.Clint && axi4Bus.aw.valid)
-  io.clintAxi.aw.payload := axi4Bus.aw.payload
+  io.clintAxi4.aw.valid := (crossState === CrossState.Clint && axi4Bus.aw.valid)
+  io.clintAxi4.aw.payload := axi4Bus.aw.payload
 
   io.externalAxi.aw.valid := (crossState === CrossState.External && axi4Bus.aw.valid)
   io.externalAxi.aw.payload := axi4Bus.aw.payload
 
-  axi4Bus.aw.ready := (crossState === CrossState.Clint && io.clintAxi.aw.ready) ||
+  axi4Bus.aw.ready := (crossState === CrossState.Clint && io.clintAxi4.aw.ready) ||
                       (crossState === CrossState.External && io.externalAxi.aw.ready)
   // ------------------------------- 写数据 ------------------------------- //
-  io.clintAxi.w.valid := (crossState === CrossState.Clint && axi4Bus.w.valid)
-  io.clintAxi.w.payload := axi4Bus.w.payload
+  io.clintAxi4.w.valid := (crossState === CrossState.Clint && axi4Bus.w.valid)
+  io.clintAxi4.w.payload := axi4Bus.w.payload
 
   io.externalAxi.w.valid := (crossState === CrossState.External && axi4Bus.w.valid)
   io.externalAxi.w.payload := axi4Bus.w.payload
 
-  axi4Bus.w.ready := (crossState === CrossState.Clint && io.clintAxi.w.ready) ||
+  axi4Bus.w.ready := (crossState === CrossState.Clint && io.clintAxi4.w.ready) ||
                      (crossState === CrossState.External && io.externalAxi.w.ready)
   // ------------------------------- 写响应 ------------------------------- //
-  axi4Bus.b.valid := (crossState === CrossState.Clint && io.clintAxi.b.valid) ||
+  axi4Bus.b.valid := (crossState === CrossState.Clint && io.clintAxi4.b.valid) ||
                       (crossState === CrossState.External && io.externalAxi.b.valid)
-  axi4Bus.b.payload := Mux(crossState === CrossState.Clint, io.clintAxi.b.payload, io.externalAxi.b.payload)
-  io.clintAxi.b.ready := (crossState === CrossState.Clint && axi4Bus.b.ready)
+  axi4Bus.b.payload := Mux(crossState === CrossState.Clint, io.clintAxi4.b.payload, io.externalAxi.b.payload)
+  io.clintAxi4.b.ready := (crossState === CrossState.Clint && axi4Bus.b.ready)
 
   io.externalAxi.b.ready := (crossState === CrossState.External && axi4Bus.b.ready)
 }

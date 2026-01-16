@@ -3,7 +3,7 @@ package playground
 import spinal.core._
 import spinal.lib._    // 使用spinal的模块库
 
-case class Decoder() extends Component {
+case class ysyx_23060082_Decoder() extends Component {
   val io = new Bundle {
     val instr       = in  UInt(32 bits)
     val ctrl        = out(Ctrl())
@@ -15,7 +15,7 @@ case class Decoder() extends Component {
 
   val op   = instr( 6 downto  0)     
   val func3= instr(14 downto 12)
-  val func7= instr(31 downto 25)
+  // val func7= instr(31 downto 25)
 
   io.ctrl.rf_si.rf_write_addr := instr(11 downto 7)   // 为了写起来简洁，写寄存器地址在此赋值
 // --------------------------------------------------------- 指令匹配 --------------------------------------------------------- //    

@@ -56,7 +56,7 @@ case class ysyx_23060082_IDU() extends Component {
   }
 
   val instr = io.input.instr
-  val decoder = Decoder()
+  val decoder = ysyx_23060082_Decoder()
   decoder.instr := instr         
   // ----------------------- 用于握手的部分 ----------------------- //
   val willValid = True

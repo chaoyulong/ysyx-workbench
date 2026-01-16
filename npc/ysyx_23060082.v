@@ -1,6 +1,6 @@
 // Generator : SpinalHDL v1.12.3    git head : 591e64062329e5e2e2b81f4d52422948053edb97
 // Component : ysyx_23060082
-// Git hash  : 2ee8a9f9599068a2810e9220cd86ff7977b0432e
+// Git hash  : 6d6a2c73ce94b582f92311d694dd3f8e5602c1fe
 
 `timescale 1ns/1ps
 
@@ -1179,7 +1179,7 @@ module ysyx_23060082_WBU (
   assign io_output_payload_pc_next = payloadReg_pc_next;
   assign io_rf_write_addr = payloadReg_rf_ctrl_rf_write_addr;
   assign io_rf_write_en = (payloadReg_rf_ctrl_regWr && validReg);
-  assign io_rf_write_data = ((io_input_payload_rf_ctrl_mem2reg || io_input_payload_rf_ctrl_csr2reg) ? io_input_payload_mem_data_out : io_input_payload_alu_data_out);
+  assign io_rf_write_data = ((payloadReg_rf_ctrl_mem2reg || payloadReg_rf_ctrl_csr2reg) ? payloadReg_mem_data_out : payloadReg_alu_data_out);
   assign io_output_fire = (io_output_valid && io_output_ready);
   assign io_output_valid = outValid;
   always @(posedge clock) begin

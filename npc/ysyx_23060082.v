@@ -1,6 +1,6 @@
 // Generator : SpinalHDL v1.12.3    git head : 591e64062329e5e2e2b81f4d52422948053edb97
 // Component : ysyx_23060082
-// Git hash  : fe882b7639252b2eb71b239234e2e9ca804c9e25
+// Git hash  : 33870509f38696b4cba42d002017b691028f59ff
 
 `timescale 1ns/1ps
 
@@ -2607,7 +2607,6 @@ module Decoder (
   wire       [6:0]    op;
   wire       [2:0]    func3;
   wire       [6:0]    func7;
-  wire                i_add;
   wire                i_sub;
   wire                i_sll;
   wire                i_slt;
@@ -2617,7 +2616,6 @@ module Decoder (
   wire                i_sra;
   wire                i_or;
   wire                i_and;
-  wire                i_addi;
   wire                i_slli;
   wire                i_slti;
   wire                i_sltiu;
@@ -2682,7 +2680,6 @@ module Decoder (
   assign func3 = io_instr[14 : 12];
   assign func7 = io_instr[31 : 25];
   assign io_ctrl_rf_si_rf_write_addr = io_instr[11 : 7];
-  assign i_add = ((i & 32'hfe00707f) == 32'h00000033);
   assign i_sub = ((i & 32'hfe00707f) == 32'h40000033);
   assign i_sll = ((i & 32'hfe00707f) == 32'h00001033);
   assign i_slt = ((i & 32'hfe00707f) == 32'h00002033);
@@ -2692,7 +2689,6 @@ module Decoder (
   assign i_sra = ((i & 32'hfe00707f) == 32'h40005033);
   assign i_or = ((i & 32'hfe00707f) == 32'h00006033);
   assign i_and = ((i & 32'hfe00707f) == 32'h00007033);
-  assign i_addi = ((i & 32'h0000707f) == 32'h00000013);
   assign i_slli = ((i & 32'hfe00707f) == 32'h00001013);
   assign i_slti = ((i & 32'h0000707f) == 32'h00002013);
   assign i_sltiu = ((i & 32'h0000707f) == 32'h00003013);

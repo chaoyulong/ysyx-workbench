@@ -12,28 +12,14 @@ Area heap = RANGE(&_heap_start, &_heap_end);
 
 static const char mainargs[MAINARGS_MAX_LEN] = TOSTRING(MAINARGS_PLACEHOLDER); // defined in CFLAGS
 
-
-// 二级bootlader的首尾
-extern char _ssbl_start;
-extern char _ssbl_end;
-extern char _ssbl_load_start;
-// // 各个段的首尾
-extern char _text_start;
-extern char _text_end;
-extern char _rodata_start;
-extern char _rodata_end;
-extern char _data_start;
-extern char _data_end;
-extern char _bss_start;
-extern char _bss_end;
-extern char _text_load_start;
-extern char _rodata_load_start;
-extern char _data_load_start;
-
 // 一级bootloader，将二级bootloader装载进sram
 void _first_stage_bootloader (void) __attribute__ ((section ("fsbl")));
 void _first_stage_bootloader() 
 {
+  // 二级bootlader的首尾
+  extern char _ssbl_start;
+  extern char _ssbl_end;
+  extern char _ssbl_load_start;
   uintptr_t i, n;
 
   n = (uintptr_t)(&_ssbl_end - &_ssbl_start);
@@ -47,6 +33,18 @@ void _first_stage_bootloader()
 void _second_stage_bootloader (void) __attribute__ ((section ("ssbl")));
 void _second_stage_bootloader() 
 {
+  // // 各个段的首尾
+  extern char _text_start;
+  extern char _text_end;
+  extern char _rodata_start;
+  extern char _rodata_end;
+  extern char _data_start;
+  extern char _data_end;
+  extern char _bss_start;
+  extern char _bss_end;
+  extern char _text_load_start;
+  extern char _rodata_load_start;
+  extern char _data_load_start;
   uintptr_t i, n;
   
   n = (uintptr_t)(&_text_end - &_text_start);
@@ -70,7 +68,7 @@ void _second_stage_bootloader()
   }
 
 
-// #define __INSERT_EXTRA__
+#define __INSERT_EXTRA__
 
 #ifdef __INSERT_EXTRA__
   extern char _data_extra_start;

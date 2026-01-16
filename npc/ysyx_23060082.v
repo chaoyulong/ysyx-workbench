@@ -1,6 +1,6 @@
 // Generator : SpinalHDL v1.12.3    git head : 591e64062329e5e2e2b81f4d52422948053edb97
 // Component : ysyx_23060082
-// Git hash  : 6d6a2c73ce94b582f92311d694dd3f8e5602c1fe
+// Git hash  : fe882b7639252b2eb71b239234e2e9ca804c9e25
 
 `timescale 1ns/1ps
 
@@ -742,6 +742,7 @@ module ysyx_23060082_Clint (
   assign when_23060082_l137 = (io_clintAxi_ar_fire && (io_clintAxi_ar_payload_addr == 32'h02000004));
   assign io_clintAxi_ar_ready = io_clintAxi_ar_valid;
   assign io_clintAxi_r_fire = (io_clintAxi_r_valid && io_clintAxi_r_ready);
+  assign io_clintAxi_r_payload_last = io_clintAxi_r_valid;
   always @(*) begin
     case(io_clintAxi_ar_payload_addr)
       32'h02000004 : begin
@@ -2625,14 +2626,6 @@ module Decoder (
   wire                i_srai;
   wire                i_ori;
   wire                i_andi;
-  wire                i_lb;
-  wire                i_lh;
-  wire                i_lw;
-  wire                i_lbu;
-  wire                i_lhu;
-  wire                i_sb;
-  wire                i_sh;
-  wire                i_sw;
   wire                i_beq;
   wire                i_bne;
   wire                i_blt;
@@ -2708,14 +2701,6 @@ module Decoder (
   assign i_srai = ((i & 32'hfe00707f) == 32'h40005013);
   assign i_ori = ((i & 32'h0000707f) == 32'h00006013);
   assign i_andi = ((i & 32'h0000707f) == 32'h00007013);
-  assign i_lb = ((i & 32'h0000707f) == 32'h00000003);
-  assign i_lh = ((i & 32'h0000707f) == 32'h00001003);
-  assign i_lw = ((i & 32'h0000707f) == 32'h00002003);
-  assign i_lbu = ((i & 32'h0000707f) == 32'h00004003);
-  assign i_lhu = ((i & 32'h0000707f) == 32'h00005003);
-  assign i_sb = ((i & 32'h0000707f) == 32'h00000023);
-  assign i_sh = ((i & 32'h0000707f) == 32'h00001023);
-  assign i_sw = ((i & 32'h0000707f) == 32'h00002023);
   assign i_beq = ((i & 32'h0000707f) == 32'h00000063);
   assign i_bne = ((i & 32'h0000707f) == 32'h00001063);
   assign i_blt = ((i & 32'h0000707f) == 32'h00004063);

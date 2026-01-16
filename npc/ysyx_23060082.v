@@ -1,6 +1,6 @@
 // Generator : SpinalHDL v1.12.3    git head : 591e64062329e5e2e2b81f4d52422948053edb97
 // Component : ysyx_23060082
-// Git hash  : 33870509f38696b4cba42d002017b691028f59ff
+// Git hash  : 51aca768e60dbae7b3b7b8d7d63861b753ec0bf3
 
 `timescale 1ns/1ps
 
@@ -1632,44 +1632,44 @@ module ysyx_23060082_IDU (
   input  wire [31:0]   io_rfReadData2
 );
 
-  wire                decoder_1_io_ctrl_rf_si_mem2reg;
-  wire                decoder_1_io_ctrl_rf_si_csr2reg;
-  wire                decoder_1_io_ctrl_rf_si_regWr;
-  wire       [4:0]    decoder_1_io_ctrl_rf_si_rf_write_addr;
-  wire                decoder_1_io_ctrl_alu_si_alu_asrc;
-  wire       [1:0]    decoder_1_io_ctrl_alu_si_alu_bsrc;
-  wire       [3:0]    decoder_1_io_ctrl_alu_si_alu_ctr;
-  wire       [2:0]    decoder_1_io_ctrl_alu_si_branch;
-  wire                decoder_1_io_ctrl_mem_si_memWr;
-  wire       [2:0]    decoder_1_io_ctrl_mem_si_memOp;
-  wire       [2:0]    decoder_1_io_ctrl_csr_si_csr_cmd;
-  wire                decoder_1_io_ctrl_csr_si_trap_enter;
-  wire                decoder_1_io_ctrl_csr_si_trap_exit;
-  wire       [31:0]   decoder_1_io_imm;
+  wire                decoder_io_ctrl_rf_si_mem2reg;
+  wire                decoder_io_ctrl_rf_si_csr2reg;
+  wire                decoder_io_ctrl_rf_si_regWr;
+  wire       [4:0]    decoder_io_ctrl_rf_si_rf_write_addr;
+  wire                decoder_io_ctrl_alu_si_alu_asrc;
+  wire       [1:0]    decoder_io_ctrl_alu_si_alu_bsrc;
+  wire       [3:0]    decoder_io_ctrl_alu_si_alu_ctr;
+  wire       [2:0]    decoder_io_ctrl_alu_si_branch;
+  wire                decoder_io_ctrl_mem_si_memWr;
+  wire       [2:0]    decoder_io_ctrl_mem_si_memOp;
+  wire       [2:0]    decoder_io_ctrl_csr_si_csr_cmd;
+  wire                decoder_io_ctrl_csr_si_trap_enter;
+  wire                decoder_io_ctrl_csr_si_trap_exit;
+  wire       [31:0]   decoder_io_imm;
   wire                willValid;
   reg        [4:0]    _zz_io_rfReadAddr1;
 
-  Decoder decoder_1 (
-    .io_instr                    (io_input_payload_instr[31:0]              ), //i
-    .io_ctrl_rf_si_mem2reg       (decoder_1_io_ctrl_rf_si_mem2reg           ), //o
-    .io_ctrl_rf_si_csr2reg       (decoder_1_io_ctrl_rf_si_csr2reg           ), //o
-    .io_ctrl_rf_si_regWr         (decoder_1_io_ctrl_rf_si_regWr             ), //o
-    .io_ctrl_rf_si_rf_write_addr (decoder_1_io_ctrl_rf_si_rf_write_addr[4:0]), //o
-    .io_ctrl_alu_si_alu_asrc     (decoder_1_io_ctrl_alu_si_alu_asrc         ), //o
-    .io_ctrl_alu_si_alu_bsrc     (decoder_1_io_ctrl_alu_si_alu_bsrc[1:0]    ), //o
-    .io_ctrl_alu_si_alu_ctr      (decoder_1_io_ctrl_alu_si_alu_ctr[3:0]     ), //o
-    .io_ctrl_alu_si_branch       (decoder_1_io_ctrl_alu_si_branch[2:0]      ), //o
-    .io_ctrl_mem_si_memWr        (decoder_1_io_ctrl_mem_si_memWr            ), //o
-    .io_ctrl_mem_si_memOp        (decoder_1_io_ctrl_mem_si_memOp[2:0]       ), //o
-    .io_ctrl_csr_si_csr_cmd      (decoder_1_io_ctrl_csr_si_csr_cmd[2:0]     ), //o
-    .io_ctrl_csr_si_trap_enter   (decoder_1_io_ctrl_csr_si_trap_enter       ), //o
-    .io_ctrl_csr_si_trap_exit    (decoder_1_io_ctrl_csr_si_trap_exit        ), //o
-    .io_imm                      (decoder_1_io_imm[31:0]                    )  //o
+  ysyx_23060082_Decoder decoder (
+    .io_instr                    (io_input_payload_instr[31:0]            ), //i
+    .io_ctrl_rf_si_mem2reg       (decoder_io_ctrl_rf_si_mem2reg           ), //o
+    .io_ctrl_rf_si_csr2reg       (decoder_io_ctrl_rf_si_csr2reg           ), //o
+    .io_ctrl_rf_si_regWr         (decoder_io_ctrl_rf_si_regWr             ), //o
+    .io_ctrl_rf_si_rf_write_addr (decoder_io_ctrl_rf_si_rf_write_addr[4:0]), //o
+    .io_ctrl_alu_si_alu_asrc     (decoder_io_ctrl_alu_si_alu_asrc         ), //o
+    .io_ctrl_alu_si_alu_bsrc     (decoder_io_ctrl_alu_si_alu_bsrc[1:0]    ), //o
+    .io_ctrl_alu_si_alu_ctr      (decoder_io_ctrl_alu_si_alu_ctr[3:0]     ), //o
+    .io_ctrl_alu_si_branch       (decoder_io_ctrl_alu_si_branch[2:0]      ), //o
+    .io_ctrl_mem_si_memWr        (decoder_io_ctrl_mem_si_memWr            ), //o
+    .io_ctrl_mem_si_memOp        (decoder_io_ctrl_mem_si_memOp[2:0]       ), //o
+    .io_ctrl_csr_si_csr_cmd      (decoder_io_ctrl_csr_si_csr_cmd[2:0]     ), //o
+    .io_ctrl_csr_si_trap_enter   (decoder_io_ctrl_csr_si_trap_enter       ), //o
+    .io_ctrl_csr_si_trap_exit    (decoder_io_ctrl_csr_si_trap_exit        ), //o
+    .io_imm                      (decoder_io_imm[31:0]                    )  //o
   );
   assign willValid = 1'b1;
   assign io_output_valid = (io_input_valid && willValid);
   always @(*) begin
-    case(decoder_1_io_ctrl_csr_si_trap_enter)
+    case(decoder_io_ctrl_csr_si_trap_enter)
       1'b1 : begin
         _zz_io_rfReadAddr1 = 5'h0f;
       end
@@ -1684,20 +1684,20 @@ module ysyx_23060082_IDU (
   assign io_output_payload_pc = io_input_payload_pc;
   assign io_output_payload_rfReadData1 = io_rfReadData1;
   assign io_output_payload_rfReadData2 = io_rfReadData2;
-  assign io_output_payload_ctrl_rf_si_mem2reg = decoder_1_io_ctrl_rf_si_mem2reg;
-  assign io_output_payload_ctrl_rf_si_csr2reg = decoder_1_io_ctrl_rf_si_csr2reg;
-  assign io_output_payload_ctrl_rf_si_regWr = decoder_1_io_ctrl_rf_si_regWr;
-  assign io_output_payload_ctrl_rf_si_rf_write_addr = decoder_1_io_ctrl_rf_si_rf_write_addr;
-  assign io_output_payload_ctrl_alu_si_alu_asrc = decoder_1_io_ctrl_alu_si_alu_asrc;
-  assign io_output_payload_ctrl_alu_si_alu_bsrc = decoder_1_io_ctrl_alu_si_alu_bsrc;
-  assign io_output_payload_ctrl_alu_si_alu_ctr = decoder_1_io_ctrl_alu_si_alu_ctr;
-  assign io_output_payload_ctrl_alu_si_branch = decoder_1_io_ctrl_alu_si_branch;
-  assign io_output_payload_ctrl_mem_si_memWr = decoder_1_io_ctrl_mem_si_memWr;
-  assign io_output_payload_ctrl_mem_si_memOp = decoder_1_io_ctrl_mem_si_memOp;
-  assign io_output_payload_ctrl_csr_si_csr_cmd = decoder_1_io_ctrl_csr_si_csr_cmd;
-  assign io_output_payload_ctrl_csr_si_trap_enter = decoder_1_io_ctrl_csr_si_trap_enter;
-  assign io_output_payload_ctrl_csr_si_trap_exit = decoder_1_io_ctrl_csr_si_trap_exit;
-  assign io_output_payload_imm = decoder_1_io_imm;
+  assign io_output_payload_ctrl_rf_si_mem2reg = decoder_io_ctrl_rf_si_mem2reg;
+  assign io_output_payload_ctrl_rf_si_csr2reg = decoder_io_ctrl_rf_si_csr2reg;
+  assign io_output_payload_ctrl_rf_si_regWr = decoder_io_ctrl_rf_si_regWr;
+  assign io_output_payload_ctrl_rf_si_rf_write_addr = decoder_io_ctrl_rf_si_rf_write_addr;
+  assign io_output_payload_ctrl_alu_si_alu_asrc = decoder_io_ctrl_alu_si_alu_asrc;
+  assign io_output_payload_ctrl_alu_si_alu_bsrc = decoder_io_ctrl_alu_si_alu_bsrc;
+  assign io_output_payload_ctrl_alu_si_alu_ctr = decoder_io_ctrl_alu_si_alu_ctr;
+  assign io_output_payload_ctrl_alu_si_branch = decoder_io_ctrl_alu_si_branch;
+  assign io_output_payload_ctrl_mem_si_memWr = decoder_io_ctrl_mem_si_memWr;
+  assign io_output_payload_ctrl_mem_si_memOp = decoder_io_ctrl_mem_si_memOp;
+  assign io_output_payload_ctrl_csr_si_csr_cmd = decoder_io_ctrl_csr_si_csr_cmd;
+  assign io_output_payload_ctrl_csr_si_trap_enter = decoder_io_ctrl_csr_si_trap_enter;
+  assign io_output_payload_ctrl_csr_si_trap_exit = decoder_io_ctrl_csr_si_trap_exit;
+  assign io_output_payload_imm = decoder_io_imm;
 
 endmodule
 
@@ -2576,7 +2576,7 @@ module ysyx_23060082_ALU (
 
 endmodule
 
-module Decoder (
+module ysyx_23060082_Decoder (
   input  wire [31:0]   io_instr,
   output wire          io_ctrl_rf_si_mem2reg,
   output wire          io_ctrl_rf_si_csr2reg,
@@ -2606,7 +2606,6 @@ module Decoder (
   wire       [31:0]   i;
   wire       [6:0]    op;
   wire       [2:0]    func3;
-  wire       [6:0]    func7;
   wire                i_sub;
   wire                i_sll;
   wire                i_slt;
@@ -2678,7 +2677,6 @@ module Decoder (
   assign i = io_instr;
   assign op = io_instr[6 : 0];
   assign func3 = io_instr[14 : 12];
-  assign func7 = io_instr[31 : 25];
   assign io_ctrl_rf_si_rf_write_addr = io_instr[11 : 7];
   assign i_sub = ((i & 32'hfe00707f) == 32'h40000033);
   assign i_sll = ((i & 32'hfe00707f) == 32'h00001033);

@@ -1,6 +1,6 @@
 // Generator : SpinalHDL v1.12.3    git head : 591e64062329e5e2e2b81f4d52422948053edb97
 // Component : ysyx_23060082
-// Git hash  : 51aca768e60dbae7b3b7b8d7d63861b753ec0bf3
+// Git hash  : 0b4397d5c7461667eef51d47e179e1c9db00495b
 
 `timescale 1ns/1ps
 
@@ -452,7 +452,6 @@ module ysyx_23060082 (
     .io_ifuAXI4_r_payload_id         (xbar_io_ifuAXI4_r_payload_id[3:0]        ), //o
     .io_ifuAXI4_r_payload_resp       (xbar_io_ifuAXI4_r_payload_resp[1:0]      ), //o
     .io_ifuAXI4_r_payload_last       (xbar_io_ifuAXI4_r_payload_last           ), //o
-    .io_ifuAXI4Req                   (                                         ), //i
     .io_lsuAXI4_aw_valid             (lsu_io_axi4_aw_valid                     ), //i
     .io_lsuAXI4_aw_ready             (xbar_io_lsuAXI4_aw_ready                 ), //o
     .io_lsuAXI4_aw_payload_addr      (lsu_io_axi4_aw_payload_addr[31:0]        ), //i
@@ -482,7 +481,6 @@ module ysyx_23060082 (
     .io_lsuAXI4_r_payload_id         (xbar_io_lsuAXI4_r_payload_id[3:0]        ), //o
     .io_lsuAXI4_r_payload_resp       (xbar_io_lsuAXI4_r_payload_resp[1:0]      ), //o
     .io_lsuAXI4_r_payload_last       (xbar_io_lsuAXI4_r_payload_last           ), //o
-    .io_lsuAXI4Req                   (                                         ), //i
     .io_clintAxi_aw_valid            (xbar_io_clintAxi_aw_valid                ), //o
     .io_clintAxi_aw_ready            (clint_io_clintAxi_aw_ready               ), //i
     .io_clintAxi_aw_payload_addr     (xbar_io_clintAxi_aw_payload_addr[31:0]   ), //o
@@ -818,7 +816,6 @@ module ysyx_23060082_AXI4Xbar (
   output wire [3:0]    io_ifuAXI4_r_payload_id,
   output wire [1:0]    io_ifuAXI4_r_payload_resp,
   output wire          io_ifuAXI4_r_payload_last,
-  input  wire          io_ifuAXI4Req,
   input  wire          io_lsuAXI4_aw_valid,
   output wire          io_lsuAXI4_aw_ready,
   input  wire [31:0]   io_lsuAXI4_aw_payload_addr,
@@ -848,7 +845,6 @@ module ysyx_23060082_AXI4Xbar (
   output wire [3:0]    io_lsuAXI4_r_payload_id,
   output wire [1:0]    io_lsuAXI4_r_payload_resp,
   output wire          io_lsuAXI4_r_payload_last,
-  input  wire          io_lsuAXI4Req,
   output wire          io_clintAxi_aw_valid,
   input  wire          io_clintAxi_aw_ready,
   output wire [31:0]   io_clintAxi_aw_payload_addr,
@@ -951,11 +947,11 @@ module ysyx_23060082_AXI4Xbar (
   wire                io_lsuAXI4_r_fire;
   wire                _zz_axi4Bus_ar_payload_addr;
   reg        [1:0]    crossState_1;
-  wire                when_Xbar_l102;
-  wire                when_Xbar_l108;
+  wire                when_Xbar_l100;
+  wire                when_Xbar_l106;
   wire                axi4Bus_r_fire;
   wire                axi4Bus_b_fire;
-  wire                when_Xbar_l118;
+  wire                when_Xbar_l116;
   wire                _zz_axi4Bus_r_payload_data;
   wire                _zz_axi4Bus_b_payload_id;
   `ifndef SYNTHESIS
@@ -1021,11 +1017,11 @@ module ysyx_23060082_AXI4Xbar (
   assign axi4Bus_b_ready = io_lsuAXI4_b_ready;
   assign io_lsuAXI4_b_payload_id = axi4Bus_b_payload_id;
   assign io_lsuAXI4_b_payload_resp = axi4Bus_b_payload_resp;
-  assign when_Xbar_l102 = ((32'h02000000 <= axi4Bus_ar_payload_addr) && (axi4Bus_ar_payload_addr <= 32'h0200ffff));
-  assign when_Xbar_l108 = ((32'h02000000 <= axi4Bus_aw_payload_addr) && (axi4Bus_aw_payload_addr <= 32'h0200ffff));
+  assign when_Xbar_l100 = ((32'h02000000 <= axi4Bus_ar_payload_addr) && (axi4Bus_ar_payload_addr <= 32'h0200ffff));
+  assign when_Xbar_l106 = ((32'h02000000 <= axi4Bus_aw_payload_addr) && (axi4Bus_aw_payload_addr <= 32'h0200ffff));
   assign axi4Bus_r_fire = (axi4Bus_r_valid && axi4Bus_r_ready);
   assign axi4Bus_b_fire = (axi4Bus_b_valid && axi4Bus_b_ready);
-  assign when_Xbar_l118 = (axi4Bus_r_fire || axi4Bus_b_fire);
+  assign when_Xbar_l116 = (axi4Bus_r_fire || axi4Bus_b_fire);
   assign io_clintAxi_ar_valid = ((crossState_1 == CrossState_Clint) && axi4Bus_ar_valid);
   assign io_clintAxi_ar_payload_addr = axi4Bus_ar_payload_addr;
   assign io_clintAxi_ar_payload_id = axi4Bus_ar_payload_id;
@@ -1110,14 +1106,14 @@ module ysyx_23060082_AXI4Xbar (
       case(crossState_1)
         CrossState_Idle : begin
           if(axi4Bus_ar_valid) begin
-            if(when_Xbar_l102) begin
+            if(when_Xbar_l100) begin
               crossState_1 <= CrossState_Clint;
             end else begin
               crossState_1 <= CrossState_External;
             end
           end else begin
             if(axi4Bus_aw_valid) begin
-              if(when_Xbar_l108) begin
+              if(when_Xbar_l106) begin
                 crossState_1 <= CrossState_Clint;
               end else begin
                 crossState_1 <= CrossState_External;
@@ -1128,7 +1124,7 @@ module ysyx_23060082_AXI4Xbar (
           end
         end
         default : begin
-          if(when_Xbar_l118) begin
+          if(when_Xbar_l116) begin
             crossState_1 <= CrossState_Idle;
           end else begin
             crossState_1 <= crossState_1;

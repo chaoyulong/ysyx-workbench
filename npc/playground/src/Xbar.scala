@@ -45,7 +45,7 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
     val ifuAxi4     = slave(Axi4ReadOnly(AxiConfig.axiConfig))
     val lsuAxi4     = slave(Axi4(AxiConfig.axiConfig))
     val clintAxi4   = master(Axi4(AxiConfig.axiConfig))
-    val externalAxi = master(Axi4(AxiConfig.axiConfig))
+    val externalAxi4= master(Axi4(AxiConfig.axiConfig))
   }
 
   val busAxi4  = Axi4(AxiConfig.axiConfig)
@@ -123,41 +123,41 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
   io.clintAxi4.ar.valid := (crossState === CrossState.Clint) && busAxi4.ar.valid   
   io.clintAxi4.ar.payload := busAxi4.ar.payload
 
-  io.externalAxi.ar.valid := (crossState === CrossState.External) && busAxi4.ar.valid
-  io.externalAxi.ar.payload := busAxi4.ar
+  io.externalAxi4.ar.valid := (crossState === CrossState.External) && busAxi4.ar.valid
+  io.externalAxi4.ar.payload := busAxi4.ar
 
   busAxi4.ar.ready := (crossState === CrossState.Clint && io.clintAxi4.ar.ready) ||
-                      (crossState === CrossState.External && io.externalAxi.ar.ready)
+                      (crossState === CrossState.External && io.externalAxi4.ar.ready)
   // ------------------------------- 读数据 ------------------------------- //
   busAxi4.r.valid  := (crossState === CrossState.Clint && io.clintAxi4.r.valid) ||
-                      (crossState === CrossState.External && io.externalAxi.r.valid)
-  busAxi4.r.payload := Mux(crossState === CrossState.Clint, io.clintAxi4.r.payload, io.externalAxi.r.payload)
+                      (crossState === CrossState.External && io.externalAxi4.r.valid)
+  busAxi4.r.payload := Mux(crossState === CrossState.Clint, io.clintAxi4.r.payload, io.externalAxi4.r.payload)
   io.clintAxi4.r.ready := (crossState === CrossState.Clint) && busAxi4.r.ready
 
-  io.externalAxi.r.ready := (crossState === CrossState.External) && busAxi4.r.ready
+  io.externalAxi4.r.ready := (crossState === CrossState.External) && busAxi4.r.ready
   // ------------------------------- 写地址 ------------------------------- //
   io.clintAxi4.aw.valid := (crossState === CrossState.Clint && busAxi4.aw.valid)
   io.clintAxi4.aw.payload := busAxi4.aw.payload
 
-  io.externalAxi.aw.valid := (crossState === CrossState.External && busAxi4.aw.valid)
-  io.externalAxi.aw.payload := busAxi4.aw.payload
+  io.externalAxi4.aw.valid := (crossState === CrossState.External && busAxi4.aw.valid)
+  io.externalAxi4.aw.payload := busAxi4.aw.payload
 
   busAxi4.aw.ready := (crossState === CrossState.Clint && io.clintAxi4.aw.ready) ||
-                      (crossState === CrossState.External && io.externalAxi.aw.ready)
+                      (crossState === CrossState.External && io.externalAxi4.aw.ready)
   // ------------------------------- 写数据 ------------------------------- //
   io.clintAxi4.w.valid := (crossState === CrossState.Clint && busAxi4.w.valid)
   io.clintAxi4.w.payload := busAxi4.w.payload
 
-  io.externalAxi.w.valid := (crossState === CrossState.External && busAxi4.w.valid)
-  io.externalAxi.w.payload := busAxi4.w.payload
+  io.externalAxi4.w.valid := (crossState === CrossState.External && busAxi4.w.valid)
+  io.externalAxi4.w.payload := busAxi4.w.payload
 
   busAxi4.w.ready := (crossState === CrossState.Clint && io.clintAxi4.w.ready) ||
-                     (crossState === CrossState.External && io.externalAxi.w.ready)
+                     (crossState === CrossState.External && io.externalAxi4.w.ready)
   // ------------------------------- 写响应 ------------------------------- //
   busAxi4.b.valid := (crossState === CrossState.Clint && io.clintAxi4.b.valid) ||
-                      (crossState === CrossState.External && io.externalAxi.b.valid)
-  busAxi4.b.payload := Mux(crossState === CrossState.Clint, io.clintAxi4.b.payload, io.externalAxi.b.payload)
+                      (crossState === CrossState.External && io.externalAxi4.b.valid)
+  busAxi4.b.payload := Mux(crossState === CrossState.Clint, io.clintAxi4.b.payload, io.externalAxi4.b.payload)
   io.clintAxi4.b.ready := (crossState === CrossState.Clint && busAxi4.b.ready)
 
-  io.externalAxi.b.ready := (crossState === CrossState.External && busAxi4.b.ready)
+  io.externalAxi4.b.ready := (crossState === CrossState.External && busAxi4.b.ready)
 }

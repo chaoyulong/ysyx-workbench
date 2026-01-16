@@ -1,6 +1,6 @@
 // Generator : SpinalHDL v1.12.3    git head : 591e64062329e5e2e2b81f4d52422948053edb97
 // Component : ysyx_23060082
-// Git hash  : 0858e59e030d41e478a1392ab79bae03a68b150b
+// Git hash  : 38dfb400b56f353ec4ccc868116a338c0b8271cf
 
 `timescale 1ns/1ps
 
@@ -188,24 +188,24 @@ module ysyx_23060082 (
   wire                xbar_io_clintAxi4_w_payload_last;
   wire                xbar_io_clintAxi4_r_ready;
   wire                xbar_io_clintAxi4_b_ready;
-  wire                xbar_io_externalAxi_ar_valid;
-  wire       [31:0]   xbar_io_externalAxi_ar_payload_addr;
-  wire       [3:0]    xbar_io_externalAxi_ar_payload_id;
-  wire       [7:0]    xbar_io_externalAxi_ar_payload_len;
-  wire       [2:0]    xbar_io_externalAxi_ar_payload_size;
-  wire       [1:0]    xbar_io_externalAxi_ar_payload_burst;
-  wire                xbar_io_externalAxi_aw_valid;
-  wire       [31:0]   xbar_io_externalAxi_aw_payload_addr;
-  wire       [3:0]    xbar_io_externalAxi_aw_payload_id;
-  wire       [7:0]    xbar_io_externalAxi_aw_payload_len;
-  wire       [2:0]    xbar_io_externalAxi_aw_payload_size;
-  wire       [1:0]    xbar_io_externalAxi_aw_payload_burst;
-  wire                xbar_io_externalAxi_w_valid;
-  wire       [31:0]   xbar_io_externalAxi_w_payload_data;
-  wire       [3:0]    xbar_io_externalAxi_w_payload_strb;
-  wire                xbar_io_externalAxi_w_payload_last;
-  wire                xbar_io_externalAxi_r_ready;
-  wire                xbar_io_externalAxi_b_ready;
+  wire                xbar_io_externalAxi4_ar_valid;
+  wire       [31:0]   xbar_io_externalAxi4_ar_payload_addr;
+  wire       [3:0]    xbar_io_externalAxi4_ar_payload_id;
+  wire       [7:0]    xbar_io_externalAxi4_ar_payload_len;
+  wire       [2:0]    xbar_io_externalAxi4_ar_payload_size;
+  wire       [1:0]    xbar_io_externalAxi4_ar_payload_burst;
+  wire                xbar_io_externalAxi4_aw_valid;
+  wire       [31:0]   xbar_io_externalAxi4_aw_payload_addr;
+  wire       [3:0]    xbar_io_externalAxi4_aw_payload_id;
+  wire       [7:0]    xbar_io_externalAxi4_aw_payload_len;
+  wire       [2:0]    xbar_io_externalAxi4_aw_payload_size;
+  wire       [1:0]    xbar_io_externalAxi4_aw_payload_burst;
+  wire                xbar_io_externalAxi4_w_valid;
+  wire       [31:0]   xbar_io_externalAxi4_w_payload_data;
+  wire       [3:0]    xbar_io_externalAxi4_w_payload_strb;
+  wire                xbar_io_externalAxi4_w_payload_last;
+  wire                xbar_io_externalAxi4_r_ready;
+  wire                xbar_io_externalAxi4_b_ready;
   wire                clint_io_clintAxi4_ar_ready;
   wire                clint_io_clintAxi4_aw_ready;
   wire                clint_io_clintAxi4_w_ready;
@@ -439,108 +439,108 @@ module ysyx_23060082 (
     .reset                                  (reset                                           )  //i
   );
   ysyx_23060082_AXI4Xbar xbar (
-    .io_ifuAxi4_ar_valid             (ifu_io_axi4_ar_valid                     ), //i
-    .io_ifuAxi4_ar_ready             (xbar_io_ifuAxi4_ar_ready                 ), //o
-    .io_ifuAxi4_ar_payload_addr      (ifu_io_axi4_ar_payload_addr[31:0]        ), //i
-    .io_ifuAxi4_ar_payload_id        (ifu_io_axi4_ar_payload_id[3:0]           ), //i
-    .io_ifuAxi4_ar_payload_len       (ifu_io_axi4_ar_payload_len[7:0]          ), //i
-    .io_ifuAxi4_ar_payload_size      (ifu_io_axi4_ar_payload_size[2:0]         ), //i
-    .io_ifuAxi4_ar_payload_burst     (ifu_io_axi4_ar_payload_burst[1:0]        ), //i
-    .io_ifuAxi4_r_valid              (xbar_io_ifuAxi4_r_valid                  ), //o
-    .io_ifuAxi4_r_ready              (ifu_io_axi4_r_ready                      ), //i
-    .io_ifuAxi4_r_payload_data       (xbar_io_ifuAxi4_r_payload_data[31:0]     ), //o
-    .io_ifuAxi4_r_payload_id         (xbar_io_ifuAxi4_r_payload_id[3:0]        ), //o
-    .io_ifuAxi4_r_payload_resp       (xbar_io_ifuAxi4_r_payload_resp[1:0]      ), //o
-    .io_ifuAxi4_r_payload_last       (xbar_io_ifuAxi4_r_payload_last           ), //o
-    .io_lsuAxi4_aw_valid             (lsu_io_axi4_aw_valid                     ), //i
-    .io_lsuAxi4_aw_ready             (xbar_io_lsuAxi4_aw_ready                 ), //o
-    .io_lsuAxi4_aw_payload_addr      (lsu_io_axi4_aw_payload_addr[31:0]        ), //i
-    .io_lsuAxi4_aw_payload_id        (lsu_io_axi4_aw_payload_id[3:0]           ), //i
-    .io_lsuAxi4_aw_payload_len       (lsu_io_axi4_aw_payload_len[7:0]          ), //i
-    .io_lsuAxi4_aw_payload_size      (lsu_io_axi4_aw_payload_size[2:0]         ), //i
-    .io_lsuAxi4_aw_payload_burst     (lsu_io_axi4_aw_payload_burst[1:0]        ), //i
-    .io_lsuAxi4_w_valid              (lsu_io_axi4_w_valid                      ), //i
-    .io_lsuAxi4_w_ready              (xbar_io_lsuAxi4_w_ready                  ), //o
-    .io_lsuAxi4_w_payload_data       (lsu_io_axi4_w_payload_data[31:0]         ), //i
-    .io_lsuAxi4_w_payload_strb       (lsu_io_axi4_w_payload_strb[3:0]          ), //i
-    .io_lsuAxi4_w_payload_last       (lsu_io_axi4_w_payload_last               ), //i
-    .io_lsuAxi4_b_valid              (xbar_io_lsuAxi4_b_valid                  ), //o
-    .io_lsuAxi4_b_ready              (lsu_io_axi4_b_ready                      ), //i
-    .io_lsuAxi4_b_payload_id         (xbar_io_lsuAxi4_b_payload_id[3:0]        ), //o
-    .io_lsuAxi4_b_payload_resp       (xbar_io_lsuAxi4_b_payload_resp[1:0]      ), //o
-    .io_lsuAxi4_ar_valid             (lsu_io_axi4_ar_valid                     ), //i
-    .io_lsuAxi4_ar_ready             (xbar_io_lsuAxi4_ar_ready                 ), //o
-    .io_lsuAxi4_ar_payload_addr      (lsu_io_axi4_ar_payload_addr[31:0]        ), //i
-    .io_lsuAxi4_ar_payload_id        (lsu_io_axi4_ar_payload_id[3:0]           ), //i
-    .io_lsuAxi4_ar_payload_len       (lsu_io_axi4_ar_payload_len[7:0]          ), //i
-    .io_lsuAxi4_ar_payload_size      (lsu_io_axi4_ar_payload_size[2:0]         ), //i
-    .io_lsuAxi4_ar_payload_burst     (lsu_io_axi4_ar_payload_burst[1:0]        ), //i
-    .io_lsuAxi4_r_valid              (xbar_io_lsuAxi4_r_valid                  ), //o
-    .io_lsuAxi4_r_ready              (lsu_io_axi4_r_ready                      ), //i
-    .io_lsuAxi4_r_payload_data       (xbar_io_lsuAxi4_r_payload_data[31:0]     ), //o
-    .io_lsuAxi4_r_payload_id         (xbar_io_lsuAxi4_r_payload_id[3:0]        ), //o
-    .io_lsuAxi4_r_payload_resp       (xbar_io_lsuAxi4_r_payload_resp[1:0]      ), //o
-    .io_lsuAxi4_r_payload_last       (xbar_io_lsuAxi4_r_payload_last           ), //o
-    .io_clintAxi4_aw_valid           (xbar_io_clintAxi4_aw_valid               ), //o
-    .io_clintAxi4_aw_ready           (clint_io_clintAxi4_aw_ready              ), //i
-    .io_clintAxi4_aw_payload_addr    (xbar_io_clintAxi4_aw_payload_addr[31:0]  ), //o
-    .io_clintAxi4_aw_payload_id      (xbar_io_clintAxi4_aw_payload_id[3:0]     ), //o
-    .io_clintAxi4_aw_payload_len     (xbar_io_clintAxi4_aw_payload_len[7:0]    ), //o
-    .io_clintAxi4_aw_payload_size    (xbar_io_clintAxi4_aw_payload_size[2:0]   ), //o
-    .io_clintAxi4_aw_payload_burst   (xbar_io_clintAxi4_aw_payload_burst[1:0]  ), //o
-    .io_clintAxi4_w_valid            (xbar_io_clintAxi4_w_valid                ), //o
-    .io_clintAxi4_w_ready            (clint_io_clintAxi4_w_ready               ), //i
-    .io_clintAxi4_w_payload_data     (xbar_io_clintAxi4_w_payload_data[31:0]   ), //o
-    .io_clintAxi4_w_payload_strb     (xbar_io_clintAxi4_w_payload_strb[3:0]    ), //o
-    .io_clintAxi4_w_payload_last     (xbar_io_clintAxi4_w_payload_last         ), //o
-    .io_clintAxi4_b_valid            (clint_io_clintAxi4_b_valid               ), //i
-    .io_clintAxi4_b_ready            (xbar_io_clintAxi4_b_ready                ), //o
-    .io_clintAxi4_b_payload_id       (clint_io_clintAxi4_b_payload_id[3:0]     ), //i
-    .io_clintAxi4_b_payload_resp     (clint_io_clintAxi4_b_payload_resp[1:0]   ), //i
-    .io_clintAxi4_ar_valid           (xbar_io_clintAxi4_ar_valid               ), //o
-    .io_clintAxi4_ar_ready           (clint_io_clintAxi4_ar_ready              ), //i
-    .io_clintAxi4_ar_payload_addr    (xbar_io_clintAxi4_ar_payload_addr[31:0]  ), //o
-    .io_clintAxi4_ar_payload_id      (xbar_io_clintAxi4_ar_payload_id[3:0]     ), //o
-    .io_clintAxi4_ar_payload_len     (xbar_io_clintAxi4_ar_payload_len[7:0]    ), //o
-    .io_clintAxi4_ar_payload_size    (xbar_io_clintAxi4_ar_payload_size[2:0]   ), //o
-    .io_clintAxi4_ar_payload_burst   (xbar_io_clintAxi4_ar_payload_burst[1:0]  ), //o
-    .io_clintAxi4_r_valid            (clint_io_clintAxi4_r_valid               ), //i
-    .io_clintAxi4_r_ready            (xbar_io_clintAxi4_r_ready                ), //o
-    .io_clintAxi4_r_payload_data     (clint_io_clintAxi4_r_payload_data[31:0]  ), //i
-    .io_clintAxi4_r_payload_id       (clint_io_clintAxi4_r_payload_id[3:0]     ), //i
-    .io_clintAxi4_r_payload_resp     (clint_io_clintAxi4_r_payload_resp[1:0]   ), //i
-    .io_clintAxi4_r_payload_last     (clint_io_clintAxi4_r_payload_last        ), //i
-    .io_externalAxi_aw_valid         (xbar_io_externalAxi_aw_valid             ), //o
-    .io_externalAxi_aw_ready         (io_master_awready                        ), //i
-    .io_externalAxi_aw_payload_addr  (xbar_io_externalAxi_aw_payload_addr[31:0]), //o
-    .io_externalAxi_aw_payload_id    (xbar_io_externalAxi_aw_payload_id[3:0]   ), //o
-    .io_externalAxi_aw_payload_len   (xbar_io_externalAxi_aw_payload_len[7:0]  ), //o
-    .io_externalAxi_aw_payload_size  (xbar_io_externalAxi_aw_payload_size[2:0] ), //o
-    .io_externalAxi_aw_payload_burst (xbar_io_externalAxi_aw_payload_burst[1:0]), //o
-    .io_externalAxi_w_valid          (xbar_io_externalAxi_w_valid              ), //o
-    .io_externalAxi_w_ready          (io_master_wready                         ), //i
-    .io_externalAxi_w_payload_data   (xbar_io_externalAxi_w_payload_data[31:0] ), //o
-    .io_externalAxi_w_payload_strb   (xbar_io_externalAxi_w_payload_strb[3:0]  ), //o
-    .io_externalAxi_w_payload_last   (xbar_io_externalAxi_w_payload_last       ), //o
-    .io_externalAxi_b_valid          (io_master_bvalid                         ), //i
-    .io_externalAxi_b_ready          (xbar_io_externalAxi_b_ready              ), //o
-    .io_externalAxi_b_payload_id     (io_master_bid[3:0]                       ), //i
-    .io_externalAxi_b_payload_resp   (io_master_bresp[1:0]                     ), //i
-    .io_externalAxi_ar_valid         (xbar_io_externalAxi_ar_valid             ), //o
-    .io_externalAxi_ar_ready         (io_master_arready                        ), //i
-    .io_externalAxi_ar_payload_addr  (xbar_io_externalAxi_ar_payload_addr[31:0]), //o
-    .io_externalAxi_ar_payload_id    (xbar_io_externalAxi_ar_payload_id[3:0]   ), //o
-    .io_externalAxi_ar_payload_len   (xbar_io_externalAxi_ar_payload_len[7:0]  ), //o
-    .io_externalAxi_ar_payload_size  (xbar_io_externalAxi_ar_payload_size[2:0] ), //o
-    .io_externalAxi_ar_payload_burst (xbar_io_externalAxi_ar_payload_burst[1:0]), //o
-    .io_externalAxi_r_valid          (io_master_rvalid                         ), //i
-    .io_externalAxi_r_ready          (xbar_io_externalAxi_r_ready              ), //o
-    .io_externalAxi_r_payload_data   (io_master_rdata[31:0]                    ), //i
-    .io_externalAxi_r_payload_id     (io_master_rid[3:0]                       ), //i
-    .io_externalAxi_r_payload_resp   (io_master_rresp[1:0]                     ), //i
-    .io_externalAxi_r_payload_last   (io_master_rlast                          ), //i
-    .clock                           (clock                                    ), //i
-    .reset                           (reset                                    )  //i
+    .io_ifuAxi4_ar_valid              (ifu_io_axi4_ar_valid                      ), //i
+    .io_ifuAxi4_ar_ready              (xbar_io_ifuAxi4_ar_ready                  ), //o
+    .io_ifuAxi4_ar_payload_addr       (ifu_io_axi4_ar_payload_addr[31:0]         ), //i
+    .io_ifuAxi4_ar_payload_id         (ifu_io_axi4_ar_payload_id[3:0]            ), //i
+    .io_ifuAxi4_ar_payload_len        (ifu_io_axi4_ar_payload_len[7:0]           ), //i
+    .io_ifuAxi4_ar_payload_size       (ifu_io_axi4_ar_payload_size[2:0]          ), //i
+    .io_ifuAxi4_ar_payload_burst      (ifu_io_axi4_ar_payload_burst[1:0]         ), //i
+    .io_ifuAxi4_r_valid               (xbar_io_ifuAxi4_r_valid                   ), //o
+    .io_ifuAxi4_r_ready               (ifu_io_axi4_r_ready                       ), //i
+    .io_ifuAxi4_r_payload_data        (xbar_io_ifuAxi4_r_payload_data[31:0]      ), //o
+    .io_ifuAxi4_r_payload_id          (xbar_io_ifuAxi4_r_payload_id[3:0]         ), //o
+    .io_ifuAxi4_r_payload_resp        (xbar_io_ifuAxi4_r_payload_resp[1:0]       ), //o
+    .io_ifuAxi4_r_payload_last        (xbar_io_ifuAxi4_r_payload_last            ), //o
+    .io_lsuAxi4_aw_valid              (lsu_io_axi4_aw_valid                      ), //i
+    .io_lsuAxi4_aw_ready              (xbar_io_lsuAxi4_aw_ready                  ), //o
+    .io_lsuAxi4_aw_payload_addr       (lsu_io_axi4_aw_payload_addr[31:0]         ), //i
+    .io_lsuAxi4_aw_payload_id         (lsu_io_axi4_aw_payload_id[3:0]            ), //i
+    .io_lsuAxi4_aw_payload_len        (lsu_io_axi4_aw_payload_len[7:0]           ), //i
+    .io_lsuAxi4_aw_payload_size       (lsu_io_axi4_aw_payload_size[2:0]          ), //i
+    .io_lsuAxi4_aw_payload_burst      (lsu_io_axi4_aw_payload_burst[1:0]         ), //i
+    .io_lsuAxi4_w_valid               (lsu_io_axi4_w_valid                       ), //i
+    .io_lsuAxi4_w_ready               (xbar_io_lsuAxi4_w_ready                   ), //o
+    .io_lsuAxi4_w_payload_data        (lsu_io_axi4_w_payload_data[31:0]          ), //i
+    .io_lsuAxi4_w_payload_strb        (lsu_io_axi4_w_payload_strb[3:0]           ), //i
+    .io_lsuAxi4_w_payload_last        (lsu_io_axi4_w_payload_last                ), //i
+    .io_lsuAxi4_b_valid               (xbar_io_lsuAxi4_b_valid                   ), //o
+    .io_lsuAxi4_b_ready               (lsu_io_axi4_b_ready                       ), //i
+    .io_lsuAxi4_b_payload_id          (xbar_io_lsuAxi4_b_payload_id[3:0]         ), //o
+    .io_lsuAxi4_b_payload_resp        (xbar_io_lsuAxi4_b_payload_resp[1:0]       ), //o
+    .io_lsuAxi4_ar_valid              (lsu_io_axi4_ar_valid                      ), //i
+    .io_lsuAxi4_ar_ready              (xbar_io_lsuAxi4_ar_ready                  ), //o
+    .io_lsuAxi4_ar_payload_addr       (lsu_io_axi4_ar_payload_addr[31:0]         ), //i
+    .io_lsuAxi4_ar_payload_id         (lsu_io_axi4_ar_payload_id[3:0]            ), //i
+    .io_lsuAxi4_ar_payload_len        (lsu_io_axi4_ar_payload_len[7:0]           ), //i
+    .io_lsuAxi4_ar_payload_size       (lsu_io_axi4_ar_payload_size[2:0]          ), //i
+    .io_lsuAxi4_ar_payload_burst      (lsu_io_axi4_ar_payload_burst[1:0]         ), //i
+    .io_lsuAxi4_r_valid               (xbar_io_lsuAxi4_r_valid                   ), //o
+    .io_lsuAxi4_r_ready               (lsu_io_axi4_r_ready                       ), //i
+    .io_lsuAxi4_r_payload_data        (xbar_io_lsuAxi4_r_payload_data[31:0]      ), //o
+    .io_lsuAxi4_r_payload_id          (xbar_io_lsuAxi4_r_payload_id[3:0]         ), //o
+    .io_lsuAxi4_r_payload_resp        (xbar_io_lsuAxi4_r_payload_resp[1:0]       ), //o
+    .io_lsuAxi4_r_payload_last        (xbar_io_lsuAxi4_r_payload_last            ), //o
+    .io_clintAxi4_aw_valid            (xbar_io_clintAxi4_aw_valid                ), //o
+    .io_clintAxi4_aw_ready            (clint_io_clintAxi4_aw_ready               ), //i
+    .io_clintAxi4_aw_payload_addr     (xbar_io_clintAxi4_aw_payload_addr[31:0]   ), //o
+    .io_clintAxi4_aw_payload_id       (xbar_io_clintAxi4_aw_payload_id[3:0]      ), //o
+    .io_clintAxi4_aw_payload_len      (xbar_io_clintAxi4_aw_payload_len[7:0]     ), //o
+    .io_clintAxi4_aw_payload_size     (xbar_io_clintAxi4_aw_payload_size[2:0]    ), //o
+    .io_clintAxi4_aw_payload_burst    (xbar_io_clintAxi4_aw_payload_burst[1:0]   ), //o
+    .io_clintAxi4_w_valid             (xbar_io_clintAxi4_w_valid                 ), //o
+    .io_clintAxi4_w_ready             (clint_io_clintAxi4_w_ready                ), //i
+    .io_clintAxi4_w_payload_data      (xbar_io_clintAxi4_w_payload_data[31:0]    ), //o
+    .io_clintAxi4_w_payload_strb      (xbar_io_clintAxi4_w_payload_strb[3:0]     ), //o
+    .io_clintAxi4_w_payload_last      (xbar_io_clintAxi4_w_payload_last          ), //o
+    .io_clintAxi4_b_valid             (clint_io_clintAxi4_b_valid                ), //i
+    .io_clintAxi4_b_ready             (xbar_io_clintAxi4_b_ready                 ), //o
+    .io_clintAxi4_b_payload_id        (clint_io_clintAxi4_b_payload_id[3:0]      ), //i
+    .io_clintAxi4_b_payload_resp      (clint_io_clintAxi4_b_payload_resp[1:0]    ), //i
+    .io_clintAxi4_ar_valid            (xbar_io_clintAxi4_ar_valid                ), //o
+    .io_clintAxi4_ar_ready            (clint_io_clintAxi4_ar_ready               ), //i
+    .io_clintAxi4_ar_payload_addr     (xbar_io_clintAxi4_ar_payload_addr[31:0]   ), //o
+    .io_clintAxi4_ar_payload_id       (xbar_io_clintAxi4_ar_payload_id[3:0]      ), //o
+    .io_clintAxi4_ar_payload_len      (xbar_io_clintAxi4_ar_payload_len[7:0]     ), //o
+    .io_clintAxi4_ar_payload_size     (xbar_io_clintAxi4_ar_payload_size[2:0]    ), //o
+    .io_clintAxi4_ar_payload_burst    (xbar_io_clintAxi4_ar_payload_burst[1:0]   ), //o
+    .io_clintAxi4_r_valid             (clint_io_clintAxi4_r_valid                ), //i
+    .io_clintAxi4_r_ready             (xbar_io_clintAxi4_r_ready                 ), //o
+    .io_clintAxi4_r_payload_data      (clint_io_clintAxi4_r_payload_data[31:0]   ), //i
+    .io_clintAxi4_r_payload_id        (clint_io_clintAxi4_r_payload_id[3:0]      ), //i
+    .io_clintAxi4_r_payload_resp      (clint_io_clintAxi4_r_payload_resp[1:0]    ), //i
+    .io_clintAxi4_r_payload_last      (clint_io_clintAxi4_r_payload_last         ), //i
+    .io_externalAxi4_aw_valid         (xbar_io_externalAxi4_aw_valid             ), //o
+    .io_externalAxi4_aw_ready         (io_master_awready                         ), //i
+    .io_externalAxi4_aw_payload_addr  (xbar_io_externalAxi4_aw_payload_addr[31:0]), //o
+    .io_externalAxi4_aw_payload_id    (xbar_io_externalAxi4_aw_payload_id[3:0]   ), //o
+    .io_externalAxi4_aw_payload_len   (xbar_io_externalAxi4_aw_payload_len[7:0]  ), //o
+    .io_externalAxi4_aw_payload_size  (xbar_io_externalAxi4_aw_payload_size[2:0] ), //o
+    .io_externalAxi4_aw_payload_burst (xbar_io_externalAxi4_aw_payload_burst[1:0]), //o
+    .io_externalAxi4_w_valid          (xbar_io_externalAxi4_w_valid              ), //o
+    .io_externalAxi4_w_ready          (io_master_wready                          ), //i
+    .io_externalAxi4_w_payload_data   (xbar_io_externalAxi4_w_payload_data[31:0] ), //o
+    .io_externalAxi4_w_payload_strb   (xbar_io_externalAxi4_w_payload_strb[3:0]  ), //o
+    .io_externalAxi4_w_payload_last   (xbar_io_externalAxi4_w_payload_last       ), //o
+    .io_externalAxi4_b_valid          (io_master_bvalid                          ), //i
+    .io_externalAxi4_b_ready          (xbar_io_externalAxi4_b_ready              ), //o
+    .io_externalAxi4_b_payload_id     (io_master_bid[3:0]                        ), //i
+    .io_externalAxi4_b_payload_resp   (io_master_bresp[1:0]                      ), //i
+    .io_externalAxi4_ar_valid         (xbar_io_externalAxi4_ar_valid             ), //o
+    .io_externalAxi4_ar_ready         (io_master_arready                         ), //i
+    .io_externalAxi4_ar_payload_addr  (xbar_io_externalAxi4_ar_payload_addr[31:0]), //o
+    .io_externalAxi4_ar_payload_id    (xbar_io_externalAxi4_ar_payload_id[3:0]   ), //o
+    .io_externalAxi4_ar_payload_len   (xbar_io_externalAxi4_ar_payload_len[7:0]  ), //o
+    .io_externalAxi4_ar_payload_size  (xbar_io_externalAxi4_ar_payload_size[2:0] ), //o
+    .io_externalAxi4_ar_payload_burst (xbar_io_externalAxi4_ar_payload_burst[1:0]), //o
+    .io_externalAxi4_r_valid          (io_master_rvalid                          ), //i
+    .io_externalAxi4_r_ready          (xbar_io_externalAxi4_r_ready              ), //o
+    .io_externalAxi4_r_payload_data   (io_master_rdata[31:0]                     ), //i
+    .io_externalAxi4_r_payload_id     (io_master_rid[3:0]                        ), //i
+    .io_externalAxi4_r_payload_resp   (io_master_rresp[1:0]                      ), //i
+    .io_externalAxi4_r_payload_last   (io_master_rlast                           ), //i
+    .clock                            (clock                                     ), //i
+    .reset                            (reset                                     )  //i
   );
   ysyx_23060082_Clint clint (
     .io_clintAxi4_aw_valid         (xbar_io_clintAxi4_aw_valid             ), //i
@@ -593,24 +593,24 @@ module ysyx_23060082 (
   assign idu_io_output_ready = ((! _zz_io_output_ready_1) || io_output_fire_2);
   assign io_output_fire_3 = (lsu_io_output_valid && wbu_io_input_ready);
   assign exu_io_output_ready = ((! _zz_io_output_ready_2) || io_output_fire_3);
-  assign io_master_awvalid = xbar_io_externalAxi_aw_valid;
-  assign io_master_awaddr = xbar_io_externalAxi_aw_payload_addr;
-  assign io_master_awid = xbar_io_externalAxi_aw_payload_id;
-  assign io_master_awlen = xbar_io_externalAxi_aw_payload_len;
-  assign io_master_awsize = xbar_io_externalAxi_aw_payload_size;
-  assign io_master_awburst = xbar_io_externalAxi_aw_payload_burst;
-  assign io_master_wvalid = xbar_io_externalAxi_w_valid;
-  assign io_master_wdata = xbar_io_externalAxi_w_payload_data;
-  assign io_master_wstrb = xbar_io_externalAxi_w_payload_strb;
-  assign io_master_wlast = xbar_io_externalAxi_w_payload_last;
-  assign io_master_bready = xbar_io_externalAxi_b_ready;
-  assign io_master_arvalid = xbar_io_externalAxi_ar_valid;
-  assign io_master_araddr = xbar_io_externalAxi_ar_payload_addr;
-  assign io_master_arid = xbar_io_externalAxi_ar_payload_id;
-  assign io_master_arlen = xbar_io_externalAxi_ar_payload_len;
-  assign io_master_arsize = xbar_io_externalAxi_ar_payload_size;
-  assign io_master_arburst = xbar_io_externalAxi_ar_payload_burst;
-  assign io_master_rready = xbar_io_externalAxi_r_ready;
+  assign io_master_awvalid = xbar_io_externalAxi4_aw_valid;
+  assign io_master_awaddr = xbar_io_externalAxi4_aw_payload_addr;
+  assign io_master_awid = xbar_io_externalAxi4_aw_payload_id;
+  assign io_master_awlen = xbar_io_externalAxi4_aw_payload_len;
+  assign io_master_awsize = xbar_io_externalAxi4_aw_payload_size;
+  assign io_master_awburst = xbar_io_externalAxi4_aw_payload_burst;
+  assign io_master_wvalid = xbar_io_externalAxi4_w_valid;
+  assign io_master_wdata = xbar_io_externalAxi4_w_payload_data;
+  assign io_master_wstrb = xbar_io_externalAxi4_w_payload_strb;
+  assign io_master_wlast = xbar_io_externalAxi4_w_payload_last;
+  assign io_master_bready = xbar_io_externalAxi4_b_ready;
+  assign io_master_arvalid = xbar_io_externalAxi4_ar_valid;
+  assign io_master_araddr = xbar_io_externalAxi4_ar_payload_addr;
+  assign io_master_arid = xbar_io_externalAxi4_ar_payload_id;
+  assign io_master_arlen = xbar_io_externalAxi4_ar_payload_len;
+  assign io_master_arsize = xbar_io_externalAxi4_ar_payload_size;
+  assign io_master_arburst = xbar_io_externalAxi4_ar_payload_burst;
+  assign io_master_rready = xbar_io_externalAxi4_r_ready;
   always @(posedge clock) begin
     if(io_output_fire) begin
       io_output_payload_regNextWhen_pc <= ifu_io_output_payload_pc;
@@ -874,35 +874,35 @@ module ysyx_23060082_AXI4Xbar (
   input  wire [3:0]    io_clintAxi4_r_payload_id,
   input  wire [1:0]    io_clintAxi4_r_payload_resp,
   input  wire          io_clintAxi4_r_payload_last,
-  output wire          io_externalAxi_aw_valid,
-  input  wire          io_externalAxi_aw_ready,
-  output wire [31:0]   io_externalAxi_aw_payload_addr,
-  output wire [3:0]    io_externalAxi_aw_payload_id,
-  output wire [7:0]    io_externalAxi_aw_payload_len,
-  output wire [2:0]    io_externalAxi_aw_payload_size,
-  output wire [1:0]    io_externalAxi_aw_payload_burst,
-  output wire          io_externalAxi_w_valid,
-  input  wire          io_externalAxi_w_ready,
-  output wire [31:0]   io_externalAxi_w_payload_data,
-  output wire [3:0]    io_externalAxi_w_payload_strb,
-  output wire          io_externalAxi_w_payload_last,
-  input  wire          io_externalAxi_b_valid,
-  output wire          io_externalAxi_b_ready,
-  input  wire [3:0]    io_externalAxi_b_payload_id,
-  input  wire [1:0]    io_externalAxi_b_payload_resp,
-  output wire          io_externalAxi_ar_valid,
-  input  wire          io_externalAxi_ar_ready,
-  output wire [31:0]   io_externalAxi_ar_payload_addr,
-  output wire [3:0]    io_externalAxi_ar_payload_id,
-  output wire [7:0]    io_externalAxi_ar_payload_len,
-  output wire [2:0]    io_externalAxi_ar_payload_size,
-  output wire [1:0]    io_externalAxi_ar_payload_burst,
-  input  wire          io_externalAxi_r_valid,
-  output wire          io_externalAxi_r_ready,
-  input  wire [31:0]   io_externalAxi_r_payload_data,
-  input  wire [3:0]    io_externalAxi_r_payload_id,
-  input  wire [1:0]    io_externalAxi_r_payload_resp,
-  input  wire          io_externalAxi_r_payload_last,
+  output wire          io_externalAxi4_aw_valid,
+  input  wire          io_externalAxi4_aw_ready,
+  output wire [31:0]   io_externalAxi4_aw_payload_addr,
+  output wire [3:0]    io_externalAxi4_aw_payload_id,
+  output wire [7:0]    io_externalAxi4_aw_payload_len,
+  output wire [2:0]    io_externalAxi4_aw_payload_size,
+  output wire [1:0]    io_externalAxi4_aw_payload_burst,
+  output wire          io_externalAxi4_w_valid,
+  input  wire          io_externalAxi4_w_ready,
+  output wire [31:0]   io_externalAxi4_w_payload_data,
+  output wire [3:0]    io_externalAxi4_w_payload_strb,
+  output wire          io_externalAxi4_w_payload_last,
+  input  wire          io_externalAxi4_b_valid,
+  output wire          io_externalAxi4_b_ready,
+  input  wire [3:0]    io_externalAxi4_b_payload_id,
+  input  wire [1:0]    io_externalAxi4_b_payload_resp,
+  output wire          io_externalAxi4_ar_valid,
+  input  wire          io_externalAxi4_ar_ready,
+  output wire [31:0]   io_externalAxi4_ar_payload_addr,
+  output wire [3:0]    io_externalAxi4_ar_payload_id,
+  output wire [7:0]    io_externalAxi4_ar_payload_len,
+  output wire [2:0]    io_externalAxi4_ar_payload_size,
+  output wire [1:0]    io_externalAxi4_ar_payload_burst,
+  input  wire          io_externalAxi4_r_valid,
+  output wire          io_externalAxi4_r_ready,
+  input  wire [31:0]   io_externalAxi4_r_payload_data,
+  input  wire [3:0]    io_externalAxi4_r_payload_id,
+  input  wire [1:0]    io_externalAxi4_r_payload_resp,
+  input  wire          io_externalAxi4_r_payload_last,
   input  wire          clock,
   input  wire          reset
 );
@@ -1028,49 +1028,49 @@ module ysyx_23060082_AXI4Xbar (
   assign io_clintAxi4_ar_payload_len = busAxi4_ar_payload_len;
   assign io_clintAxi4_ar_payload_size = busAxi4_ar_payload_size;
   assign io_clintAxi4_ar_payload_burst = busAxi4_ar_payload_burst;
-  assign io_externalAxi_ar_valid = ((crossState_1 == CrossState_External) && busAxi4_ar_valid);
-  assign io_externalAxi_ar_payload_addr = busAxi4_ar_payload_addr;
-  assign io_externalAxi_ar_payload_id = busAxi4_ar_payload_id;
-  assign io_externalAxi_ar_payload_len = busAxi4_ar_payload_len;
-  assign io_externalAxi_ar_payload_size = busAxi4_ar_payload_size;
-  assign io_externalAxi_ar_payload_burst = busAxi4_ar_payload_burst;
-  assign busAxi4_ar_ready = (((crossState_1 == CrossState_Clint) && io_clintAxi4_ar_ready) || ((crossState_1 == CrossState_External) && io_externalAxi_ar_ready));
-  assign busAxi4_r_valid = (((crossState_1 == CrossState_Clint) && io_clintAxi4_r_valid) || ((crossState_1 == CrossState_External) && io_externalAxi_r_valid));
+  assign io_externalAxi4_ar_valid = ((crossState_1 == CrossState_External) && busAxi4_ar_valid);
+  assign io_externalAxi4_ar_payload_addr = busAxi4_ar_payload_addr;
+  assign io_externalAxi4_ar_payload_id = busAxi4_ar_payload_id;
+  assign io_externalAxi4_ar_payload_len = busAxi4_ar_payload_len;
+  assign io_externalAxi4_ar_payload_size = busAxi4_ar_payload_size;
+  assign io_externalAxi4_ar_payload_burst = busAxi4_ar_payload_burst;
+  assign busAxi4_ar_ready = (((crossState_1 == CrossState_Clint) && io_clintAxi4_ar_ready) || ((crossState_1 == CrossState_External) && io_externalAxi4_ar_ready));
+  assign busAxi4_r_valid = (((crossState_1 == CrossState_Clint) && io_clintAxi4_r_valid) || ((crossState_1 == CrossState_External) && io_externalAxi4_r_valid));
   assign _zz_busAxi4_r_payload_data = (crossState_1 == CrossState_Clint);
-  assign busAxi4_r_payload_data = (_zz_busAxi4_r_payload_data ? io_clintAxi4_r_payload_data : io_externalAxi_r_payload_data);
-  assign busAxi4_r_payload_id = (_zz_busAxi4_r_payload_data ? io_clintAxi4_r_payload_id : io_externalAxi_r_payload_id);
-  assign busAxi4_r_payload_resp = (_zz_busAxi4_r_payload_data ? io_clintAxi4_r_payload_resp : io_externalAxi_r_payload_resp);
-  assign busAxi4_r_payload_last = (_zz_busAxi4_r_payload_data ? io_clintAxi4_r_payload_last : io_externalAxi_r_payload_last);
+  assign busAxi4_r_payload_data = (_zz_busAxi4_r_payload_data ? io_clintAxi4_r_payload_data : io_externalAxi4_r_payload_data);
+  assign busAxi4_r_payload_id = (_zz_busAxi4_r_payload_data ? io_clintAxi4_r_payload_id : io_externalAxi4_r_payload_id);
+  assign busAxi4_r_payload_resp = (_zz_busAxi4_r_payload_data ? io_clintAxi4_r_payload_resp : io_externalAxi4_r_payload_resp);
+  assign busAxi4_r_payload_last = (_zz_busAxi4_r_payload_data ? io_clintAxi4_r_payload_last : io_externalAxi4_r_payload_last);
   assign io_clintAxi4_r_ready = ((crossState_1 == CrossState_Clint) && busAxi4_r_ready);
-  assign io_externalAxi_r_ready = ((crossState_1 == CrossState_External) && busAxi4_r_ready);
+  assign io_externalAxi4_r_ready = ((crossState_1 == CrossState_External) && busAxi4_r_ready);
   assign io_clintAxi4_aw_valid = ((crossState_1 == CrossState_Clint) && busAxi4_aw_valid);
   assign io_clintAxi4_aw_payload_addr = busAxi4_aw_payload_addr;
   assign io_clintAxi4_aw_payload_id = busAxi4_aw_payload_id;
   assign io_clintAxi4_aw_payload_len = busAxi4_aw_payload_len;
   assign io_clintAxi4_aw_payload_size = busAxi4_aw_payload_size;
   assign io_clintAxi4_aw_payload_burst = busAxi4_aw_payload_burst;
-  assign io_externalAxi_aw_valid = ((crossState_1 == CrossState_External) && busAxi4_aw_valid);
-  assign io_externalAxi_aw_payload_addr = busAxi4_aw_payload_addr;
-  assign io_externalAxi_aw_payload_id = busAxi4_aw_payload_id;
-  assign io_externalAxi_aw_payload_len = busAxi4_aw_payload_len;
-  assign io_externalAxi_aw_payload_size = busAxi4_aw_payload_size;
-  assign io_externalAxi_aw_payload_burst = busAxi4_aw_payload_burst;
-  assign busAxi4_aw_ready = (((crossState_1 == CrossState_Clint) && io_clintAxi4_aw_ready) || ((crossState_1 == CrossState_External) && io_externalAxi_aw_ready));
+  assign io_externalAxi4_aw_valid = ((crossState_1 == CrossState_External) && busAxi4_aw_valid);
+  assign io_externalAxi4_aw_payload_addr = busAxi4_aw_payload_addr;
+  assign io_externalAxi4_aw_payload_id = busAxi4_aw_payload_id;
+  assign io_externalAxi4_aw_payload_len = busAxi4_aw_payload_len;
+  assign io_externalAxi4_aw_payload_size = busAxi4_aw_payload_size;
+  assign io_externalAxi4_aw_payload_burst = busAxi4_aw_payload_burst;
+  assign busAxi4_aw_ready = (((crossState_1 == CrossState_Clint) && io_clintAxi4_aw_ready) || ((crossState_1 == CrossState_External) && io_externalAxi4_aw_ready));
   assign io_clintAxi4_w_valid = ((crossState_1 == CrossState_Clint) && busAxi4_w_valid);
   assign io_clintAxi4_w_payload_data = busAxi4_w_payload_data;
   assign io_clintAxi4_w_payload_strb = busAxi4_w_payload_strb;
   assign io_clintAxi4_w_payload_last = busAxi4_w_payload_last;
-  assign io_externalAxi_w_valid = ((crossState_1 == CrossState_External) && busAxi4_w_valid);
-  assign io_externalAxi_w_payload_data = busAxi4_w_payload_data;
-  assign io_externalAxi_w_payload_strb = busAxi4_w_payload_strb;
-  assign io_externalAxi_w_payload_last = busAxi4_w_payload_last;
-  assign busAxi4_w_ready = (((crossState_1 == CrossState_Clint) && io_clintAxi4_w_ready) || ((crossState_1 == CrossState_External) && io_externalAxi_w_ready));
-  assign busAxi4_b_valid = (((crossState_1 == CrossState_Clint) && io_clintAxi4_b_valid) || ((crossState_1 == CrossState_External) && io_externalAxi_b_valid));
+  assign io_externalAxi4_w_valid = ((crossState_1 == CrossState_External) && busAxi4_w_valid);
+  assign io_externalAxi4_w_payload_data = busAxi4_w_payload_data;
+  assign io_externalAxi4_w_payload_strb = busAxi4_w_payload_strb;
+  assign io_externalAxi4_w_payload_last = busAxi4_w_payload_last;
+  assign busAxi4_w_ready = (((crossState_1 == CrossState_Clint) && io_clintAxi4_w_ready) || ((crossState_1 == CrossState_External) && io_externalAxi4_w_ready));
+  assign busAxi4_b_valid = (((crossState_1 == CrossState_Clint) && io_clintAxi4_b_valid) || ((crossState_1 == CrossState_External) && io_externalAxi4_b_valid));
   assign _zz_busAxi4_b_payload_id = (crossState_1 == CrossState_Clint);
-  assign busAxi4_b_payload_id = (_zz_busAxi4_b_payload_id ? io_clintAxi4_b_payload_id : io_externalAxi_b_payload_id);
-  assign busAxi4_b_payload_resp = (_zz_busAxi4_b_payload_id ? io_clintAxi4_b_payload_resp : io_externalAxi_b_payload_resp);
+  assign busAxi4_b_payload_id = (_zz_busAxi4_b_payload_id ? io_clintAxi4_b_payload_id : io_externalAxi4_b_payload_id);
+  assign busAxi4_b_payload_resp = (_zz_busAxi4_b_payload_id ? io_clintAxi4_b_payload_resp : io_externalAxi4_b_payload_resp);
   assign io_clintAxi4_b_ready = ((crossState_1 == CrossState_Clint) && busAxi4_b_ready);
-  assign io_externalAxi_b_ready = ((crossState_1 == CrossState_External) && busAxi4_b_ready);
+  assign io_externalAxi4_b_ready = ((crossState_1 == CrossState_External) && busAxi4_b_ready);
   always @(posedge clock or posedge reset) begin
     if(reset) begin
       arbiterState_1 <= ArbiterState_Idle;

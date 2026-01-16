@@ -43,9 +43,7 @@ import spinal.lib.bus.amba4.axi._
 case class ysyx_23060082_AXI4Xbar() extends Component {
   val io = new Bundle {
     val ifuAXI4     = slave(Axi4ReadOnly(AxiConfig.axiConfig))
-    val ifuAXI4Req  = in Bool()
     val lsuAXI4     = slave(Axi4(AxiConfig.axiConfig))
-    val lsuAXI4Req  = in Bool()
     val clintAxi    = master(Axi4(AxiConfig.axiConfig))
     val externalAxi = master(Axi4(AxiConfig.axiConfig))
   }

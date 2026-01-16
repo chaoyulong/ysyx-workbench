@@ -33,7 +33,7 @@ case class ysyx_23060082_WBU() extends Component {
   io.output.pc_next := payloadReg.pc_next
   io.rf_write_addr  := payloadReg.rf_ctrl.rf_write_addr
   io.rf_write_en    := payloadReg.rf_ctrl.regWr && validReg
-  io.rf_write_data  := Mux(io.input.rf_ctrl.mem2reg | io.input.rf_ctrl.csr2reg, io.input.mem_data_out, io.input.alu_data_out)
+  io.rf_write_data  := Mux(payloadReg.rf_ctrl.mem2reg | payloadReg.rf_ctrl.csr2reg, payloadReg.mem_data_out, payloadReg.alu_data_out)
 
   val outValid = RegInit(False)
   when(io.input.fire) {        

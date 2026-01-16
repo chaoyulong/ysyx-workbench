@@ -100,7 +100,7 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig(BigInt("30000000", 16))) 
   // ----------------------------------- 暂时的axi从机 ----------------------------------- //
   val xbar = ysyx_23060082_AXI4Xbar()
   val clint = ysyx_23060082_Clint()
-  xbar.io.externalAxi <> io.io_master   // 引到外部
+  xbar.io.externalAxi4 <> io.io_master   // 引到外部
   xbar.io.clintAxi4 <> clint.io.clintAxi4
   xbar.io.ifuAxi4 <> ifu.io.axi4
   xbar.io.lsuAxi4 <> lsu.io.axi4

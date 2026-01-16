@@ -151,6 +151,7 @@ case class ysyx_23060082_Clint() extends Component {
     io.clintAxi.r.valid := io.clintAxi.r.valid
   }
 
+  io.clintAxi.r.last := io.clintAxi.r.valid
   when(io.clintAxi.ar.fire) {   // 读数据通道握手信号
     io.clintAxi.r.data := io.clintAxi.ar.addr.mux(
       U"32'h02000004" -> timeCount(63 downto 32),

@@ -1,6 +1,6 @@
 // Generator : SpinalHDL v1.12.3    git head : 591e64062329e5e2e2b81f4d52422948053edb97
 // Component : ysyx_23060082
-// Git hash  : e66a270d1c38047dcede84130c10218bdb489b19
+// Git hash  : 0858e59e030d41e478a1392ab79bae03a68b150b
 
 `timescale 1ns/1ps
 
@@ -1725,16 +1725,16 @@ module ysyx_23060082_IFU (
   localparam IfuState_WaitMem = 2'd1;
   localparam IfuState_Done = 2'd2;
 
-  wire                axiCtrl_io_readReq;
-  wire                axiCtrl_io_readEnd;
-  wire       [31:0]   axiCtrl_io_readData;
-  wire                axiCtrl_io_axi4_ar_valid;
-  wire       [31:0]   axiCtrl_io_axi4_ar_payload_addr;
-  wire       [3:0]    axiCtrl_io_axi4_ar_payload_id;
-  wire       [7:0]    axiCtrl_io_axi4_ar_payload_len;
-  wire       [2:0]    axiCtrl_io_axi4_ar_payload_size;
-  wire       [1:0]    axiCtrl_io_axi4_ar_payload_burst;
-  wire                axiCtrl_io_axi4_r_ready;
+  wire                axi4Ctrler_io_readReq;
+  wire                axi4Ctrler_io_readEnd;
+  wire       [31:0]   axi4Ctrler_io_readData;
+  wire                axi4Ctrler_io_axi4_ar_valid;
+  wire       [31:0]   axi4Ctrler_io_axi4_ar_payload_addr;
+  wire       [3:0]    axi4Ctrler_io_axi4_ar_payload_id;
+  wire       [7:0]    axi4Ctrler_io_axi4_ar_payload_len;
+  wire       [2:0]    axi4Ctrler_io_axi4_ar_payload_size;
+  wire       [1:0]    axi4Ctrler_io_axi4_ar_payload_burst;
+  wire                axi4Ctrler_io_axi4_r_ready;
   reg        [1:0]    state;
   reg                 rstReg1;
   reg                 rstReg2;
@@ -1752,26 +1752,26 @@ module ysyx_23060082_IFU (
   `endif
 
 
-  ysyx_23060082_AXI_Ctrl_ReadOnly axiCtrl (
-    .io_readReq               (axiCtrl_io_readReq                   ), //i
-    .io_readAddr              (pc[31:0]                             ), //i
-    .io_readEnd               (axiCtrl_io_readEnd                   ), //o
-    .io_readData              (axiCtrl_io_readData[31:0]            ), //o
-    .io_axi4_ar_valid         (axiCtrl_io_axi4_ar_valid             ), //o
-    .io_axi4_ar_ready         (io_axi4_ar_ready                     ), //i
-    .io_axi4_ar_payload_addr  (axiCtrl_io_axi4_ar_payload_addr[31:0]), //o
-    .io_axi4_ar_payload_id    (axiCtrl_io_axi4_ar_payload_id[3:0]   ), //o
-    .io_axi4_ar_payload_len   (axiCtrl_io_axi4_ar_payload_len[7:0]  ), //o
-    .io_axi4_ar_payload_size  (axiCtrl_io_axi4_ar_payload_size[2:0] ), //o
-    .io_axi4_ar_payload_burst (axiCtrl_io_axi4_ar_payload_burst[1:0]), //o
-    .io_axi4_r_valid          (io_axi4_r_valid                      ), //i
-    .io_axi4_r_ready          (axiCtrl_io_axi4_r_ready              ), //o
-    .io_axi4_r_payload_data   (io_axi4_r_payload_data[31:0]         ), //i
-    .io_axi4_r_payload_id     (io_axi4_r_payload_id[3:0]            ), //i
-    .io_axi4_r_payload_resp   (io_axi4_r_payload_resp[1:0]          ), //i
-    .io_axi4_r_payload_last   (io_axi4_r_payload_last               ), //i
-    .clock                    (clock                                ), //i
-    .reset                    (reset                                )  //i
+  ysyx_23060082_Axi4_Ctrler_ReadOnly axi4Ctrler (
+    .io_readReq               (axi4Ctrler_io_readReq                   ), //i
+    .io_readAddr              (pc[31:0]                                ), //i
+    .io_readEnd               (axi4Ctrler_io_readEnd                   ), //o
+    .io_readData              (axi4Ctrler_io_readData[31:0]            ), //o
+    .io_axi4_ar_valid         (axi4Ctrler_io_axi4_ar_valid             ), //o
+    .io_axi4_ar_ready         (io_axi4_ar_ready                        ), //i
+    .io_axi4_ar_payload_addr  (axi4Ctrler_io_axi4_ar_payload_addr[31:0]), //o
+    .io_axi4_ar_payload_id    (axi4Ctrler_io_axi4_ar_payload_id[3:0]   ), //o
+    .io_axi4_ar_payload_len   (axi4Ctrler_io_axi4_ar_payload_len[7:0]  ), //o
+    .io_axi4_ar_payload_size  (axi4Ctrler_io_axi4_ar_payload_size[2:0] ), //o
+    .io_axi4_ar_payload_burst (axi4Ctrler_io_axi4_ar_payload_burst[1:0]), //o
+    .io_axi4_r_valid          (io_axi4_r_valid                         ), //i
+    .io_axi4_r_ready          (axi4Ctrler_io_axi4_r_ready              ), //o
+    .io_axi4_r_payload_data   (io_axi4_r_payload_data[31:0]            ), //i
+    .io_axi4_r_payload_id     (io_axi4_r_payload_id[3:0]               ), //i
+    .io_axi4_r_payload_resp   (io_axi4_r_payload_resp[1:0]             ), //i
+    .io_axi4_r_payload_last   (io_axi4_r_payload_last                  ), //i
+    .clock                    (clock                                   ), //i
+    .reset                    (reset                                   )  //i
   );
   `ifndef SYNTHESIS
   always @(*) begin
@@ -1788,20 +1788,20 @@ module ysyx_23060082_IFU (
   assign io_input_fire = (io_input_valid && io_input_ready);
   assign when_IFU_l29 = (io_input_fire || rstEnd);
   assign io_output_fire = (io_output_valid && io_output_ready);
-  assign io_axi4_ar_valid = axiCtrl_io_axi4_ar_valid;
-  assign io_axi4_ar_payload_addr = axiCtrl_io_axi4_ar_payload_addr;
-  assign io_axi4_ar_payload_id = axiCtrl_io_axi4_ar_payload_id;
-  assign io_axi4_ar_payload_len = axiCtrl_io_axi4_ar_payload_len;
-  assign io_axi4_ar_payload_size = axiCtrl_io_axi4_ar_payload_size;
-  assign io_axi4_ar_payload_burst = axiCtrl_io_axi4_ar_payload_burst;
-  assign io_axi4_r_ready = axiCtrl_io_axi4_r_ready;
-  assign axiCtrl_io_readReq = ((state == IfuState_Idle) && dataValid);
-  assign when_IFU_l44 = ((state == IfuState_WaitMem) && axiCtrl_io_readEnd);
-  assign willValid = (((state == IfuState_WaitMem) && axiCtrl_io_readEnd) || (state == IfuState_Done));
+  assign io_axi4_ar_valid = axi4Ctrler_io_axi4_ar_valid;
+  assign io_axi4_ar_payload_addr = axi4Ctrler_io_axi4_ar_payload_addr;
+  assign io_axi4_ar_payload_id = axi4Ctrler_io_axi4_ar_payload_id;
+  assign io_axi4_ar_payload_len = axi4Ctrler_io_axi4_ar_payload_len;
+  assign io_axi4_ar_payload_size = axi4Ctrler_io_axi4_ar_payload_size;
+  assign io_axi4_ar_payload_burst = axi4Ctrler_io_axi4_ar_payload_burst;
+  assign io_axi4_r_ready = axi4Ctrler_io_axi4_r_ready;
+  assign axi4Ctrler_io_readReq = ((state == IfuState_Idle) && dataValid);
+  assign when_IFU_l44 = ((state == IfuState_WaitMem) && axi4Ctrler_io_readEnd);
+  assign willValid = (((state == IfuState_WaitMem) && axi4Ctrler_io_readEnd) || (state == IfuState_Done));
   assign io_output_valid = (dataValid && willValid);
   assign io_input_ready = ((! dataValid) || io_output_fire);
   assign io_output_payload_pc = pc;
-  assign io_output_payload_instr = (((state == IfuState_WaitMem) && axiCtrl_io_readEnd) ? axiCtrl_io_readData : rdataReg);
+  assign io_output_payload_instr = (((state == IfuState_WaitMem) && axi4Ctrler_io_readEnd) ? axi4Ctrler_io_readData : rdataReg);
   always @(posedge clock or posedge reset) begin
     if(reset) begin
       state <= IfuState_Idle;
@@ -1826,7 +1826,7 @@ module ysyx_23060082_IFU (
         pc <= io_input_payload_pc_next;
       end
       if(when_IFU_l44) begin
-        rdataReg <= axiCtrl_io_readData;
+        rdataReg <= axi4Ctrler_io_readData;
       end
       case(state)
         IfuState_Idle : begin
@@ -1837,7 +1837,7 @@ module ysyx_23060082_IFU (
           end
         end
         IfuState_WaitMem : begin
-          if(axiCtrl_io_readEnd) begin
+          if(axi4Ctrler_io_readEnd) begin
             if(io_output_fire) begin
               state <= IfuState_Idle;
             end else begin
@@ -2745,7 +2745,7 @@ module ysyx_23060082_Decoder (
 
 endmodule
 
-module ysyx_23060082_AXI_Ctrl_ReadOnly (
+module ysyx_23060082_Axi4_Ctrler_ReadOnly (
   input  wire          io_readReq,
   input  wire [31:0]   io_readAddr,
   output wire          io_readEnd,

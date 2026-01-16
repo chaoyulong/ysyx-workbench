@@ -28,7 +28,6 @@ void _first_stage_bootloader()
   }
 }
 
-
 // 二级bootloader， 装载程序
 void _second_stage_bootloader (void) __attribute__ ((section ("ssbl")));
 void _second_stage_bootloader() 

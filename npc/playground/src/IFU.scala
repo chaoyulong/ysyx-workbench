@@ -36,12 +36,12 @@ case class ysyx_23060082_IFU(config: CpuConfig) extends Component {
   // ------------------------------------ PC寄存器 ------------------------------------ //
   val pc = RegNextWhen(io.input.pc_next, io.input.fire) init(U(config.resetPc, 32 bits))
   // ------------------------------------- 读内存 ------------------------------------- //
-  val axiCtrl = ysyx_23060082_AXI_Ctrl_ReadOnly()
-  io.axi4 <> axiCtrl.io.axi4
-  axiCtrl.io.readReq := (state === IfuState.Idle) && dataValid   // 数据开始有效并且处于等待状态，触发一次读取
-  axiCtrl.io.readAddr:= pc
+  val axi4Ctrler = ysyx_23060082_Axi4_Ctrler_ReadOnly()
+  io.axi4 <> axi4Ctrler.io.axi4
+  axi4Ctrler.io.readReq := (state === IfuState.Idle) && dataValid   // 数据开始有效并且处于等待状态，触发一次读取
+  axi4Ctrler.io.readAddr:= pc
 
-  val rdataReg = RegNextWhen(axiCtrl.io.readData, state === IfuState.WaitMem && axiCtrl.io.readEnd) init(0)  // 读完时更新数据
+  val rdataReg = RegNextWhen(axi4Ctrler.io.readData, state === IfuState.WaitMem && axi4Ctrler.io.readEnd) init(0)  // 读完时更新数据
   // ------------------------------------- 状态机 ------------------------------------- //
   switch(state) {
     is(IfuState.Idle) {
@@ -49,7 +49,7 @@ case class ysyx_23060082_IFU(config: CpuConfig) extends Component {
       .otherwise{state := state}
     }
     is(IfuState.WaitMem) {
-      when(axiCtrl.io.readEnd) {
+      when(axi4Ctrler.io.readEnd) {
         when(io.output.fire){state := IfuState.Idle}     // 若已经握手成功，则返回到Idle状态
         .otherwise{state := IfuState.Done}
       }
@@ -63,19 +63,19 @@ case class ysyx_23060082_IFU(config: CpuConfig) extends Component {
 
   // ---------------------------------- 用于握手的部分 ---------------------------------- //
   // willValid的意义就是当前周期就可以完成任务
-  val willValid = (state === IfuState.WaitMem && axiCtrl.io.readEnd) ||       // 访存完成
+  val willValid = (state === IfuState.WaitMem && axi4Ctrler.io.readEnd) ||       // 访存完成
                   (state === IfuState.Done)
   io.output.valid := dataValid && willValid  
   io.input.ready := !dataValid || io.output.fire
   // ----------------------------------- 数据传输部分 ----------------------------------- //
   io.output.pc    := pc
-  io.output.instr := Mux(state === IfuState.WaitMem && axiCtrl.io.readEnd, axiCtrl.io.readData, rdataReg)
+  io.output.instr := Mux(state === IfuState.WaitMem && axi4Ctrler.io.readEnd, axi4Ctrler.io.readData, rdataReg)
 }
 
 /* ****************************************************************
   只有读通道的axi总线控制器
 **************************************************************** */
-case class ysyx_23060082_AXI_Ctrl_ReadOnly() extends Component {
+case class ysyx_23060082_Axi4_Ctrler_ReadOnly() extends Component {
   val io = new Bundle {
     val readReq  = in Bool()
     val readAddr = in UInt(32 bits)

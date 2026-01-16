@@ -81,11 +81,11 @@ SECTIONS {
   _heap_start = ALIGN(0x1000);
    _heap_end = ORIGIN(sdram) + LENGTH(sdram); 
   _sram_stack_pointer = ORIGIN(sram) + LENGTH(sram);
-  
-  PROVIDE(_data_extra_start     = 0);
-  PROVIDE(_data_extra_end       = 0);
+  /* 如果链接脚本中不存在这几个变量，则自定义这几个变量 */
+  PROVIDE(_data_extra_start = 0);
+  PROVIDE(_data_extra_end = 0);
   PROVIDE(_data_extra_load_start = 0);
-  PROVIDE(_bss_extra_start      = 0);
-  PROVIDE(_bss_extra_end        = 0);
+  PROVIDE(_bss_extra_start = 0);
+  PROVIDE(_bss_extra_end = 0);
 }
 

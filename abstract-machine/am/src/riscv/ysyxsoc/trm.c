@@ -67,10 +67,6 @@ void _second_stage_bootloader()
     *(uint32_t *)((uintptr_t)&_bss_start + i) = 0;
   }
 
-
-#define __INSERT_EXTRA__
-
-#ifdef __INSERT_EXTRA__
   extern char _data_extra_start;
   extern char _data_extra_end;
   extern char _data_extra_load_start;
@@ -85,7 +81,7 @@ void _second_stage_bootloader()
   for(i = 0; i < n; i++){
     *(char *)((uintptr_t)&_bss_extra_start + i) = 0;
   }
-#endif
+
 }
 
 uint32_t flash_read(uint32_t raddr)

@@ -73,15 +73,13 @@ void _second_stage_bootloader()
   extern char _bss_extra_start;
   extern char _bss_extra_end;
 
-  if(_data_extra_start != 0 && _bss_extra_start != 0){ 
-    n = (uintptr_t)(&_data_extra_end - &_data_extra_start);
-    for(i = 0; i < n; i++){
-      *(char *)((uintptr_t)&_data_extra_start + i) = *(char *)((uintptr_t)&_data_extra_load_start + i);
-    }
-    n = (uintptr_t)(&_bss_extra_end - &_bss_extra_start);
-    for(i = 0; i < n; i++){
-      *(char *)((uintptr_t)&_bss_extra_start + i) = 0;
-    }
+  n = (uintptr_t)(&_data_extra_end - &_data_extra_start);
+  for(i = 0; i < n; i++){
+    *(char *)((uintptr_t)&_data_extra_start + i) = *(char *)((uintptr_t)&_data_extra_load_start + i);
+  }
+  n = (uintptr_t)(&_bss_extra_end - &_bss_extra_start);
+  for(i = 0; i < n; i++){
+    *(char *)((uintptr_t)&_bss_extra_start + i) = 0;
   }
 
 }

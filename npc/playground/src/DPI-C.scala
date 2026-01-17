@@ -20,33 +20,6 @@ case class GetInstr() extends BlackBox{
   addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/dpi-c.v")   
 }
 
-case class Mem_Rd() extends BlackBox{
-  val io=new Bundle{
-    val clock = in Bool()
-    val reset = in Bool()
-    val rd_req = in Bool()
-    val addr  = in UInt(32 bits)
-    val rd_end = out Bool() 
-    val rdata = out UInt(32 bits)
-  }
-  noIoPrefix()
-  mapClockDomain(clock = io.clock,reset = io.reset)
-  addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/dpi-c.v")   
-}
-
-case class NpcMemRead() extends BlackBox{
-  val io = new Bundle{
-    val clock = in Bool()
-    val reset = in Bool()
-    val valid = in Bool()
-    val addr  = in UInt(32 bits)
-    val rdata = out UInt(32 bits)
-  }
-  noIoPrefix()
-  mapClockDomain(clock = io.clock,reset = io.reset)
-  addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/dpi-c.v")   
-}
-
 case class NpcMemRW() extends BlackBox{
   val io=new Bundle{
     val clock = in Bool()
@@ -62,22 +35,3 @@ case class NpcMemRW() extends BlackBox{
   mapClockDomain(clock = io.clock,reset = io.reset)
   addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/dpi-c.v")   
 }
-
-case class Mem_RW() extends BlackBox{
-  val io=new Bundle{
-    val clock = in Bool()
-    val reset = in Bool()
-    val valid = in Bool()
-    val wen   = in Bool()
-    val addr  = in UInt(32 bits)
-    val wdata = in UInt(32 bits)
-    val wmask = in UInt(4 bits)
-    val rw_end = out Bool()
-    val rdata = out UInt(32 bits)
-  }
-  noIoPrefix()
-  mapClockDomain(clock = io.clock,reset = io.reset)
-  addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/dpi-c.v")   
-}
-
-

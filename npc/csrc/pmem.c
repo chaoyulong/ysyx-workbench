@@ -34,8 +34,7 @@ extern "C" uint32_t pmem_read(uint32_t raddr) {
 // `wmask`中每比特表示`wdata`中1个字节的掩码,
 // 如`wmask = 0x3`代表只写入最低2个字节, 内存中的其它字节保持不变
 extern "C" void pmem_write(uint32_t waddr, uint32_t wdata, uint8_t wmask) {
-  if(in_pmem(waddr)){
-    
+  if(in_pmem(waddr)){ 
     paddr_t real_addr = ((paddr_t)waddr & (paddr_t)(~0x3u));  // 地址对齐
     word_t wmask32 = 0;
     for (int i = 0; i < 4; i++) {
@@ -46,10 +45,9 @@ extern "C" void pmem_write(uint32_t waddr, uint32_t wdata, uint8_t wmask) {
     host_write(guest_to_host(real_addr), real_wdata);
     return;
   }
-  
   switch(waddr){
-    case SERIAL_PORT: putc((uint8_t)wdata, stderr); break;
-    default: out_of_bound(waddr, 1); break;
+    case SERIAL_PORT: putc((uint8_t)wdata, stderr); return;
+    default: out_of_bound(waddr, 1); return;
   }
 }
 

@@ -1,27 +1,26 @@
-import "DPI-C" function int pmem_read(input int raddr);
-import "DPI-C" function void pmem_write(input int waddr, input int wdata, input byte wmask);
-import "DPI-C" function void my_ebreak();
-import "DPI-C" function void get_instr(int pc_o, int instr);
+
+
+
 
 
 module MyEbreak(
   input i_ebreak
 );
-always @(*) begin
-  if(i_ebreak)
-    my_ebreak();
-end
-
+  import "DPI-C" function void my_ebreak();
+  always @(*) begin
+    if(i_ebreak)
+      my_ebreak();
+  end
 endmodule
 
 module GetInstr(
   input [31:0] pc_o,
   input [31:0] instr
 );
-always @(*) begin
-  get_instr(pc_o, instr);
-end
-
+  import "DPI-C" function void get_instr(int pc_o, int instr);
+  always @(*) begin
+    get_instr(pc_o, instr);
+  end
 endmodule
 
 module NpcMemRW(
@@ -34,6 +33,8 @@ module NpcMemRW(
   input      [3:0]  wmask,
   output reg [31:0] rdata
 );
+  import "DPI-C" function int pmem_read(input int raddr);
+  import "DPI-C" function void pmem_write(input int waddr, input int wdata, input byte wmask);
   always @(posedge clock or posedge reset) begin
     if (reset) begin 
       rdata <= 32'h0;

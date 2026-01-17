@@ -1,8 +1,4 @@
-
-
-
-
-
+// --------------------------------- 程序运行结束 --------------------------------- //
 module MyEbreak(
   input i_ebreak
 );
@@ -13,6 +9,7 @@ module MyEbreak(
   end
 endmodule
 
+// ---------------------------- 将取到的指令传入trice中 ---------------------------- //
 module GetInstr(
   input [31:0] pc_o,
   input [31:0] instr
@@ -22,7 +19,7 @@ module GetInstr(
     get_instr(pc_o, instr);
   end
 endmodule
-
+// ----------------------------------- 内存读写 ----------------------------------- //
 module NpcMemRW(
   input             clock,
   input             reset,

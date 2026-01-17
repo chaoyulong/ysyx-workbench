@@ -165,6 +165,9 @@ case class ysyx_23060082_Clint() extends Component {
   val wAllValid = io.clintAxi4.aw.valid && io.clintAxi4.w.valid
   io.clintAxi4.aw.ready := wAllValid
   io.clintAxi4.w.ready  := wAllValid
+  when(wAllValid) {  
+    report(Seq("should not write to there!", io.clintAxi4.aw.addr))
+  }
   when(wAllValid) {   
     io.clintAxi4.b.valid := True
   } elsewhen (io.clintAxi4.b.fire) {
@@ -172,5 +175,5 @@ case class ysyx_23060082_Clint() extends Component {
   } otherwise {
     io.clintAxi4.b.valid := io.clintAxi4.b.valid
   }
- 
+
 }

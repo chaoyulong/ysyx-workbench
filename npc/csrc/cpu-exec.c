@@ -147,9 +147,11 @@ int is_exit_status_bad()
 
 static void statistic() 
 {
-  // Log("host time spent = %lu us", g_timer);
+  Log("host time spent = %lu us", g_timer);
   Log("total execution cycle = %lu", g_nr_guest_cycle);
-  // Log("total execution inst  = %lu", g_nr_guest_inst);  
+  // Log("total execution inst  = %lu", g_nr_guest_inst);    
+  if (g_timer > 0) Log("simulation frequency = %lu cycle/s", g_nr_guest_cycle * 1000000 / g_timer); // 仿真频率
+  else Log("Finish running in less than 1 us and can not calculate the simulation frequency");  
   
   // Log_nohead("-----------------------------------------");   
   // Log("IFU:"); 
@@ -177,8 +179,7 @@ static void statistic()
   // Log_nohead("    total Rd/Wr cycle = %lu", g_lsu_rw_total_time);
   // Log_nohead("    average access cycle = %.4f cycle/mem_inst", (float)g_lsu_rw_total_time/(float)(g_lsu_rw_mem_cnt + g_lsu_rw_device_cnt));
   // Log_nohead("-----------------------------------------"); 
-  if (g_timer > 0) Log("simulation frequency = %lu cycle/s", g_nr_guest_cycle * 1000000 / g_timer); // 仿真频率
-  else Log("Finish running in less than 1 us and can not calculate the simulation frequency");  
+
   // 性能计数器打印
   // Log("Instructions per cycle = %1.4f inst/cycle", (float)g_nr_guest_inst/(float)g_nr_guest_cycle);
 }

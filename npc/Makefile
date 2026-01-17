@@ -139,7 +139,7 @@ wave: $(CSRCS) $(VSRCS)
 clean:
 	-rm -rf $(BUILD_DIR) ./simulations ./*.v
 
-.PHONY: $(SPINAL_VFILE) test verilog run sim wave help reformat checkformat clean 
+.PHONY: $(SRC_AUTO_BIND) $(SPINAL_VFILE) test verilog run sim wave help reformat checkformat clean 
 
 
 -include ../Makefile

@@ -22,8 +22,8 @@ case class GetInstr() extends BlackBox{
 
 case class NpcMemRW() extends BlackBox{
   val io=new Bundle{
-    val clock = in Bool()
-    val reset = in Bool()
+    val clocka = in Bool()
+    val reseta = in Bool()
     val valid = in Bool()
     val wen   = in Bool()
     val addr  = in UInt(32 bits)
@@ -32,6 +32,6 @@ case class NpcMemRW() extends BlackBox{
     val rdata = out UInt(32 bits)
   }
   noIoPrefix()
-  mapClockDomain(clock = io.clock,reset = io.reset)
+  mapClockDomain(clock = io.clocka,reset = io.reseta)
   addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/dpi-c.v")   
 }

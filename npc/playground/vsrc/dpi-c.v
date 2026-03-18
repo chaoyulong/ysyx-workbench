@@ -21,8 +21,8 @@ module GetInstr(
 endmodule
 // ----------------------------------- 内存读写 ----------------------------------- //
 module NpcMemRW(
-  input             clocka,
-  input             reseta,
+  input             clock,
+  input             reset,
   input             valid,
   input             wen,
   input      [31:0] addr,

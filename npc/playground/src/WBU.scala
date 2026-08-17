@@ -19,7 +19,8 @@ case class ysyx_23060082_WBU() extends Component {
 
   val payloadReg = RegNextWhen(io.input.payload, io.input.fire)     // 握手成功更新寄存器
   val validReg = RegInit(False)
-    
+  val outValid = RegInit(False)
+
   when(io.input.fire) {        // 上游握手成功，说明当前数据处于有效状态
     validReg := True
   }elsewhen(validReg) {        // 只存在一个周期，防止重复写入
@@ -36,7 +37,7 @@ case class ysyx_23060082_WBU() extends Component {
   io.rf_write_data  := Mux(payloadReg.rf_ctrl.mem2reg | payloadReg.rf_ctrl.csr2reg, 
                            payloadReg.mem_data_out, payloadReg.alu_data_out)
 
-  val outValid = RegInit(False)
+  
   when(io.input.fire) {        
     outValid := True
   }elsewhen(io.output.fire) {       

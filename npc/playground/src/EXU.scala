@@ -50,7 +50,7 @@ case class ysyx_23060082_EXU() extends Component {
   io.output.pc          := io.input.pc
   
   io.output.pc_next     := io.input.ctrl.alu_si.branch.mux(
-    U"010"  -> (pcDataTmp(31 downto 1) ## B"0").asUInt,
+    U"010"  -> (pcDataTmp(31 downto 1) ## B(0)).asUInt,
     default -> pcDataTmp
   )
   io.output.aluResult  := alu.io.aluResult

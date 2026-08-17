@@ -72,7 +72,7 @@ case class ysyx_23060082_LSU() extends Component {
     csr.io.trap_enter := io.input.csr_ctrl.trap_enter
     csr.io.trap_exit  := io.input.csr_ctrl.trap_exit
     csr.io.pc_in      := io.input.pc
-    csr.io.cause_in   := io.input.rfReadData1
+    csr.io.cause_in   := Mux(io.input.csr_ctrl.i_illegal, U(2), io.input.rfReadData1)
 
   // --------------------------------- 用于握手的部分 --------------------------------- //
   // willValid的意义就是当前周期就可以完成任务

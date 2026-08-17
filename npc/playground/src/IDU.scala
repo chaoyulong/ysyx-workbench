@@ -33,6 +33,7 @@ case class MemCtrl() extends Bundle { // LSU中消耗的控制信号
 
 case class CsrCtrl() extends Bundle { // CSR寄存器的控制信号
   val csr_cmd    = UInt(3 bits)       // 0=NOP,1=CSRRW,2=CSRRS,其他后续可能有用
+  val i_illegal  = Bool()             // 非法指令
   val trap_enter = Bool()             // 异常进入
   val trap_exit  = Bool()             // MRET
 }

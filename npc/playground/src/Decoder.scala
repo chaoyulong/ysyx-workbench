@@ -85,7 +85,7 @@ case class ysyx_23060082_Decoder() extends Component {
                 i_lb | i_lh | i_lw | i_lbu | i_lhu | i_sb | i_sh | i_sw |
                 i_beq | i_bne | i_blt | i_bge | i_bltu | i_bgeu | i_jalr | i_jal  | i_lui | i_auipc |
                 i_csrrw | i_csrrs | i_ecall | i_ebreak | i_mret | i_fence_i
-  val illegal = (instr =/= 0) && !isLegal
+  val i_illegal = (instr =/= 0) && !isLegal
 
 // --------------------------------------------------------- 指令类型 ------------------------------------------------------ //
   val type_U = op(4 downto 2) === U"101"
@@ -153,12 +153,12 @@ case class ysyx_23060082_Decoder() extends Component {
   // mret:     pc_next = CSR[mepc  ]
   io.ctrl.csr_si.csr_cmd := Mux(i_csrrw, U"3'd1",             // 0=NOP,1=CSRRW,2=CSRRS
                             Mux(i_csrrs, U"3'd2", U"3'd0"))
-  io.ctrl.csr_si.trap_enter := i_ecall      // 异常进入,后续应该会增加进入方式
-  io.ctrl.csr_si.trap_exit  := i_mret       // 退出异常,MRET
+  io.ctrl.csr_si.i_illegal  :=  i_illegal
+  io.ctrl.csr_si.trap_enter := i_ecall | i_illegal            // 异常进入,主动进入或者出现非法指令
+  io.ctrl.csr_si.trap_exit  := i_mret                         // 退出异常,MRET
   // ------------------------ ebreak ------------------------ //
   val my_ebreak = MyEbreak()
   my_ebreak.io.i_ebreak := i_ebreak
-  my_ebreak.io.i_illegal:= illegal
   // ---------------------------------------------------------//
 }
 

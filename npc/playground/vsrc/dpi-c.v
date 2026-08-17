@@ -1,6 +1,6 @@
 // --------------------------------- 程序运行结束 --------------------------------- //
 module MyEbreak(
-  input i_ebreak
+  input i_ebreak,
   input i_illegal
 );
   import "DPI-C" function void my_ebreak();

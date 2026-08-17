@@ -106,7 +106,8 @@ define build_target
 	echo "[verilator] done ($$(printf "%.1f" $$(echo "$$(date +%s.%N) - $$_t" | bc))s)"
 	@echo verilator[]: completed
 	@echo [sim] $(BIN) running...; \
-	$(BIN) $(ARGS) $(IMG);	\
+	_t=$$(date +%s.%N); \
+	$(BIN) $(ARGS) $(IMG); \
 	echo "[sim] done ($$(printf "%.1f" $$(echo "$$(date +%s.%N) - $$_t" | bc))s)"
 endef
 

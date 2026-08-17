@@ -53,7 +53,7 @@ case class ysyx_23060082_EXU() extends Component {
     U"010"  -> (pcDataTmp(31 downto 1) ## B"1'b0").asUInt,
     default -> pcDataTmp
   )
-  io.output.aluResult  := alu.io.aluResult
+  io.output.aluResult   := alu.io.aluResult
   io.output.imm         := io.input.imm(11 downto 0)
   io.output.rfReadData1 := io.input.rfReadData1
   io.output.rfReadData2 := io.input.rfReadData2

@@ -14,7 +14,7 @@ else ifeq ($(PARTFORM),npc)
 	SPINAL_TOPNAME = NPC_TOP
 	TOPNAME = $(SPINAL_TOPNAME)
 else
-	$(error Unknown PARTFORMc $(PARTFORM))
+	$(error Unknown PARTFORM $(PARTFORM))
 endif
 
 INC_PATH += $(abspath include)
@@ -27,6 +27,14 @@ SIM_WAVE = $(BUILD_DIR)/waveform.fst
 SPINAL_PRJ = playground
 SPINAL_VFILE = $(abspath $(BUILD_DIR)/$(SPINAL_TOPNAME).v)
 SPINAL_SIM_DIR = $(BUILD_DIR)/simulations
+
+# yosys综合相关
+STA_DESIGN=ysyx_23060082
+STA_SDC_FILE=$(abspath npc.sdc)
+STA_CLK_FREQ_MHZ=100
+STA_CLK_PORT_NAME=clock
+STA_OUT=$(abspath $(BUILD_DIR)/sta)
+STA_RTL_FILES=$(abspath $(BUILD_DIR)/ysyx_23060082.v)
 
 ifneq ($(words $(CURDIR)),1)
   $(error Unsupported: GNU Make cannot build in directories containing spaces, build elsewhere: '$(CURDIR)')
@@ -124,6 +132,12 @@ sim: $(CSRCS) $(VSRCS)
 wave: $(CSRCS) $(VSRCS)
 	@$(call build_target, $^, -D__GET_WAVE__)
 	@gtkwave $(SIM_WAVE)
+
+sta:
+	make -C /home/cyl/tools/yosys-sta sta \
+			DESIGN=$(STA_DESIGN) SDC_FILE=$(STA_SDC_FILE) \
+			CLK_FREQ_MHZ=$(STA_CLK_FREQ_MHZ) CLK_PORT_NAME=$(STA_CLK_PORT_NAME) O=$(STA_OUT) \
+			RTL_FILES="$(STA_RTL_FILES)"
 
 # help:
 # 	./mill -i $(SPINAL_PRJ).runMain Elborate --help

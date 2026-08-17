@@ -29,7 +29,7 @@ case class ysyx_23060082_WBU() extends Component {
     validReg := validReg
   }
     
-  io.input.ready := !outValid || io.output.fire
+  io.input.ready := True
 
   io.output.pc_next := payloadReg.pc_next
   io.rf_write_addr  := payloadReg.rf_ctrl.rf_write_addr

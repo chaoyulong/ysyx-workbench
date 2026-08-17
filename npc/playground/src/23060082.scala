@@ -141,7 +141,7 @@ case class ysyx_23060082_Clint() extends Component {
   }
 
   io.clintAxi4.r.id   := U(0)
-  io.clintAxi4.r.resp := Axi4Resp.OKAY
+  io.clintAxi4.r.resp := U(0)
   // ---------- 写通道 ---------- //
   val wAllValid = io.clintAxi4.aw.valid && io.clintAxi4.w.valid
   io.clintAxi4.aw.ready := wAllValid
@@ -157,5 +157,5 @@ case class ysyx_23060082_Clint() extends Component {
     io.clintAxi4.b.valid := io.clintAxi4.b.valid
   }
   io.clintAxi4.b.id   := U(0)
-  io.clintAxi4.b.resp := Axi4Resp.OKAY
+  io.clintAxi4.b.resp := U(0)
 }

@@ -1,9 +1,12 @@
 // --------------------------------- 程序运行结束 --------------------------------- //
 module MyEbreak(
   input i_ebreak
+  input i_illegal
 );
   import "DPI-C" function void my_ebreak();
   always @(*) begin
+    if(illegal)
+      $error("inst is illegal");  // 非法指令
     if(i_ebreak)
       my_ebreak();
   end

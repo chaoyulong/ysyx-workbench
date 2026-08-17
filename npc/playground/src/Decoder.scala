@@ -15,11 +15,11 @@ case class ysyx_23060082_Decoder() extends Component {
 
   val op   = instr( 6 downto  0)     
   val func3= instr(14 downto 12)
-  // val func7= instr(31 downto 25)
+  // val func7= instr(31 downto 25) // 用不到
 
   io.ctrl.rf_si.rf_write_addr := instr(11 downto 7)   // 为了写起来简洁，写寄存器地址在此赋值
 // --------------------------------------------------------- 指令匹配 --------------------------------------------------------- //    
-  // val i_add    = i === M"0000000----------000-----0110011"    // type_R
+  val i_add    = i === M"0000000----------000-----0110011"    // type_R
   val i_sub    = i === M"0100000----------000-----0110011"
   val i_sll    = i === M"0000000----------001-----0110011"
   val i_slt    = i === M"0000000----------010-----0110011"
@@ -30,7 +30,7 @@ case class ysyx_23060082_Decoder() extends Component {
   val i_or     = i === M"0000000----------110-----0110011"
   val i_and    = i === M"0000000----------111-----0110011"
 
-  // val i_addi   = i === M"-----------------000-----0010011"    // type_I
+  val i_addi   = i === M"-----------------000-----0010011"    // type_I
   val i_slli   = i === M"0000000----------001-----0010011"
   val i_slti   = i === M"-----------------010-----0010011"
   val i_sltiu  = i === M"-----------------011-----0010011"
@@ -40,14 +40,14 @@ case class ysyx_23060082_Decoder() extends Component {
   val i_ori    = i === M"-----------------110-----0010011"
   val i_andi   = i === M"-----------------111-----0010011"
   
-  // val i_lb     = i === M"-----------------000-----0000011"
-  // val i_lh     = i === M"-----------------001-----0000011"
-  // val i_lw     = i === M"-----------------010-----0000011"
-  // val i_lbu    = i === M"-----------------100-----0000011"
-  // val i_lhu    = i === M"-----------------101-----0000011"
-  // val i_sb     = i === M"-----------------000-----0100011"    // type_S
-  // val i_sh     = i === M"-----------------001-----0100011"
-  // val i_sw     = i === M"-----------------010-----0100011"
+  val i_lb     = i === M"-----------------000-----0000011"
+  val i_lh     = i === M"-----------------001-----0000011"
+  val i_lw     = i === M"-----------------010-----0000011"
+  val i_lbu    = i === M"-----------------100-----0000011"
+  val i_lhu    = i === M"-----------------101-----0000011"
+  val i_sb     = i === M"-----------------000-----0100011"    // type_S
+  val i_sh     = i === M"-----------------001-----0100011"
+  val i_sw     = i === M"-----------------010-----0100011"
 
   val i_beq    = i === M"-----------------000-----1100011"    // type_B
   val i_bne    = i === M"-----------------001-----1100011"
@@ -78,6 +78,15 @@ case class ysyx_23060082_Decoder() extends Component {
   val i_mret   = i === M"00110000001000000000000001110011"
 
   val i_fence_i= i === M"-----------------001-----0001111"
+
+  // 判断非法指令
+  val isLegal = i_add | i_sub | i_sll | i_slt | i_sltu| i_xor | i_srl | i_sra | i_or  | i_and | 
+                i_addi | i_slli | i_slti | i_sltiu | i_xori | i_srli | i_srai | i_ori | i_andi |
+                i_lb | i_lh | i_lw | i_lbu | i_lhu | i_sb | i_sh | i_sw |
+                i_beq | i_bne | i_blt | i_bge | i_bltu | i_bgeu | i_jalr | i_jal  | i_lui | i_auipc |
+                i_csrrw | i_csrrs | i_ecall | i_ebreak | i_mret | i_fence_i
+  val illegal = (instr =/= 0) && !isLegal
+
 // --------------------------------------------------------- 指令类型 ------------------------------------------------------ //
   val type_U = op(4 downto 2) === U"101"
   val type_J = op(6 downto 2) === U"11011"
@@ -149,6 +158,7 @@ case class ysyx_23060082_Decoder() extends Component {
   // ------------------------ ebreak ------------------------ //
   val my_ebreak = MyEbreak()
   my_ebreak.io.i_ebreak := i_ebreak
+  my_ebreak.io.i_illegal:= illegal
   // ---------------------------------------------------------//
 }
 

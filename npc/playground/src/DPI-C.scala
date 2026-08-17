@@ -6,6 +6,7 @@ import spinal.core._
 case class MyEbreak() extends BlackBox{
   val io = new Bundle{
     val i_ebreak = in Bool()
+    val i_illegal = in Bool()
   }
   noIoPrefix()
   addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/dpi-c.v")   

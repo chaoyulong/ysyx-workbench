@@ -83,10 +83,10 @@ SPINAL_SIM_ENV := SPINAL_SIM_DIR=$(BUILD_DIR)/simulations
 verilog:
 	$(call git_commit, "generate verilog")
 	@mkdir -p $(BUILD_DIR)
-	@$(SPINAL_GEN_ENV) mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog 
+	@$(SPINAL_GEN_ENV) ./mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog 
 
 test:
-	@$(SPINAL_SIM_ENV) mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalSim 
+	@$(SPINAL_SIM_ENV) ./mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalSim 
 	@gtkwave $(SPINAL_SIM_DIR)/$(SPINAL_TOPNAME)/test/wave.fst
 
 # 应该每次都重新生成一次verilog文件
@@ -125,19 +125,19 @@ wave: $(CSRCS) $(VSRCS)
 	@gtkwave $(SIM_WAVE)
 
 # help:
-# 	mill -i $(SPINAL_PRJ).runMain Elborate --help
+# 	./mill -i $(SPINAL_PRJ).runMain Elborate --help
 
 # reformat:
-# 	mill -i __.reformat
+# 	./mill -i __.reformat
 
 # checkformat:
-# 	mill -i __.checkFormat
+# 	./mill -i __.checkFormat
 
 # bsp:
-# 	mill -i mill.bsp.BSP/install
+# 	./mill -i mill.bsp.BSP/install
 
 # idea:
-# 	mill -i mill.idea.GenIdea/idea
+# 	./mill -i mill.idea.GenIdea/idea
 
 clean:
 	-rm -rf $(BUILD_DIR) ./simulations ./*.v

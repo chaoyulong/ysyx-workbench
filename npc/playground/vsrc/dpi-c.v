@@ -5,7 +5,7 @@ module MyEbreak(
 );
   import "DPI-C" function void my_ebreak();
   always @(*) begin
-    if(illegal)
+    if(i_illegal)
       $error("inst is illegal");  // 非法指令
     if(i_ebreak)
       my_ebreak();

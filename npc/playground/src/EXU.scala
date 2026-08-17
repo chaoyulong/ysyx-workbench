@@ -42,13 +42,17 @@ case class ysyx_23060082_EXU() extends Component {
 
   val pcDataA = Mux(banchCond.io.pc_asrc, io.input.imm, U"32'd4")
   val pcDataB = Mux(banchCond.io.pc_bsrc, io.input.rfReadData1, io.input.pc)
-
+  val pcDataTmp = pcDataA + pcDataB
   // ------------------ 用于握手的部分 ------------------ //
   val willValid = True
   io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
   // ------------------ 数据传输部分 ------------------ //
   io.output.pc          := io.input.pc
-  io.output.pc_next     := pcDataA + pcDataB
+  
+  io.output.pc_next     := io.input.ctrl.alu_si.branch.mux(
+    U"010"  -> pcDataTmp(31 downto 1) ## 0,
+    default -> pcDataTmp
+  )
   io.output.aluResult  := alu.io.aluResult
   io.output.imm         := io.input.imm(11 downto 0)
   io.output.rfReadData1 := io.input.rfReadData1

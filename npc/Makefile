@@ -38,6 +38,7 @@ else
   export VERILATOR_ROOT
   VERILATOR = $(VERILATOR_ROOT)/bin/verilator
 endif
+
 VERILATOR_CFLAGS += -MMD --build -cc  \
 				-O3 --x-assign fast --x-initial fast --noassert \
 				--trace-fst --relative-includes	\
@@ -95,18 +96,20 @@ $(SPINAL_VFILE): verilog
 # 		$(call build_target, $^, -D__USE_NVBOARD__),第一个变量为所需的文件，第二个变量为加入的宏定义
 define build_target
 	$(call git_commit, "sim RTL") # DO NOT REMOVE THIS LINE!!!
-	@echo verilator[]: compiling...
-	@rm -rf $(OBJ_DIR)
-	@$(VERILATOR) $(VERILATOR_CFLAGS) \
+	@echo [verilator] compiling...; \
+	_t=$$(date +%s.%N); \
+	rm -rf $(OBJ_DIR);	\
+	MAKEFLAGS=-s $(VERILATOR) $(VERILATOR_CFLAGS) \
 		$(addprefix -CFLAGS , $(CXXFLAGS) $2) $(addprefix -LDFLAGS , $(LDFLAGS)) \
 		--top-module $(TOPNAME) $1 \
-		--Mdir $(OBJ_DIR) --exe -o $(abspath $(BIN)) \
-		2>&1 | grep -v -E '^g++|^echo|^rm|^python3'
+		--Mdir $(OBJ_DIR) --exe -o $(abspath $(BIN)); \
+	echo "[verilator] done ($$(printf "%.1f" $$(echo "$$(date +%s.%N) - $$_t" | bc))s)"
 	@echo verilator[]: completed
-	@echo $(BIN) start running...
-	@$(BIN) $(ARGS) $(IMG)
-	@echo $(BIN) run end
+	@echo [sim] $(BIN) running...; \
+	$(BIN) $(ARGS) $(IMG);	\
+	echo "[sim] done ($$(printf "%.1f" $$(echo "$$(date +%s.%N) - $$_t" | bc))s)"
 endef
+
 
 # 直接在nvboard上运行，直接查看现象
 run: $(CSRCS) $(VSRCS) $(NVBOARD_ARCHIVE) $(SRC_AUTO_BIND)

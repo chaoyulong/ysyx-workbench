@@ -89,13 +89,8 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig(BigInt("30000000", 16))) 
   wbu.io.output >> ifu.io.input
 
 
-  regFile.io.readAddr1 <> idu.io.rfReadAddr1
-  regFile.io.readAddr2 <> idu.io.rfReadAddr2
-  regFile.io.readData1 <> idu.io.rfReadData1
-  regFile.io.readData2 <> idu.io.rfReadData2
-  regFile.io.writeAddr <> wbu.io.rf_write_addr
-  regFile.io.writeData <> wbu.io.rf_write_data
-  regFile.io.writeEn   <> wbu.io.rf_write_en  
+  regFile.io.readBus <> idu.io.rfRead
+  regFile.io.writeBus <> wbu.io.rfWrite
 
   // ----------------------------------- 暂时的axi从机 ----------------------------------- //
   val xbar = ysyx_23060082_AXI4Xbar()

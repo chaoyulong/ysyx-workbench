@@ -51,10 +51,7 @@ case class ysyx_23060082_IDU() extends Component {
     val input  = slave  Flow(Ifu2Idu_data())
     val output = master Stream(Idu2Exu_data()) 
 
-    val rfReadAddr1 = out UInt(5 bits)
-    val rfReadAddr2 = out UInt(5 bits)
-    val rfReadData1 = in  UInt(32 bits)
-    val rfReadData2 = in  UInt(32 bits)
+    val rfRead = master(RegFileReadBus())
   }
 
   val instr = io.input.instr
@@ -64,14 +61,14 @@ case class ysyx_23060082_IDU() extends Component {
   val willValid = True
   io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
   // ----------------------- 数据传输部分 ----------------------- //
-  io.rfReadAddr1  := decoder.io.ctrl.csr_si.trap_enter.mux(   // 如果是触发异常的指令，则选择a5(第15个寄存器)作为数据输入
+  io.rfRead.addr1  := decoder.io.ctrl.csr_si.trap_enter.mux(   // 如果是触发异常的指令，则选择a5(第15个寄存器)作为数据输入
                          True  -> U"5'd15", 
                          False -> instr(19 downto 15))
-  io.rfReadAddr2  := instr(24 downto 20)  // 为了写起来简洁，写寄存器地址在decoder中赋值
+  io.rfRead.addr2  := instr(24 downto 20)  // 为了写起来简洁，写寄存器地址在decoder中赋值
   
   io.output.pc              := io.input.pc
-  io.output.rfReadData1  := io.rfReadData1
-  io.output.rfReadData2  := io.rfReadData2
+  io.output.rfReadData1  := io.rfRead.data1
+  io.output.rfReadData2  := io.rfRead.data2
   io.output.ctrl            := decoder.io.ctrl
   io.output.imm             := decoder.io.imm
 }

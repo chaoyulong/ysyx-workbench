@@ -110,7 +110,9 @@ case class ysyx_23060082_Decoder() extends Component {
               type_B -> immB,
               True -> B"32'h0")).asUInt
 // ------------------------------------------------------- 控制信号生成 ----------------------------------------------------- // 
-  io.ctrl.rf_si.regWr    := type_U | type_J | type_I | type_R | csr2reg
+  val csrWb = i_csrrw | i_csrrs
+
+  io.ctrl.rf_si.regWr    := type_U | type_J | type_I | type_R | csrWb
   io.ctrl.alu_si.alu_asrc := i_auipc | i_jal | i_jalr         // 0：选通rdata1，1：选通PC。
 
   io.ctrl.alu_si.alu_bsrc :=Mux(type_R | type_B, U"00",       // 选通rdata2
@@ -141,7 +143,7 @@ case class ysyx_23060082_Decoder() extends Component {
                               True             -> U"000"))
 
   io.ctrl.rf_si.mem2reg  := op(6 downto 2) === U"00000"       // i_lb | i_lh | i_lw | i_lbu | i_lhu
-  io.ctrl.rf_si.csr2reg  := i_csrrw | i_csrrs
+  io.ctrl.rf_si.csr2reg  := csrWb
   io.ctrl.mem_si.memWr  := type_S                            // i_sb | i_sh | i_sw
   io.ctrl.mem_si.memOp  := func3  
   // ----------------------- csr寄存器 ----------------------- //

@@ -26,6 +26,12 @@ const char *regs[] = {
 
 const char unfind[] = "xxx";
 
+// --------------------------------- 读mcause寄存器，用于检测程序结束 --------------------------------- //
+uint32_t Rmcause(void) {
+  return top->rootp->NPC_TOP__DOT__cpu__DOT__lsu__DOT__csr__DOT__mcause;
+}
+// ----------------------------------------------------------------------------------------------- //
+
 uint32_t Rpc(void)
 {
   return cpu_pc;

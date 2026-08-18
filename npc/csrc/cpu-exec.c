@@ -77,6 +77,12 @@ static void exec_once()
   cpu.decode.iringbuf_end++;
   if(cpu.decode.iringbuf_end > 15)  cpu.decode.iringbuf_end = 0;
 #endif
+
+  // 检测程序结束
+  if (Rmcause() == 3) {
+    npc_state.state = NPC_END;
+  }
+
 }
 
 

@@ -1,13 +1,13 @@
 // --------------------------------- 程序运行结束 --------------------------------- //
-module MyEbreak(
-  input i_ebreak
-);
-  import "DPI-C" function void my_ebreak();
-  always @(*) begin
-    if(i_ebreak)
-      my_ebreak();
-  end
-endmodule
+// module MyEbreak(
+//   input i_ebreak
+// );
+//   import "DPI-C" function void my_ebreak();
+//   always @(*) begin
+//     if(i_ebreak)
+//       my_ebreak();
+//   end
+// endmodule
 
 // ---------------------------- 将取到的指令传入trice中 ---------------------------- //
 module GetInstr(

@@ -73,6 +73,6 @@ void sim_exit()
 #endif
 }
 
-extern "C" void my_ebreak(void){
-  npc_state.state = NPC_END;
-}
+// extern "C" void my_ebreak(void){
+//   npc_state.state = NPC_END;
+// }

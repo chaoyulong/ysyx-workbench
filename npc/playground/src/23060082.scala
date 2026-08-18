@@ -111,9 +111,13 @@ case class ysyx_23060082_Clint() extends Component {
     val clintAxi4 = slave(Axi4(AxiConfig.axiConfig))
   }
 
-  val timeCount = RegInit(U"64'h0")   // 系统计时器
+  // val timeCount = RegInit(U"64'h0")   // 系统计时器
+  val timeCountH = RegInit(U"32'h0")
+  val timeCountL = RegInit(U"32'h0")
   val timeCountLow = RegNextWhen(timeCount(31 downto 0), io.clintAxi4.ar.fire && (io.clintAxi4.ar.addr === U"32'h02000004")) init(0)  // 当读取高位数据时暂存低位数据
-  timeCount := timeCount + 1
+  // timeCount := timeCount + 1
+  timeCountL := timeCountL + 1
+  timeCountH := timeCountH + timeCountL.andR
 
   io.clintAxi4.r.valid.setAsReg() init(False)
   io.clintAxi4.b.valid.setAsReg() init(False)

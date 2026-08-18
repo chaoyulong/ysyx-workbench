@@ -118,6 +118,7 @@ case class ysyx_23060082_Clint() extends Component {
   // timeCount := timeCount + 1
   timeCountL := timeCountL + 1
   timeCountH := timeCountH + timeCountL.andR.asUInt
+  val timeCount = (timeCountH ## timeCountL).asUInt
 
   io.clintAxi4.r.valid.setAsReg() init(False)
   io.clintAxi4.b.valid.setAsReg() init(False)

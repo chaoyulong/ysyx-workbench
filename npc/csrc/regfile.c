@@ -14,6 +14,7 @@
 #define cpu_rf      top->rootp->NPC_TOP__DOT__cpu__DOT__regFile__DOT__rf_0
 #define csr_mcause  top->rootp->NPC_TOP__DOT__cpu__DOT__lsu__DOT__csr__DOT__mcause
 #endif
+
 extern TOP_NAME* top;
 // VCPU___024root* rootp;
 
@@ -30,7 +31,7 @@ const char unfind[] = "xxx";
 
 // --------------------------------- 读mcause寄存器，用于检测程序结束 --------------------------------- //
 uint32_t Rmcause(void) {
-  return top->rootp->NPC_TOP__DOT__cpu__DOT__lsu__DOT__csr__DOT__mcause;
+  return csr_mcause;
 }
 // ----------------------------------------------------------------------------------------------- //
 

@@ -8,6 +8,8 @@
 uint32_t Rpc(void);
 uint32_t gpr(int n);
 
+uint32_t Rmcause(void);
+
 static inline int check_reg_idx(int idx) {
   assert(idx >= 0 && idx < REG_NUM);
   return idx;

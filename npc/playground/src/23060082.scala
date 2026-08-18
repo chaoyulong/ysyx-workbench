@@ -72,9 +72,27 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig(BigInt("30000000", 16))) 
     
     prevOut.ready := !validReg || thisOut.fire   // 当数据无效，或者下游握手成功即将无效，此时ready置1,表示可以接收新的数据
   }
+  // 用于最后一级的连接
+  def pipelineConnectLast[T <: Data](
+    prevOut: Stream[T],
+    thisIn:  Flow[T]
+  ) = {
+    val payloadReg = RegNextWhen(prevOut.payload, prevOut.fire)
+    val validReg = RegInit(False)
+
+    when(prevOut.fire) {
+      validReg := True
+    } otherwise {
+      validReg := False
+    }
+
+    thisIn.payload := payloadReg
+    thisIn.valid := validReg
+    prevOut.ready := True
+  }
   // ------------------------------------------------------------------------------------------------------------------------- //
 
-  val regFile = ysyx_23060082_RegFile()
+  val rf  = ysyx_23060082_RegFile()
   val ifu = ysyx_23060082_IFU(config)
   val idu = ysyx_23060082_IDU()
   val exu = ysyx_23060082_EXU()
@@ -84,13 +102,12 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig(BigInt("30000000", 16))) 
   pipelineConnect(ifu.io.output, idu.io.input, idu.io.output)
   pipelineConnect(idu.io.output, exu.io.input, exu.io.output)
   pipelineConnect(exu.io.output, lsu.io.input, lsu.io.output)
-  // pipelineConnect(lsu.io.output, wbu.io.input, wbu.io.output)
-  lsu.io.output >> wbu.io.input   // wbu没有下一级，直接特殊对待，写回直接在内部处理
+  pipelineConnectLast(lsu.io.output, wbu.io.input)   // wbu是最后一级，没有thisOut
   wbu.io.output >> ifu.io.input
 
 
-  regFile.io.readBus <> idu.io.rfRead
-  regFile.io.writeBus <> wbu.io.rfWrite
+  rf.io.readBus  <> idu.io.rfRead
+  rf.io.writeBus <> wbu.io.rfWrite
 
   // ----------------------------------- 暂时的axi从机 ----------------------------------- //
   val xbar = ysyx_23060082_AXI4Xbar()

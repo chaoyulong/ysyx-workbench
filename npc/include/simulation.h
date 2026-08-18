@@ -10,6 +10,8 @@ void n_cycle(int n);
 void reset(int n);
 void sim_init(int argc, char *argv[]);
 void sim_exit(void);
+#ifdef __USE_NVBOARD__
 void nvboard_wait_quit(void);
+#endif
 #endif
 

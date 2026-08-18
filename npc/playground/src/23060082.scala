@@ -72,7 +72,7 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig(BigInt("30000000", 16))) 
     
     prevOut.ready := !validReg || thisOut.fire   // 当数据无效，或者下游握手成功即将无效，此时ready置1,表示可以接收新的数据
   }
-  // 用于最后一级的连接
+  // ------------------------ 用于最后一级的连接
   def pipelineConnectLast[T <: Data](
     prevOut: Stream[T],
     thisIn:  Flow[T]
@@ -92,12 +92,12 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig(BigInt("30000000", 16))) 
   }
   // ------------------------------------------------------------------------------------------------------------------------- //
 
-  val rf  = ysyx_23060082_RegFile()
-  val ifu = ysyx_23060082_IFU(config)
-  val idu = ysyx_23060082_IDU()
-  val exu = ysyx_23060082_EXU()
-  val lsu = ysyx_23060082_LSU()
-  val wbu = ysyx_23060082_WBU()
+  val regFile = ysyx_23060082_RegFile()
+  val ifu     = ysyx_23060082_IFU(config)
+  val idu     = ysyx_23060082_IDU()
+  val exu     = ysyx_23060082_EXU()
+  val lsu     = ysyx_23060082_LSU()
+  val wbu     = ysyx_23060082_WBU()
   
   pipelineConnect(ifu.io.output, idu.io.input, idu.io.output)
   pipelineConnect(idu.io.output, exu.io.input, exu.io.output)
@@ -106,8 +106,8 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig(BigInt("30000000", 16))) 
   wbu.io.output >> ifu.io.input
 
 
-  rf.io.readBus  <> idu.io.rfRead
-  rf.io.writeBus <> wbu.io.rfWrite
+  regFile.io.readBus  <> idu.io.rfRead
+  regFile.io.writeBus <> wbu.io.rfWrite
 
   // ----------------------------------- 暂时的axi从机 ----------------------------------- //
   val xbar = ysyx_23060082_AXI4Xbar()

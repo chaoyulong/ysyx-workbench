@@ -9,8 +9,7 @@ int main(int argc, char** argv)
   cpu_reset(50);
   monitor_mainloop();
 #ifdef __USE_NVBOARD__
-  void single_cycle();
-  while(1) single_cycle();  // 若使用nvboard,运行就不会结束
+  while(1) nvboard_wait_quit();  // 若使用nvboard,运行就不会结束
 #endif
   monitor_exit();
   return is_exit_status_bad();

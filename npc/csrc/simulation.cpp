@@ -9,7 +9,7 @@
 VerilatedContext* contextp = new VerilatedContext;  // 环境
 TOP_NAME* top = new TOP_NAME{contextp};             // 设计
 VerilatedFstC* tfp = new VerilatedFstC;             // 波形
-static void step_and_dump_wave()
+static void step_and_dump_wave(void)
 {  
   top->eval();
 #ifdef __GET_WAVE__
@@ -21,7 +21,7 @@ static void step_and_dump_wave()
 #endif
 }
 
-void single_cycle() 
+void single_cycle(void) 
 {
   top->clock = 0; step_and_dump_wave();
   top->clock = 1; step_and_dump_wave();
@@ -61,7 +61,7 @@ void sim_init(int argc, char *argv[])
 #endif
 }
 
-void sim_exit()
+void sim_exit(void)
 {
   step_and_dump_wave();
   // Final model cleanup
@@ -72,6 +72,13 @@ void sim_exit()
   nvboard_quit();
 #endif
 }
+
+#ifdef __USE_NVBOARD__
+void nvboard_wait_quit(void) {
+  while (1) nvboard_update();
+}
+#endif
+
 
 // extern "C" void my_ebreak(void){
 //   npc_state.state = NPC_END;

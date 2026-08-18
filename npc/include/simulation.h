@@ -5,11 +5,11 @@
 #define STR(x) STR_HELPER(x)
 #include STR(TOP_NAME.h)    // 自动生成
 
-void single_cycle();
+void single_cycle(void);
 void n_cycle(int n);
 void reset(int n);
 void sim_init(int argc, char *argv[]);
-void sim_exit();
-
+void sim_exit(void);
+void nvboard_wait_quit(void);
 #endif
 

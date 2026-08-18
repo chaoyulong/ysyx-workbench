@@ -6,8 +6,23 @@ import scala.reflect.runtime.universe
 
 // 配置 CPU 的参数
 case class CpuConfig(
-  resetPc: BigInt // 上电后的初始PC
+  resetPc:          Long,             // 上电后的初始PC
+  enableMul:        Boolean = false,  // 乘法器
+  enableDiv:        Boolean = false,  // 触发器
+  enableInterrupt:  Boolean = false   // 中断
+  // 以后继续加选项
 )
+
+object CpuConfig {
+  val npc = CpuConfig(
+    resetPc = 0x80000000L
+  )
+
+  val ysyxSoc = CpuConfig(
+    resetPc = 0x30000000L
+  )
+}
+
 
 object Config {
   val build_dir:String = sys.env.getOrElse("BUILD_DIR", ".")    // verilog文件生成位置
@@ -41,8 +56,8 @@ object SpinalToVerilog extends App {
 
   Config.spinal.generateVerilog{
     val top = topName match {
-      case "NPC_TOP" => NPC_TOP(CpuConfig(resetPc))
-      case "ysyx_23060082" => ysyx_23060082(CpuConfig(resetPc))
+      case "NPC_TOP" => NPC_TOP(CpuConfig.npc)
+      case "ysyx_23060082" => ysyx_23060082(CpuConfig.ysyxSoc)
       case _ => throw new Exception(s"Unknown TOP_NAME: $topName")
     }
     top

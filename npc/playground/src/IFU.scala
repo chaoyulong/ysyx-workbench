@@ -9,7 +9,7 @@ case class Ifu2Idu_data() extends Bundle {
   val instr = UInt(32 bits)
 }
 
-case class ysyx_23060082_IFU(config: CpuConfig) extends Component {
+case class ysyx_23060082_IFU(resetPc: BigInt) extends Component {
   val io = new Bundle {
     val input  = slave  Stream(Wbu2Ifu_data())
     val output = master Stream(Ifu2Idu_data())  
@@ -34,7 +34,7 @@ case class ysyx_23060082_IFU(config: CpuConfig) extends Component {
     dataValid := dataValid
   }
   // ------------------------------------ PC寄存器 ------------------------------------ //
-  val pc = RegNextWhen(io.input.pc_next, io.input.fire) init(U(config.resetPc, 32 bits))
+  val pc = RegNextWhen(io.input.pc_next, io.input.fire) init(U(resetPc, 32 bits))
   // ------------------------------------- 读内存 ------------------------------------- //
   val axi4Ctrler = ysyx_23060082_Axi4_Ctrler_ReadOnly()
   io.axi4 <> axi4Ctrler.io.axi4

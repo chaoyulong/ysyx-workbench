@@ -5,7 +5,7 @@ import spinal.lib._
 import spinal.lib.bus.amba4.axi._
 
 // NPC使用的顶层模块
-case class NPC_TOP(config: CpuConfig = CpuConfig(BigInt("80000000", 16))) extends Component {
+case class NPC_TOP(config: CpuConfig = CpuConfig.npc) extends Component {
   val io = new Bundle {
   }
 

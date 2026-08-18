@@ -5,12 +5,14 @@
 
 #ifdef __ysyxsoc__
 #include "VysyxSoCFull___024root.h"
-#define cpu_pc top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__ifu__DOT__pc
-#define cpu_rf top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__regFile__DOT__rf_0
+#define cpu_pc      top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__ifu__DOT__pc
+#define cpu_rf      top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__regFile__DOT__rf_0
+#define csr_mcause  top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__lsu__DOT__csr__DOT__mcause
 #else
 #include "VNPC_TOP___024root.h"
-#define cpu_pc top->rootp->NPC_TOP__DOT__cpu__DOT__ifu__DOT__pc
-#define cpu_rf top->rootp->NPC_TOP__DOT__cpu__DOT__regFile__DOT__rf_0
+#define cpu_pc      top->rootp->NPC_TOP__DOT__cpu__DOT__ifu__DOT__pc
+#define cpu_rf      top->rootp->NPC_TOP__DOT__cpu__DOT__regFile__DOT__rf_0
+#define csr_mcause  top->rootp->NPC_TOP__DOT__cpu__DOT__lsu__DOT__csr__DOT__mcause
 #endif
 extern TOP_NAME* top;
 // VCPU___024root* rootp;

@@ -4,6 +4,16 @@ import spinal.core._
 import spinal.lib._       // 使用spinal的模块库
 import spinal.lib.bus.amba4.axi._
 
+// --------------------------------- 地址映射配置 --------------------------------- //
+// clint 地址可能会修改, 统一在此定义, 修改时只需改动这里
+object AddressMap {
+  val CLINT_BASE = BigInt("02000000", 16)   // clint 基地址
+  val CLINT_SIZE = BigInt("00010000", 16)   // clint 地址空间大小 64KB
+  val CLINT_END  = CLINT_BASE + CLINT_SIZE - 1
+
+  def isClint(addr: UInt) = addr >= U(CLINT_BASE, 32 bits) && addr <= U(CLINT_END, 32 bits)
+}
+
   // 一个空的axi总线示例，可能会有什么用先留着
   // val axi4Empty = Axi4(AxiConfig.axiConfig)
   // axi4Empty.ar.valid := False
@@ -90,74 +100,85 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
   busAxi4.b <> io.lsuAxi4.b
 
 // --------------------------------------------------------- crossbar ------------------------------------------------------ //
+  // 读/写各自独立的状态机: 读事务(ar/r)与写事务(aw/w/b)可以并行, 互不阻塞(符合AXI语义)
   object CrossState extends SpinalEnum {              // 定义状态机枚举
     val Idle, Clint, External = newElement()
   }
-  val crossState = Reg(CrossState()) init(CrossState.Idle) 
-  switch(crossState) {      // 长记性了，读有效+读地址在范围内才可以判断在读取系统时钟，少用或
+  // 读状态机: 路由 ar/r 通道, 由 r.fire 结束事务
+  val readState = Reg(CrossState()) init(CrossState.Idle)
+  switch(readState) {
     is(CrossState.Idle) {
-      when(busAxi4.ar.valid) { 
-        when(busAxi4.ar.addr >= U"32'h02000000" && busAxi4.ar.addr <= U"32'h0200ffff") { 
-          crossState := CrossState.Clint 
-          } otherwise { 
-            crossState := CrossState.External 
-          }
-      } elsewhen(busAxi4.aw.valid) { 
-        when(busAxi4.aw.addr >= U"32'h02000000" && busAxi4.aw.addr <= U"32'h0200ffff") {
-           crossState := CrossState.Clint 
-        } otherwise { 
-          crossState := CrossState.External 
-        }
+      when(busAxi4.ar.valid) {
+        when(AddressMap.isClint(busAxi4.ar.addr)) { readState := CrossState.Clint }
+        .otherwise { readState := CrossState.External }
       } otherwise {
-        crossState := CrossState.Idle
-      } 
+        readState := CrossState.Idle
+      }
     }
     is(CrossState.Clint, CrossState.External) {
-      when(busAxi4.r.fire || busAxi4.b.fire) { crossState := CrossState.Idle }
-      .otherwise { crossState := crossState }
+      when(busAxi4.r.fire) { readState := CrossState.Idle }
+      .otherwise { readState := readState }
     }
   }
 
-  // ---------------------------------------------- 系统时钟的总线 ---------------------------------------------- //
+  // 写状态机: 路由 aw/w/b 通道, 由 b.fire 结束事务
+  val writeState = Reg(CrossState()) init(CrossState.Idle)
+  switch(writeState) {
+    is(CrossState.Idle) {
+      when(busAxi4.aw.valid) {
+        when(AddressMap.isClint(busAxi4.aw.addr)) { writeState := CrossState.Clint }
+        .otherwise { writeState := CrossState.External }
+      } otherwise {
+        writeState := CrossState.Idle
+      }
+    }
+    is(CrossState.Clint, CrossState.External) {
+      when(busAxi4.b.fire) { writeState := CrossState.Idle }
+      .otherwise { writeState := writeState }
+    }
+  }
+
+  // ---------------------------------------------- 读通道路由 (readState) ---------------------------------------------- //
   // ------------------------------- 读地址 ------------------------------- //
-  io.clintAxi4.ar.valid := (crossState === CrossState.Clint) && busAxi4.ar.valid   
+  io.clintAxi4.ar.valid := (readState === CrossState.Clint) && busAxi4.ar.valid   
   io.clintAxi4.ar.payload := busAxi4.ar.payload
 
-  io.externalAxi4.ar.valid := (crossState === CrossState.External) && busAxi4.ar.valid
+  io.externalAxi4.ar.valid := (readState === CrossState.External) && busAxi4.ar.valid
   io.externalAxi4.ar.payload := busAxi4.ar
 
-  busAxi4.ar.ready := (crossState === CrossState.Clint && io.clintAxi4.ar.ready) ||
-                      (crossState === CrossState.External && io.externalAxi4.ar.ready)
+  busAxi4.ar.ready := (readState === CrossState.Clint && io.clintAxi4.ar.ready) ||
+                      (readState === CrossState.External && io.externalAxi4.ar.ready)
   // ------------------------------- 读数据 ------------------------------- //
-  busAxi4.r.valid  := (crossState === CrossState.Clint && io.clintAxi4.r.valid) ||
-                      (crossState === CrossState.External && io.externalAxi4.r.valid)
-  busAxi4.r.payload := Mux(crossState === CrossState.Clint, io.clintAxi4.r.payload, io.externalAxi4.r.payload)
-  io.clintAxi4.r.ready := (crossState === CrossState.Clint) && busAxi4.r.ready
+  busAxi4.r.valid  := (readState === CrossState.Clint && io.clintAxi4.r.valid) ||
+                      (readState === CrossState.External && io.externalAxi4.r.valid)
+  busAxi4.r.payload := Mux(readState === CrossState.Clint, io.clintAxi4.r.payload, io.externalAxi4.r.payload)
+  io.clintAxi4.r.ready := (readState === CrossState.Clint) && busAxi4.r.ready
 
-  io.externalAxi4.r.ready := (crossState === CrossState.External) && busAxi4.r.ready
+  io.externalAxi4.r.ready := (readState === CrossState.External) && busAxi4.r.ready
+  // ---------------------------------------------- 写通道路由 (writeState) ---------------------------------------------- //
   // ------------------------------- 写地址 ------------------------------- //
-  io.clintAxi4.aw.valid := (crossState === CrossState.Clint && busAxi4.aw.valid)
+  io.clintAxi4.aw.valid := (writeState === CrossState.Clint && busAxi4.aw.valid)
   io.clintAxi4.aw.payload := busAxi4.aw.payload
 
-  io.externalAxi4.aw.valid := (crossState === CrossState.External && busAxi4.aw.valid)
+  io.externalAxi4.aw.valid := (writeState === CrossState.External && busAxi4.aw.valid)
   io.externalAxi4.aw.payload := busAxi4.aw.payload
 
-  busAxi4.aw.ready := (crossState === CrossState.Clint && io.clintAxi4.aw.ready) ||
-                      (crossState === CrossState.External && io.externalAxi4.aw.ready)
+  busAxi4.aw.ready := (writeState === CrossState.Clint && io.clintAxi4.aw.ready) ||
+                      (writeState === CrossState.External && io.externalAxi4.aw.ready)
   // ------------------------------- 写数据 ------------------------------- //
-  io.clintAxi4.w.valid := (crossState === CrossState.Clint && busAxi4.w.valid)
+  io.clintAxi4.w.valid := (writeState === CrossState.Clint && busAxi4.w.valid)
   io.clintAxi4.w.payload := busAxi4.w.payload
 
-  io.externalAxi4.w.valid := (crossState === CrossState.External && busAxi4.w.valid)
+  io.externalAxi4.w.valid := (writeState === CrossState.External && busAxi4.w.valid)
   io.externalAxi4.w.payload := busAxi4.w.payload
 
-  busAxi4.w.ready := (crossState === CrossState.Clint && io.clintAxi4.w.ready) ||
-                     (crossState === CrossState.External && io.externalAxi4.w.ready)
+  busAxi4.w.ready := (writeState === CrossState.Clint && io.clintAxi4.w.ready) ||
+                     (writeState === CrossState.External && io.externalAxi4.w.ready)
   // ------------------------------- 写响应 ------------------------------- //
-  busAxi4.b.valid := (crossState === CrossState.Clint && io.clintAxi4.b.valid) ||
-                      (crossState === CrossState.External && io.externalAxi4.b.valid)
-  busAxi4.b.payload := Mux(crossState === CrossState.Clint, io.clintAxi4.b.payload, io.externalAxi4.b.payload)
-  io.clintAxi4.b.ready := (crossState === CrossState.Clint && busAxi4.b.ready)
+  busAxi4.b.valid := (writeState === CrossState.Clint && io.clintAxi4.b.valid) ||
+                      (writeState === CrossState.External && io.externalAxi4.b.valid)
+  busAxi4.b.payload := Mux(writeState === CrossState.Clint, io.clintAxi4.b.payload, io.externalAxi4.b.payload)
+  io.clintAxi4.b.ready := (writeState === CrossState.Clint && busAxi4.b.ready)
 
-  io.externalAxi4.b.ready := (crossState === CrossState.External && busAxi4.b.ready)
+  io.externalAxi4.b.ready := (writeState === CrossState.External && busAxi4.b.ready)
 }

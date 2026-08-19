@@ -14,42 +14,7 @@ object AddressMap {
   def isClint(addr: UInt) = addr >= U(CLINT_BASE, 32 bits) && addr <= U(CLINT_END, 32 bits)
 }
 
-  // 一个空的axi总线示例，可能会有什么用先留着
-  // val axi4Empty = Axi4(AxiConfig.axiConfig)
-  // axi4Empty.ar.valid := False
-  // axi4Empty.ar.ready := False
-  // axi4Empty.ar.addr  := U(0)
-  // axi4Empty.ar.id    := U(0)
-  // axi4Empty.ar.len   := U(0)
-  // axi4Empty.ar.size  := U(0)
-  // axi4Empty.ar.burst := B(0)
-
-  // axi4Empty.r.valid  := False
-  // axi4Empty.r.ready  := False
-  // axi4Empty.r.data   := B(0)
-  // axi4Empty.r.resp   := B(0)
-  // axi4Empty.r.last   := False
-  
-  // axi4Empty.aw.valid := False
-  // axi4Empty.aw.ready := False
-  // axi4Empty.aw.addr  := U(0)
-  // axi4Empty.aw.id    := U(0)
-  // axi4Empty.aw.len   := U(0)
-  // axi4Empty.aw.size  := U(0)
-  // axi4Empty.aw.burst := B(0)
-
-  // axi4Empty.w.valid := False
-  // axi4Empty.w.ready := False
-  // axi4Empty.w.data  := B(0)
-  // // axi4Empty.w.id    := U(0)
-  // axi4Empty.w.strb  := B(0)
-  // axi4Empty.w.last  := False
-
-  // axi4Empty.b.valid  := False
-  // axi4Empty.b.ready  := False
-  // axi4Empty.b.resp   := B(0)
-  // axi4Empty.b.id   := U(0)
-
+// --------------------------------- AXI4Xbar --------------------------------- //
 case class ysyx_23060082_AXI4Xbar() extends Component {
   val io = new Bundle {
     val ifuAxi4     = slave(Axi4ReadOnly(AxiConfig.axiConfig))

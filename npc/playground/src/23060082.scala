@@ -124,8 +124,13 @@ case class ysyx_23060082_Clint() extends Component {
   }
 
   val timeCount = RegInit(U"64'h0")   // 系统计时器
-  val timeCountLow = RegNextWhen(timeCount(31 downto 0), io.clintAxi4.ar.fire && (io.clintAxi4.ar.addr === U"32'h02000004")) init(0)  // 当读取高位数据时暂存低位数据
   timeCount := timeCount + 1
+
+  // 双向快照: 读任一侧(低位/高位)都同时锁存高低位, 任意读取顺序下高低位保持一致
+  val readLow  = io.clintAxi4.ar.fire && (io.clintAxi4.ar.addr === U"32'h02000000")
+  val readHigh = io.clintAxi4.ar.fire && (io.clintAxi4.ar.addr === U"32'h02000004")
+  val timeCountLow  = RegNextWhen(timeCount(31 downto 0),  readLow || readHigh) init(0)
+  val timeCountHigh = RegNextWhen(timeCount(63 downto 32), readLow || readHigh) init(0)
 
   io.clintAxi4.r.valid.setAsReg() init(False)
   io.clintAxi4.b.valid.setAsReg() init(False)
@@ -144,7 +149,7 @@ case class ysyx_23060082_Clint() extends Component {
   io.clintAxi4.r.last := io.clintAxi4.r.valid
   when(io.clintAxi4.ar.fire) {   // 读数据通道握手信号
     io.clintAxi4.r.data := io.clintAxi4.ar.addr.mux(
-      U"32'h02000004" -> timeCount(63 downto 32),
+      U"32'h02000004" -> timeCountHigh,
       U"32'h02000000" -> timeCountLow,
       default         -> U(0)
     ).asBits

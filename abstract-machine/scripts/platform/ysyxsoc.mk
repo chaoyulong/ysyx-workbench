@@ -6,7 +6,7 @@ AM_SRCS := riscv/ysyxsoc/start.S \
            riscv/ysyxsoc/gpio.c \
            riscv/ysyxsoc/timer.c \
            riscv/ysyxsoc/gpu.c \
-           riscv/ysyxsoc/keybord.c \
+           riscv/ysyxsoc/keyboard.c \
            riscv/ysyxsoc/cte.c \
            riscv/ysyxsoc/trap.S \
            platform/dummy/vme.c \

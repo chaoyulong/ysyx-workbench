@@ -1,70 +1,134 @@
 #include <SDL2/SDL.h>
 #include "device.h"
 
-#define KEYDOWN_MASK 0x8000
+// -------------------------------------------------------------------------- //
+// 键盘模拟: 输出 PS/2 Set 2 扫描码字节流(与 ysyxsoc 的 ps2_top_apb 一致)        //
+//   - 通码(按下):   [0xE0] make_code                                         //
+//   - 断码(抬起):   [0xE0] 0xF0 make_code                                    //
+//   - KBD_ADDR 每读一次弹出一个字节, FIFO 为空时返回 0                          //
+// -------------------------------------------------------------------------- //
 
-static uint32_t kbd_port_base[1];   // 键盘状态: bit15=keydown, 低15位=AM keycode
+#define KBD_FIFO_SIZE 64
 
-void sdl_quit_request(void);
+void sdl_quit_request(void);   // 定义于 gpu.c
 
-// SDL scancode -> AM keycode 映射 (AM keycode 定义于 abstract-machine/am/include/amdev.h 的 AM_KEYS 宏)
-static uint8_t sdl_to_am(SDL_Scancode sc) {
+static uint8_t fifo[KBD_FIFO_SIZE];
+static int fifo_head = 0, fifo_tail = 0;   // head=读指针, tail=写指针
+
+static bool fifo_empty(void) { return fifo_head == fifo_tail; }
+
+static void fifo_push(uint8_t byte) {
+  int next = (fifo_tail + 1) % KBD_FIFO_SIZE;
+  if (next == fifo_head) return;           // FIFO 满, 丢弃
+  fifo[fifo_tail] = byte;
+  fifo_tail = next;
+}
+
+static uint8_t fifo_pop(void) {
+  if (fifo_empty()) return 0;
+  uint8_t byte = fifo[fifo_head];
+  fifo_head = (fifo_head + 1) % KBD_FIFO_SIZE;
+  return byte;
+}
+
+// SDL scancode -> (PS/2 Set 2 make code, 是否扩展键)
+typedef struct { uint8_t make; bool ext; } ps2_key_t;
+
+static ps2_key_t sdl_to_ps2(SDL_Scancode sc) {
   switch (sc) {
-    case SDL_SCANCODE_ESCAPE: return 1;        // AM_KEY_ESCAPE
-    case SDL_SCANCODE_F1: return 2;  case SDL_SCANCODE_F2: return 3;
-    case SDL_SCANCODE_F3: return 4;  case SDL_SCANCODE_F4: return 5;
-    case SDL_SCANCODE_F5: return 6;  case SDL_SCANCODE_F6: return 7;
-    case SDL_SCANCODE_F7: return 8;  case SDL_SCANCODE_F8: return 9;
-    case SDL_SCANCODE_F9: return 10; case SDL_SCANCODE_F10: return 11;
-    case SDL_SCANCODE_F11: return 12; case SDL_SCANCODE_F12: return 13;
-    case SDL_SCANCODE_GRAVE: return 14;        // AM_KEY_GRAVE
-    case SDL_SCANCODE_1: return 15; case SDL_SCANCODE_2: return 16;
-    case SDL_SCANCODE_3: return 17; case SDL_SCANCODE_4: return 18;
-    case SDL_SCANCODE_5: return 19; case SDL_SCANCODE_6: return 20;
-    case SDL_SCANCODE_7: return 21; case SDL_SCANCODE_8: return 22;
-    case SDL_SCANCODE_9: return 23; case SDL_SCANCODE_0: return 24;
-    case SDL_SCANCODE_MINUS: return 25; case SDL_SCANCODE_EQUALS: return 26;
-    case SDL_SCANCODE_BACKSPACE: return 27;
-    case SDL_SCANCODE_TAB: return 28;          // AM_KEY_TAB
-    case SDL_SCANCODE_Q: return 29; case SDL_SCANCODE_W: return 30;
-    case SDL_SCANCODE_E: return 31; case SDL_SCANCODE_R: return 32;
-    case SDL_SCANCODE_T: return 33; case SDL_SCANCODE_Y: return 34;
-    case SDL_SCANCODE_U: return 35; case SDL_SCANCODE_I: return 36;
-    case SDL_SCANCODE_O: return 37; case SDL_SCANCODE_P: return 38;
-    case SDL_SCANCODE_LEFTBRACKET: return 39; case SDL_SCANCODE_RIGHTBRACKET: return 40;
-    case SDL_SCANCODE_BACKSLASH: return 41;
-    case SDL_SCANCODE_CAPSLOCK: return 42;     // AM_KEY_CAPSLOCK
-    case SDL_SCANCODE_A: return 43; case SDL_SCANCODE_S: return 44;
-    case SDL_SCANCODE_D: return 45; case SDL_SCANCODE_F: return 46;
-    case SDL_SCANCODE_G: return 47; case SDL_SCANCODE_H: return 48;
-    case SDL_SCANCODE_J: return 49; case SDL_SCANCODE_K: return 50;
-    case SDL_SCANCODE_L: return 51;
-    case SDL_SCANCODE_SEMICOLON: return 52; case SDL_SCANCODE_APOSTROPHE: return 53;
-    case SDL_SCANCODE_RETURN: return 54;       // AM_KEY_RETURN
-    case SDL_SCANCODE_LSHIFT: return 55;       // AM_KEY_LSHIFT
-    case SDL_SCANCODE_Z: return 56; case SDL_SCANCODE_X: return 57;
-    case SDL_SCANCODE_C: return 58; case SDL_SCANCODE_V: return 59;
-    case SDL_SCANCODE_B: return 60; case SDL_SCANCODE_N: return 61;
-    case SDL_SCANCODE_M: return 62;
-    case SDL_SCANCODE_COMMA: return 63; case SDL_SCANCODE_PERIOD: return 64;
-    case SDL_SCANCODE_SLASH: return 65;
-    case SDL_SCANCODE_RSHIFT: return 66;       // AM_KEY_RSHIFT
-    case SDL_SCANCODE_LCTRL: return 67; case SDL_SCANCODE_APPLICATION: return 68;
-    case SDL_SCANCODE_LALT: return 69; case SDL_SCANCODE_SPACE: return 70;
-    case SDL_SCANCODE_RALT: return 71; case SDL_SCANCODE_RCTRL: return 72;
-    case SDL_SCANCODE_UP: return 73; case SDL_SCANCODE_DOWN: return 74;
-    case SDL_SCANCODE_LEFT: return 75; case SDL_SCANCODE_RIGHT: return 76;
-    case SDL_SCANCODE_INSERT: return 77; case SDL_SCANCODE_DELETE: return 78;
-    case SDL_SCANCODE_HOME: return 79; case SDL_SCANCODE_END: return 80;
-    case SDL_SCANCODE_PAGEUP: return 81; case SDL_SCANCODE_PAGEDOWN: return 82;
-    default: return 0;                          // AM_KEY_NONE
+    case SDL_SCANCODE_ESCAPE:    return ps2_key_t{0x08, false};
+    case SDL_SCANCODE_F1:        return ps2_key_t{0x05, false};
+    case SDL_SCANCODE_F2:        return ps2_key_t{0x06, false};
+    case SDL_SCANCODE_F3:        return ps2_key_t{0x04, false};
+    case SDL_SCANCODE_F4:        return ps2_key_t{0x0C, false};
+    case SDL_SCANCODE_F5:        return ps2_key_t{0x03, false};
+    case SDL_SCANCODE_F6:        return ps2_key_t{0x0B, false};
+    case SDL_SCANCODE_F7:        return ps2_key_t{0x83, false};
+    case SDL_SCANCODE_F8:        return ps2_key_t{0x0A, false};
+    case SDL_SCANCODE_F9:        return ps2_key_t{0x01, false};
+    case SDL_SCANCODE_F10:       return ps2_key_t{0x09, false};
+    case SDL_SCANCODE_F11:       return ps2_key_t{0x78, false};
+    case SDL_SCANCODE_F12:       return ps2_key_t{0x07, false};
+    case SDL_SCANCODE_GRAVE:     return ps2_key_t{0x0E, false};
+    case SDL_SCANCODE_1:         return ps2_key_t{0x16, false};
+    case SDL_SCANCODE_2:         return ps2_key_t{0x1E, false};
+    case SDL_SCANCODE_3:         return ps2_key_t{0x26, false};
+    case SDL_SCANCODE_4:         return ps2_key_t{0x25, false};
+    case SDL_SCANCODE_5:         return ps2_key_t{0x2E, false};
+    case SDL_SCANCODE_6:         return ps2_key_t{0x36, false};
+    case SDL_SCANCODE_7:         return ps2_key_t{0x3D, false};
+    case SDL_SCANCODE_8:         return ps2_key_t{0x3E, false};
+    case SDL_SCANCODE_9:         return ps2_key_t{0x46, false};
+    case SDL_SCANCODE_0:         return ps2_key_t{0x45, false};
+    case SDL_SCANCODE_MINUS:     return ps2_key_t{0x4E, false};
+    case SDL_SCANCODE_EQUALS:    return ps2_key_t{0x55, false};
+    case SDL_SCANCODE_BACKSPACE: return ps2_key_t{0x66, false};
+    case SDL_SCANCODE_TAB:       return ps2_key_t{0x0D, false};
+    case SDL_SCANCODE_Q:         return ps2_key_t{0x15, false};
+    case SDL_SCANCODE_W:         return ps2_key_t{0x1D, false};
+    case SDL_SCANCODE_E:         return ps2_key_t{0x24, false};
+    case SDL_SCANCODE_R:         return ps2_key_t{0x2D, false};
+    case SDL_SCANCODE_T:         return ps2_key_t{0x2C, false};
+    case SDL_SCANCODE_Y:         return ps2_key_t{0x35, false};
+    case SDL_SCANCODE_U:         return ps2_key_t{0x3C, false};
+    case SDL_SCANCODE_I:         return ps2_key_t{0x43, false};
+    case SDL_SCANCODE_O:         return ps2_key_t{0x44, false};
+    case SDL_SCANCODE_P:         return ps2_key_t{0x4D, false};
+    case SDL_SCANCODE_LEFTBRACKET:  return ps2_key_t{0x54, false};
+    case SDL_SCANCODE_RIGHTBRACKET: return ps2_key_t{0x5B, false};
+    case SDL_SCANCODE_BACKSLASH:    return ps2_key_t{0x5D, false};
+    case SDL_SCANCODE_CAPSLOCK:     return ps2_key_t{0x58, false};
+    case SDL_SCANCODE_A:         return ps2_key_t{0x1C, false};
+    case SDL_SCANCODE_S:         return ps2_key_t{0x1B, false};
+    case SDL_SCANCODE_D:         return ps2_key_t{0x23, false};
+    case SDL_SCANCODE_F:         return ps2_key_t{0x2B, false};
+    case SDL_SCANCODE_G:         return ps2_key_t{0x34, false};
+    case SDL_SCANCODE_H:         return ps2_key_t{0x33, false};
+    case SDL_SCANCODE_J:         return ps2_key_t{0x3B, false};
+    case SDL_SCANCODE_K:         return ps2_key_t{0x42, false};
+    case SDL_SCANCODE_L:         return ps2_key_t{0x4B, false};
+    case SDL_SCANCODE_SEMICOLON: return ps2_key_t{0x4C, false};
+    case SDL_SCANCODE_APOSTROPHE:return ps2_key_t{0x52, false};
+    case SDL_SCANCODE_RETURN:    return ps2_key_t{0x5A, false};
+    case SDL_SCANCODE_LSHIFT:    return ps2_key_t{0x12, false};
+    case SDL_SCANCODE_Z:         return ps2_key_t{0x1A, false};
+    case SDL_SCANCODE_X:         return ps2_key_t{0x22, false};
+    case SDL_SCANCODE_C:         return ps2_key_t{0x21, false};
+    case SDL_SCANCODE_V:         return ps2_key_t{0x2A, false};
+    case SDL_SCANCODE_B:         return ps2_key_t{0x32, false};
+    case SDL_SCANCODE_N:         return ps2_key_t{0x31, false};
+    case SDL_SCANCODE_M:         return ps2_key_t{0x3A, false};
+    case SDL_SCANCODE_COMMA:     return ps2_key_t{0x41, false};
+    case SDL_SCANCODE_PERIOD:    return ps2_key_t{0x49, false};
+    case SDL_SCANCODE_SLASH:     return ps2_key_t{0x4A, false};
+    case SDL_SCANCODE_RSHIFT:    return ps2_key_t{0x59, false};
+    case SDL_SCANCODE_LCTRL:     return ps2_key_t{0x14, false};
+    case SDL_SCANCODE_LALT:      return ps2_key_t{0x11, false};
+    case SDL_SCANCODE_SPACE:     return ps2_key_t{0x29, false};
+    // ------------------------- 扩展键(E0 前缀) ------------------------- //
+    case SDL_SCANCODE_RCTRL:     return ps2_key_t{0x14, true};
+    case SDL_SCANCODE_RALT:      return ps2_key_t{0x11, true};
+    case SDL_SCANCODE_APPLICATION: return ps2_key_t{0x2F, true};
+    case SDL_SCANCODE_HOME:      return ps2_key_t{0x6C, true};
+    case SDL_SCANCODE_END:       return ps2_key_t{0x69, true};
+    case SDL_SCANCODE_PAGEUP:    return ps2_key_t{0x7D, true};
+    case SDL_SCANCODE_PAGEDOWN:  return ps2_key_t{0x7A, true};
+    case SDL_SCANCODE_INSERT:    return ps2_key_t{0x70, true};
+    case SDL_SCANCODE_DELETE:    return ps2_key_t{0x71, true};
+    case SDL_SCANCODE_UP:        return ps2_key_t{0x75, true};
+    case SDL_SCANCODE_DOWN:      return ps2_key_t{0x72, true};
+    case SDL_SCANCODE_LEFT:      return ps2_key_t{0x6B, true};
+    case SDL_SCANCODE_RIGHT:     return ps2_key_t{0x74, true};
+    default:                     return ps2_key_t{0x00, false};
   }
 }
 
 static void send_key(uint8_t scancode, bool is_keydown) {
-  uint8_t am_key = sdl_to_am((SDL_Scancode)scancode);
-  if (am_key == 0) return;   // 无映射的按键忽略
-  kbd_port_base[0] = (is_keydown ? KEYDOWN_MASK : 0) | am_key;
+  ps2_key_t key = sdl_to_ps2((SDL_Scancode)scancode);
+  if (key.make == 0) return;               // 无映射的按键忽略
+  if (key.ext) fifo_push(0xE0);            // 扩展码前缀
+  if (!is_keydown) fifo_push(0xF0);        // 断码前缀
+  fifo_push(key.make);
 }
 
 // 轮询 SDL 事件, 由 gpu.c 的 device_update 与键盘读取时调用
@@ -80,7 +144,8 @@ void sdl_poll_events(void) {
   }
 }
 
+// 读键盘: 弹出一个扫描码字节, FIFO 为空返回 0
 uint32_t keyboard_data_io_handler(void) {
   sdl_poll_events();
-  return kbd_port_base[0];
+  return fifo_pop();
 }

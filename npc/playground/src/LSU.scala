@@ -221,8 +221,13 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
 
   // ---------------- 读数据 ---------------- //
   io.axi4.r.ready := io.axi4.r.valid
-  io.readEnd := io.axi4.r.fire
+  io.readEnd := io.axi4.r.fire && io.axi4.r.last   // 突发结束(r.last)才算读完
   io.readData := io.axi4.r.data.asUInt
+
+  // 读响应错误检查: 从机返回非 OKAY 时仿真报错
+  when(io.axi4.r.fire && io.axi4.r.resp =/= Axi4.resp.OKAY) {
+    report(Seq("[LSU] read resp error! resp =", io.axi4.r.resp, "addr =", io.axi4.ar.addr))
+  }
 
   // ------------------------------- 写操作 ------------------------------- //
   io.axi4.aw.valid.setAsReg() init(False)
@@ -279,4 +284,9 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
   // ---------------- 写响应 ---------------- //
   io.axi4.b.ready := io.axi4.b.valid
   io.writeEnd := io.axi4.b.fire
+
+  // 写响应错误检查: 从机返回非 OKAY 时仿真报错
+  when(io.axi4.b.fire && io.axi4.b.resp =/= Axi4.resp.OKAY) {
+    report(Seq("[LSU] write resp error! resp =", io.axi4.b.resp, "addr =", io.axi4.aw.addr))
+  }
 }

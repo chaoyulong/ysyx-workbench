@@ -3,6 +3,7 @@
 #include "regfile.h"
 #include STR(TOP_NAME.h)    // 自动生成
 
+// csr_mcause:用于判断ebreak
 #ifdef __ysyxsoc__
 #include "VysyxSoCFull___024root.h"
 #define cpu_pc      top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__ifu__DOT__pc

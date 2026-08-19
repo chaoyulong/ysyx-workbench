@@ -4,8 +4,10 @@
 #include "cpu-exec.h"
 #include "log.h"
 #include "pmem.h"
+#include "device.h"
 
 #define MAX_INST_TO_PRINT 0    // 最大单步执行多少时打印反汇编
+#define DEVICE_UPDATE_CYCLE 20000   // 每多少个周期更新一次外设(SDL事件/屏幕刷新)
 
 uint64_t g_timer = 0;
 bool g_print_step = false;
@@ -94,6 +96,7 @@ static void execute(uint64_t n)
     exec_once();
     g_nr_guest_cycle++;
 
+    if (g_nr_guest_cycle % DEVICE_UPDATE_CYCLE == 0) device_update();  // 周期更新外设
     trace_and_difftest();
     if (npc_state.state != NPC_RUNNING) 
       break;

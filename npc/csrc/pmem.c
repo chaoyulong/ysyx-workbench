@@ -22,10 +22,15 @@ extern "C" uint32_t pmem_read(uint32_t raddr) {
     paddr_t real_addr = ((paddr_t)raddr & (paddr_t)(~0x3u));
     return host_read(guest_to_host(real_addr));
   }
+  if(raddr >= VGA_BUF_BASE && raddr < VGA_BUF_END){       // 显存读取
+    return vga_fb_read(raddr - VGA_BUF_BASE);
+  }
   switch(raddr){
     case RTC_ADDR: 
     case RTC_ADDR + 4: return rtc_io_handler(raddr - RTC_ADDR); 
-    // case KBD_ADDR: return keyboard_data_io_handler();
+    case KBD_ADDR: return keyboard_data_io_handler();
+    case VGACTL_ADDR:
+    case VGACTL_ADDR + 4: return gpu_io_handler(raddr - VGACTL_ADDR, false, 0);
     default: out_of_bound(raddr, 0); return 0;
   }
 }  
@@ -45,8 +50,14 @@ extern "C" void pmem_write(uint32_t waddr, uint32_t wdata, uint8_t wmask) {
     host_write(guest_to_host(real_addr), real_wdata);
     return;
   }
+  if(waddr >= VGA_BUF_BASE && waddr < VGA_BUF_END){       // 显存写入
+    vga_fb_write(waddr - VGA_BUF_BASE, wdata, wmask);
+    return;
+  }
   switch(waddr){
     case SERIAL_PORT: putc((uint8_t)wdata, stderr); return;
+    case VGACTL_ADDR:
+    case VGACTL_ADDR + 4: gpu_io_handler(waddr - VGACTL_ADDR, true, wdata); return;
     default: out_of_bound(waddr, 1); return;
   }
 }
@@ -70,6 +81,7 @@ extern "C" void psram_write(uint32_t waddr, uint32_t wdata, uint32_t wmask) {
 }
 
 void pmem_init(){
+  gpu_init();   // 初始化 SDL 与显存
   *(word_t *)(flash + sizeof(word_t) * 0) = 0x00000297;  // auipc t0,0
   *(word_t *)(flash + sizeof(word_t) * 1) = 0x00028823;  // sb  zero,16(t0)
   *(word_t *)(flash + sizeof(word_t) * 2) = 0x0102c503;  // lbu a0,16(t0)

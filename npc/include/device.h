@@ -20,6 +20,7 @@ uint32_t keyboard_data_io_handler(void);
 uint32_t gpu_io_handler(uint32_t offset, bool is_write, uint32_t wdata);
 uint32_t vga_fb_read(uint32_t offset);
 void     vga_fb_write(uint32_t offset, uint32_t wdata, uint8_t wmask);
+uint32_t *vga_fb_addr(void);
 
 void gpu_init(void);
 void device_update(void);

@@ -65,7 +65,7 @@ void device_update(void) {
 
 // 初始化 SDL 与显存
 void gpu_init(void) {
-  vgactl_port_base[0] = (VGA_H << 16) | VGA_W;
+  vgactl_port_base[0] = (VGA_W << 16) | VGA_H;   // 高16位=宽, 低16位=高 (NEMU 约定)
   vgactl_port_base[1] = 0;
   vga_fb = (uint32_t *)calloc(VGA_W * VGA_H, sizeof(uint32_t));
   assert(vga_fb);

@@ -1,6 +1,9 @@
 #include <SDL2/SDL.h>
 #include "device.h"
 
+// SDL 外设模拟仅用于 npc 平台; ysyxsoc 平台使用真实 RTL 外设
+#ifdef __npc__
+
 // -------------------------------------------------------------------------- //
 // 键盘模拟: 输出 PS/2 Set 2 扫描码字节流(与 ysyxsoc 的 ps2_top_apb 一致)        //
 //   - 通码(按下):   [0xE0] make_code                                         //
@@ -149,3 +152,9 @@ uint32_t keyboard_data_io_handler(void) {
   sdl_poll_events();
   return fifo_pop();
 }
+
+#else   // __ysyxsoc__ 等平台: 真实 RTL 外设, 空实现
+
+uint32_t keyboard_data_io_handler(void) { return 0; }
+
+#endif

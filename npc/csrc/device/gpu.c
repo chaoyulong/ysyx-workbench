@@ -2,6 +2,9 @@
 #include "device.h"
 #include "cpu-exec.h"
 
+// SDL 外设模拟仅用于 npc 平台; ysyxsoc 平台使用真实 RTL 外设
+#ifdef __npc__
+
 // ---------------------------------------- 显存与显示 ---------------------------------------- //
 static uint32_t vgactl_port_base[2];   // [0] = (height << 16) | width, [1] = sync
 static uint32_t *vga_fb = NULL;        // 宿主端显存指针, 640*480 个 32 位像素(RGBA8888)
@@ -92,3 +95,15 @@ void gpu_init(void) {
 }
 
 void sdl_quit_request(void) { sdl_quit = true; }
+
+#else   // __ysyxsoc__ 等平台: 真实 RTL 外设, 空实现
+
+void gpu_init(void) {}
+void device_update(void) {}
+void vga_set_dirty(void) {}
+uint32_t *vga_fb_addr(void) { return NULL; }
+uint32_t vga_fb_read(uint32_t offset) { return 0; }
+void vga_fb_write(uint32_t offset, uint32_t wdata, uint8_t wmask) {}
+uint32_t gpu_io_handler(uint32_t offset, bool is_write, uint32_t wdata) { return 0; }
+
+#endif

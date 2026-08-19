@@ -60,8 +60,9 @@ case class ysyx_23060082_Axi4MemSlave() extends Component {
   io.axi4.r.last   := readActive && (readCnt === readLen)   // 最后一拍
   io.axi4.r.id     := RegNextWhen(io.axi4.ar.id, arFire) init(0)
 
-  // NpcMemRW 每拍发起一次读: INCR 突发地址 = base + 下一拍偏移
-  memRW.io.valid := memRW.io.wen || arFire || readActive
+  // NpcMemRW 读请求: arFire 拍读首地址, 之后仅在还有后续节拍(cnt < len)时继续读
+  // 避免 len=0 时多发一次越界读
+  memRW.io.valid := memRW.io.wen || arFire || (readActive && (readCnt < readLen))
   memRW.io.addr  := Mux(memRW.io.wen, io.axi4.aw.addr,
                     Mux(arFire, io.axi4.ar.addr,
                         readBase + ((readCnt + 1) << io.axi4.ar.size)))

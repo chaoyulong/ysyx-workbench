@@ -11,6 +11,10 @@ object AddressMap {
   val CLINT_SIZE = BigInt("00010000", 16)   // clint 地址空间大小 64KB
   val CLINT_END  = CLINT_BASE + CLINT_SIZE - 1
 
+  // clint 内部寄存器偏移
+  val CLINT_MTIME  = BigInt("00000000", 16)   // mtime 低位 (0x02000000)
+  val CLINT_MTIMEH = BigInt("00000004", 16)   // mtime 高位 (0x02000004)
+
   def isClint(addr: UInt) = addr >= U(CLINT_BASE, 32 bits) && addr <= U(CLINT_END, 32 bits)
 }
 

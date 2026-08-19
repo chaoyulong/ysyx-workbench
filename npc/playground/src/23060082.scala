@@ -135,7 +135,7 @@ case class ysyx_23060082_Clint() extends Component {
   io.clintAxi4.b.valid.setAsReg() init(False)
 
   // ---------- 读通道 (支持突发: 按 len 计数, last 在最后一拍) ---------- //
-  val readLen    = RegNextWhen(io.clintAxi4.ar.len, io.clintAxi4.ar.fire) init(0)    // 突发长度 (len),读地址握手成功后更新
+  val readLen    = RegNextWhen(io.clintAxi4.ar.len, io.clintAxi4.ar.fire) // 突发长度 (len),读地址握手成功后更新
   val readCnt    = Reg(UInt(8 bits)) init(0)    // 已返回数据节拍数
   val readActive = RegInit(False)               // 读传输进行中
 

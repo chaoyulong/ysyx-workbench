@@ -37,23 +37,25 @@ case class ysyx_23060082_Axi4MemSlave() extends Component {
 
   // ------------------------- 读通道 (支持 INCR 突发) ------------------------- //
   val arFire     = io.axi4.ar.fire
-  val readBase   = Reg(UInt(32 bits))           // 突发起始地址
-  val readLen    = Reg(UInt(8 bits))            // 突发长度 (len)
+  val readBase   = RegNextWhen(io.axi4.ar.addr, io.axi4.ar.fire)  // 突发起始地址
+  val readLen    = RegNextWhen(io.axi4.ar.len , io.axi4.ar.fire)  // 突发长度 (len)
   val readCnt    = Reg(UInt(8 bits)) init(0)    // 已返回数据节拍数
   val readActive = RegInit(False)               // 读传输进行中
 
   when(arFire) {                                // 读地址握手: 开始新的突发
-    readBase   := io.axi4.ar.addr
-    readLen    := io.axi4.ar.len
-    readCnt    := 0
+    readCnt := 0
   } elsewhen (io.axi4.r.fire && readCnt =/= readLen) {  // 读数据握手, 还有后续拍
     readCnt := readCnt + 1
+  } otherwise {
+    readCnt := readCnt
   }
 
   when(arFire) {                                // 读地址握手: 传输开始
     readActive := True
   } elsewhen(io.axi4.r.fire && readCnt === readLen) {   // 最后一拍, 传输结束
     readActive := False
+  } otherwise {
+    readActive := readActive
   }
 
   io.axi4.ar.ready := !readActive                        // 传输中不应答新请求

@@ -49,7 +49,7 @@ case class ysyx_23060082_Axi4MemSlave() extends Component {
   }
   io.axi4.r.valid := rValid
   io.axi4.r.data  := memRW.io.rdata.asBits
-  io.axi4.r.resp  := B"2'b00"       // OKAY
+  io.axi4.r.resp  := Axi4.resp.OKAY          // 正常访问成功
   io.axi4.r.last  := rValid         // 突发长度1, 返回即最后
   io.axi4.r.id    := RegNextWhen(io.axi4.ar.id, io.axi4.ar.fire) init(0)
 
@@ -66,6 +66,6 @@ case class ysyx_23060082_Axi4MemSlave() extends Component {
     bValid := bValid
   }
   io.axi4.b.valid := bValid
-  io.axi4.b.resp  := B"2'b00"       // OKAY
+  io.axi4.b.resp  := Axi4.resp.OKAY          // 正常访问成功
   io.axi4.b.id    := RegNextWhen(io.axi4.aw.id, io.axi4.aw.fire) init(0)
 }

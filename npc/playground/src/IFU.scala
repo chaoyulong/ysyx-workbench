@@ -9,6 +9,9 @@ case class Ifu2Idu_data() extends Bundle {
   val instr = UInt(32 bits)
 }
 
+/* ****************************************************************
+  IFU
+**************************************************************** */
 case class ysyx_23060082_IFU(resetPc: BigInt) extends Component {
   val io = new Bundle {
     val input  = slave  Stream(Wbu2Ifu_data())

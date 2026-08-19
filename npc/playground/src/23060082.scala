@@ -132,33 +132,40 @@ case class ysyx_23060082_Clint() extends Component {
   val timeCountLow  = RegNextWhen(timeCount(31 downto 0),  readLow || readHigh) init(0)
   val timeCountHigh = RegNextWhen(timeCount(63 downto 32), readLow || readHigh) init(0)
 
-  io.clintAxi4.r.valid.setAsReg() init(False)
   io.clintAxi4.b.valid.setAsReg() init(False)
-  io.clintAxi4.r.data .setAsReg()
 
-  // ---------- 读通道 ---------- //
-  io.clintAxi4.ar.ready := io.clintAxi4.ar.valid
-  when(io.clintAxi4.ar.valid) {   // 读数据通道握手信号
-    io.clintAxi4.r.valid := True
-  } elsewhen (io.clintAxi4.r.fire) {
-    io.clintAxi4.r.valid := False
-  } otherwise {
-    io.clintAxi4.r.valid := io.clintAxi4.r.valid
+  // ---------- 读通道 (支持突发: 按 len 计数, last 在最后一拍) ---------- //
+  val arFire     = io.clintAxi4.ar.fire
+  val readLen    = Reg(UInt(8 bits)) init(0)    // 突发长度 (len)
+  val readCnt    = Reg(UInt(8 bits)) init(0)    // 已返回数据节拍数
+  val readActive = RegInit(False)               // 读传输进行中
+
+  when(arFire) {
+    readLen    := io.clintAxi4.ar.len
+    readCnt    := 0
+    readActive := True
+  }
+  when(io.clintAxi4.r.fire) {
+    when(readCnt === readLen) { readActive := False }   // 最后一拍, 传输结束
+    .otherwise { readCnt := readCnt + 1 }
   }
 
-  io.clintAxi4.r.last := io.clintAxi4.r.valid
-  when(io.clintAxi4.ar.fire) {   // 读数据通道握手信号
-    io.clintAxi4.r.data := io.clintAxi4.ar.addr.mux(
+  // 突发期间数据按 FIXED 语义保持: arFire 时锁存时间值, 传输期间不变
+  val readData = Reg(UInt(32 bits))
+  when(arFire) {
+    readData := io.clintAxi4.ar.addr.mux(
       U"32'h02000004" -> timeCountHigh,
       U"32'h02000000" -> timeCountLow,
       default         -> U(0)
-    ).asBits
-  } otherwise {
-    io.clintAxi4.r.data := io.clintAxi4.r.data
+    )
   }
 
-  io.clintAxi4.r.id   := U(0)
-  io.clintAxi4.r.resp := Axi4.resp.OKAY
+  io.clintAxi4.ar.ready := !readActive                  // 传输中不应答新请求
+  io.clintAxi4.r.valid  := readActive
+  io.clintAxi4.r.last   := readActive && (readCnt === readLen)  // 最后一拍
+  io.clintAxi4.r.data   := readData.asBits
+  io.clintAxi4.r.id     := U(0)
+  io.clintAxi4.r.resp   := Axi4.resp.OKAY
   // ---------- 写通道 ---------- //
   val wAllValid = io.clintAxi4.aw.valid && io.clintAxi4.w.valid
   io.clintAxi4.aw.ready := wAllValid

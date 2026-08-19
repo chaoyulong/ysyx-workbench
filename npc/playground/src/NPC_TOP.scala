@@ -32,26 +32,39 @@ case class ysyx_23060082_Axi4MemSlave() extends Component {
 
   val memRW = NpcMemRW()
   memRW.io.wen   := io.axi4.aw.valid && io.axi4.w.valid
-  memRW.io.valid := io.axi4.ar.valid || memRW.io.wen
-  memRW.io.addr  := memRW.io.wen ? io.axi4.aw.addr | io.axi4.ar.addr
   memRW.io.wdata := io.axi4.w.data.asUInt
   memRW.io.wmask := io.axi4.w.strb.asUInt
 
-  // ------------------------- 读通道 ------------------------- //
-  io.axi4.ar.ready := io.axi4.ar.valid
-  val rValid = RegInit(False)
-  when(io.axi4.ar.valid) {          // 读请求到达, 下一拍返回数据
-    rValid := True
-  } elsewhen(io.axi4.r.fire) {
-    rValid := False
-  } otherwise {
-    rValid := rValid
+  // ------------------------- 读通道 (支持 INCR 突发) ------------------------- //
+  val arFire     = io.axi4.ar.fire
+  val readBase   = Reg(UInt(32 bits))           // 突发起始地址
+  val readLen    = Reg(UInt(8 bits))            // 突发长度 (len)
+  val readCnt    = Reg(UInt(8 bits)) init(0)    // 已返回数据节拍数
+  val readActive = RegInit(False)               // 读传输进行中
+
+  when(arFire) {
+    readBase   := io.axi4.ar.addr
+    readLen    := io.axi4.ar.len
+    readCnt    := 0
+    readActive := True
   }
-  io.axi4.r.valid := rValid
-  io.axi4.r.data  := memRW.io.rdata.asBits
-  io.axi4.r.resp  := Axi4.resp.OKAY          // 正常访问成功
-  io.axi4.r.last  := rValid         // 突发长度1, 返回即最后
-  io.axi4.r.id    := RegNextWhen(io.axi4.ar.id, io.axi4.ar.fire) init(0)
+  when(io.axi4.r.fire) {
+    when(readCnt === readLen) { readActive := False }   // 最后一拍, 传输结束
+    .otherwise { readCnt := readCnt + 1 }
+  }
+
+  io.axi4.ar.ready := !readActive                        // 传输中不应答新请求
+  io.axi4.r.valid  := readActive
+  io.axi4.r.data   := memRW.io.rdata.asBits
+  io.axi4.r.resp   := Axi4.resp.OKAY                    // 正常访问成功
+  io.axi4.r.last   := readActive && (readCnt === readLen)   // 最后一拍
+  io.axi4.r.id     := RegNextWhen(io.axi4.ar.id, arFire) init(0)
+
+  // NpcMemRW 每拍发起一次读: INCR 突发地址 = base + 下一拍偏移
+  memRW.io.valid := memRW.io.wen || arFire || readActive
+  memRW.io.addr  := Mux(memRW.io.wen, io.axi4.aw.addr,
+                    Mux(arFire, io.axi4.ar.addr,
+                        readBase + ((readCnt + 1) << io.axi4.ar.size)))
 
   // ------------------------- 写通道 ------------------------- //
   val wAllValid = io.axi4.aw.valid && io.axi4.w.valid

@@ -135,24 +135,29 @@ case class ysyx_23060082_Clint() extends Component {
   io.clintAxi4.b.valid.setAsReg() init(False)
 
   // ---------- 读通道 (支持突发: 按 len 计数, last 在最后一拍) ---------- //
-  val arFire     = io.clintAxi4.ar.fire
-  val readLen    = Reg(UInt(8 bits)) init(0)    // 突发长度 (len)
+  val readLen    = RegNextWhen(io.clintAxi4.ar.len, io.clintAxi4.ar.fire) init(0)    // 突发长度 (len),读地址握手成功后更新
   val readCnt    = Reg(UInt(8 bits)) init(0)    // 已返回数据节拍数
   val readActive = RegInit(False)               // 读传输进行中
 
-  when(arFire) {
-    readLen    := io.clintAxi4.ar.len
-    readCnt    := 0
-    readActive := True
+  when(io.clintAxi4.ar.fire) {                  // 读地址握手
+    readCnt := 0
+  } elsewhen (io.clintAxi4.r.fire && readCnt =/= readLen) { // 读数据握手，当突发传输时，会连续握手几次
+    readCnt := readCnt + 1                                  // 没到最后一拍, 每次握手计数+1
+  } otherwise {
+    readCnt := readCnt
   }
-  when(io.clintAxi4.r.fire) {
-    when(readCnt === readLen) { readActive := False }   // 最后一拍, 传输结束
-    .otherwise { readCnt := readCnt + 1 }
+
+  when(io.clintAxi4.ar.fire) {                            // 读地址握手
+    readActive := True
+  } elsewhen(io.clintAxi4.r.fire && readCnt === readLen) {// 最后一拍, 传输结束
+    readActive := False
+  } otherwise {
+    readActive := readActive
   }
 
   // 突发期间数据按 FIXED 语义保持: arFire 时锁存时间值, 传输期间不变
   val readData = Reg(UInt(32 bits))
-  when(arFire) {
+  when(io.clintAxi4.ar.fire) {
     readData := io.clintAxi4.ar.addr.mux(
       U"32'h02000004" -> timeCountHigh,
       U"32'h02000000" -> timeCountLow,

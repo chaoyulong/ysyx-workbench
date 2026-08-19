@@ -14,6 +14,7 @@ int main(int argc, char** argv)
 #endif
   monitor_exit();
   return is_exit_status_bad();
+}
 
   // sim_init(argc, argv);
   // pmem_init();
@@ -21,4 +22,3 @@ int main(int argc, char** argv)
   // n_cycle(500);
   // monitor_exit();
   // return 0;
-}

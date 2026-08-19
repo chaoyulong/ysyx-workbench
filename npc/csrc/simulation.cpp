@@ -79,7 +79,3 @@ void nvboard_wait_quit(void) {
 }
 #endif
 
-
-// extern "C" void my_ebreak(void){
-//   npc_state.state = NPC_END;
-// }

@@ -25,7 +25,6 @@ uint32_t get_ysyxid()
 void ysyxsoc_dis_id()
 {
   char temp[4];
-  char real[5];
 
   uint32_t id0, id1; 
   asm volatile("csrr t0, mvendorid");
@@ -33,14 +32,26 @@ void ysyxsoc_dis_id()
   asm volatile("csrr t0, marchid");
   asm volatile ("mv %0, t0" : "=r" (id1));
 
+  // 打印 "ID = ysyx_<id1>\n" (直接用 putch, 不依赖 printf/klib)
   *(uint32_t *)temp = id0;
-  real[0] = temp[3];
-  real[1] = temp[2];
-  real[2] = temp[1];
-  real[3] = temp[0];
-  real[4] = '\0';
+  const char *prefix = "ID = ";
+  for (int i = 0; i < 5; i++) putch(prefix[i]);
+  putch(temp[3]);
+  putch(temp[2]);
+  putch(temp[1]);
+  putch(temp[0]);
+  putch('_');
 
-  printf("ID = %s_%d\n", real, id1);
+  char buf[16];
+  int len = 0;
+  uint32_t n = id1;
+  if (n == 0) buf[len++] = '0';
+  while (n > 0) {
+    buf[len++] = '0' + (n % 10);
+    n /= 10;
+  }
+  while (len > 0) putch(buf[--len]);
+  putch('\n');
 }
 
 void putch(char ch) {

@@ -158,6 +158,9 @@ case class ysyx_23060082_Decoder() extends Component {
   io.ctrl.csrCtrl.csrCmd    := Mux(i_csrrw, U"3'd1",              // 0=NOP,1=CSRRW,2=CSRRS
                                Mux(i_csrrs, U"3'd2", U"3'd0"))
   io.ctrl.csrCtrl.csrWr     := i_csrrw | (i_csrrs && instr(19 downto 15) =/= 0)   // CSRRW总是写; CSRRS仅rs1≠0写
+  when(i_csrrw || i_csrrs) {
+    report(Seq("[DEC] csrrw=", i_csrrw, " csrrs=", i_csrrs, " imm=", io.imm, " cmd=", io.ctrl.csrCtrl.csrCmd, " wr=", io.ctrl.csrCtrl.csrWr))
+  }
   io.ctrl.csrCtrl.illegal  := i_illegal
   io.ctrl.csrCtrl.ebreak   := i_ebreak
   io.ctrl.csrCtrl.trapEnter := i_ecall | i_ebreak | i_illegal     // 异常进入,主动进入或者出现非法指令

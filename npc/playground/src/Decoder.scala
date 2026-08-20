@@ -97,7 +97,7 @@ case class ysyx_23060082_Decoder() extends Component {
   // val type_N = (op(6 downto 2) === U"11100" && func3 === U"000") || op(6 downto 2) === U"00011"   // 系统指令
   // ================================ 立即数生成 ================================ //
   val immU = instr(31 downto 12) ## B"12'b0"
-  val immJ = (instr(31) #* 12) ## instr(19 downto 12) ## instr(20) ## instr(30 downto 21)## B"0"
+  val immJ = (instr(31) #* 12) ## instr(19 downto 12) ## instr(20) ## instr(30 downto 21) ## B"0"
   val immI = (instr(31) #* 20) ## instr(31 downto 20)
   val immS = (instr(31) #* 20) ## instr(31 downto 25) ## instr(11 downto 7)
   val immB = (instr(31) #* 20) ## instr(7) ## instr(30 downto 25) ## instr(11 downto 8) ## B"0"
@@ -117,7 +117,7 @@ case class ysyx_23060082_Decoder() extends Component {
 
   io.ctrl.aluCtrl.aluBsrc :=Mux(type_R | type_B, U"00",       // 选通rdata2
                             Mux(i_jal  | i_jalr, U"10",       // 选通4，用于跳转
-                            U"01" ))                          // 选通imm                                                   // 选通imm
+                            U"01" ))                          // 选通imm
 
   io.ctrl.aluCtrl.aluCtr  := PriorityMux(Seq(
                               (i_and | i_andi) -> U"0111",    // 选择逻辑与输出

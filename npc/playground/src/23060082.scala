@@ -115,37 +115,24 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig.ysyxSoc) extends Componen
   xbar.io.ifuAxi4      <> ifu.io.axi4
   xbar.io.lsuAxi4      <> lsu.io.axi4
 
-  // ==================== 仿真专用: 指令退休追踪 (仅仿真, 不加顶层端口) ====================
-  // 供 itrace 追踪程序执行进度: 指令逐级传递到 WBU, 在 WBU 指示完成
+  // ==================== 仿真专用: itrace 指令退休追踪 (仅仿真, 不加顶层端口) ====================
+  // 黑盒实例化(寄存器在 dpi-c.v), 端口连接提供fanout, 指令逐级传递到WBU
   if (config.enableSimDebug) {
     // 指令随流水线逐级传递(仿真专用寄存器链)
     val itraceInstrIdu = Reg(Bits(32 bits)) init(0)
     val itraceInstrExu = Reg(Bits(32 bits)) init(0)
     val itraceInstrLsu = Reg(Bits(32 bits)) init(0)
     val itraceInstrWbu = Reg(Bits(32 bits)) init(0)
-    val itraceRetireInstr = Reg(Bits(32 bits)) init(0)
-    val itraceRetirePc    = Reg(UInt(32 bits)) init(0)
-    val itraceRetireValid = Reg(Bool()) init(False)
 
     when(ifu.io.output.fire) { itraceInstrIdu := ifu.io.output.instr.asBits }
     when(idu.io.output.fire) { itraceInstrExu := itraceInstrIdu }
     when(exu.io.output.fire) { itraceInstrLsu := itraceInstrExu }
     when(lsu.io.output.fire) { itraceInstrWbu := itraceInstrLsu }
 
-    when(wbu.io.input.valid) {          // 指令到达WBU = 执行完毕
-      itraceRetireInstr := itraceInstrWbu
-      itraceRetirePc    := wbu.io.input.pc
-      itraceRetireValid := True
-      // report 读取信号提供fanout(阻止SpinalHDL剪枝), 仿真时打印指令退休流
-      report(Seq("[itrace] retire pc=", itraceRetirePc, " instr=", itraceRetireInstr, " valid=", itraceRetireValid))
-    } otherwise {
-      itraceRetireValid := False
-    }
-
-    // setName: 让val名进入verilog(只被report使用时不参与命名传播, 否则会匿名化成_zz_x)
-    itraceRetireInstr.setName("itraceRetireInstr")
-    itraceRetirePc.setName("itraceRetirePc")
-    itraceRetireValid.setName("itraceRetireValid")
+    val itrace = ItraceReg()          // 黑盒: 寄存器在 dpi-c.v, C++ 侧直接读取
+    itrace.io.valid := wbu.io.input.valid   // 指令到达WBU = 执行完毕
+    itrace.io.pc    := wbu.io.input.pc
+    itrace.io.instr := itraceInstrWbu.asUInt
   }
 }
 

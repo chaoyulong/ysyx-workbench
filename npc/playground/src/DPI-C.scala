@@ -26,3 +26,17 @@ case class NpcMemRW() extends BlackBox{
   mapClockDomain(clock = io.clock,reset = io.reset)
   addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/dpi-c.v")   
 }
+
+// 仿真专用: itrace 指令退休追踪黑盒 (寄存器写在 dpi-c.v, 仅 enableSimDebug 时实例化)
+case class ItraceReg() extends BlackBox{
+  val io = new Bundle{
+    val clock = in Bool()
+    val reset = in Bool()
+    val valid = in Bool()
+    val pc    = in UInt(32 bits)
+    val instr = in UInt(32 bits)
+  }
+  noIoPrefix()
+  mapClockDomain(clock = io.clock, reset = io.reset)
+  addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/dpi-c.v")
+}

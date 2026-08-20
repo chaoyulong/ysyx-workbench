@@ -37,4 +37,34 @@ module NpcMemRW(
   end
 endmodule
 
+// ------------------- 仿真专用: itrace 指令退休追踪 (仅仿真, 综合不实例化) ------------------- //
+// 由 SpinalHDL 在 enableSimDebug 时实例化, 寄存器供 C++ 侧直接读取
+module ItraceReg(
+  input             clock,
+  input             reset,
+  input             valid,
+  input      [31:0] pc,
+  input      [31:0] instr
+);
+  reg [31:0] itraceRetirePc;
+  reg [31:0] itraceRetireInstr;
+  reg        itraceRetireValid;
+
+  always @(posedge clock or posedge reset) begin
+    if (reset) begin
+      itraceRetirePc     <= 32'h0;
+      itraceRetireInstr  <= 32'h0;
+      itraceRetireValid  <= 1'b0;
+    end
+    else if (valid) begin
+      itraceRetirePc     <= pc;
+      itraceRetireInstr  <= instr;
+      itraceRetireValid  <= 1'b1;
+    end
+    else begin
+      itraceRetireValid  <= 1'b0;
+    end
+  end
+endmodule
+
 

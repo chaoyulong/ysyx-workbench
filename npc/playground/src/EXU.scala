@@ -5,10 +5,10 @@ import spinal.lib._    // 使用spinal的模块库
 
 case class Exu2Lsu_data() extends Bundle {
   val pc          = UInt(32 bits)
-  val pc_next     = UInt(32 bits)
-  val rf_ctrl     = RfCtrl()        // 直通数据，在EXU中无作用
-  val mem_ctrl    = MemCtrl()       // 直通数据，在EXU中无作用
-  val csr_ctrl    = CsrCtrl()       // 直通数据，在EXU中无作用 
+  val pcNext     = UInt(32 bits)
+  val rfCtrl     = RfCtrl()        // 直通数据，在EXU中无作用
+  val memCtrl    = MemCtrl()       // 直通数据，在EXU中无作用
+  val csrCtrl    = CsrCtrl()       // 直通数据，在EXU中无作用 
 
   val imm         = UInt(12 bits)   // csr(位于LSU)模块中用于寄存器寻址
   val rfReadData1 = UInt(32 bits)   // 从寄存器中读取的数据1,在EXU及csr(位于LSU)模块中均有作用
@@ -40,15 +40,15 @@ case class ysyx_23060082_EXU() extends Component {
   banchCond.io.less   := alu.io.less
   banchCond.io.zero   := alu.io.zero
 
-  val pcDataA = Mux(banchCond.io.pc_asrc, io.input.imm, U"32'd4")
-  val pcDataB = Mux(banchCond.io.pc_bsrc, io.input.rfReadData1, io.input.pc)
+  val pcDataA = Mux(banchCond.io.pcAsrc, io.input.imm, U"32'd4")
+  val pcDataB = Mux(banchCond.io.pcBsrc, io.input.rfReadData1, io.input.pc)
   val pcDataTmp = pcDataA + pcDataB
   // ================================ 用于握手的部分 ================================ //
   val willValid = True
   io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
   // ================================ 数据传输部分 ================================ //
   io.output.pc          := io.input.pc
-  io.output.pc_next     := io.input.ctrl.aluCtrl.branch.mux(
+  io.output.pcNext     := io.input.ctrl.aluCtrl.branch.mux(
     U"010"  -> (pcDataTmp(31 downto 1) ## B"1'b0").asUInt,
     default -> pcDataTmp
   )
@@ -56,9 +56,9 @@ case class ysyx_23060082_EXU() extends Component {
   io.output.imm         := io.input.imm(11 downto 0)
   io.output.rfReadData1 := io.input.rfReadData1
   io.output.rfReadData2 := io.input.rfReadData2
-  io.output.rf_ctrl     := io.input.ctrl.rfCtrl      // 直通数据，在EXU中无作用
-  io.output.mem_ctrl    := io.input.ctrl.memCtrl     // 直通数据，在EXU中无作用
-  io.output.csr_ctrl    := io.input.ctrl.csrCtrl     // 直通数据，在EXU中无作用
+  io.output.rfCtrl     := io.input.ctrl.rfCtrl      // 直通数据，在EXU中无作用
+  io.output.memCtrl    := io.input.ctrl.memCtrl     // 直通数据，在EXU中无作用
+  io.output.csrCtrl    := io.input.ctrl.csrCtrl     // 直通数据，在EXU中无作用
 }
 
 /*    Branch      跳转类型
@@ -77,11 +77,11 @@ case class ysyx_23060082_BranchCond() extends Component {
     val less   = in Bool()
     val zero   = in Bool()
 
-    val pc_asrc= out Bool()
-    val pc_bsrc= out Bool()
+    val pcAsrc= out Bool()
+    val pcBsrc= out Bool()
   }
 
-  io.pc_asrc := io.branch.mux(
+  io.pcAsrc := io.branch.mux(
     U"001" -> True,
     U"010" -> True,
     U"100" -> io.zero,
@@ -90,7 +90,7 @@ case class ysyx_23060082_BranchCond() extends Component {
     U"111" -> ~io.less,
     default -> False
   )            
-  io.pc_bsrc := (io.branch === U"010")
+  io.pcBsrc := (io.branch === U"010")
 }
 
 /*              控制信号ALUctr的含义

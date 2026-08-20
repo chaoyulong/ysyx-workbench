@@ -4,7 +4,7 @@ import spinal.core._
 import spinal.lib._    // 使用spinal的模块库
 
 case class Wbu2Ifu_data() extends Bundle {
-  val pc_next       = UInt(32 bits)
+  val pcNext       = UInt(32 bits)
 }
 
 case class ysyx_23060082_WBU() extends Component {
@@ -15,10 +15,10 @@ case class ysyx_23060082_WBU() extends Component {
     val rfWrite = master(RegFileWriteBus())
   }
 
-  io.output.pc_next := io.input.pc_next
-  io.rfWrite.addr := io.input.rf_ctrl.rfWriteAddr
-  io.rfWrite.en   := io.input.rf_ctrl.regWr && io.input.valid
-  io.rfWrite.data := Mux(io.input.rf_ctrl.mem2reg | io.input.rf_ctrl.csr2reg, 
+  io.output.pcNext := io.input.pcNext
+  io.rfWrite.addr := io.input.rfCtrl.rfWriteAddr
+  io.rfWrite.en   := io.input.rfCtrl.regWr && io.input.valid
+  io.rfWrite.data := Mux(io.input.rfCtrl.mem2reg | io.input.rfCtrl.csr2reg, 
                          io.input.mem_data_out, io.input.alu_data_out)
 
   io.output.valid := io.input.valid

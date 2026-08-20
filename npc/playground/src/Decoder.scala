@@ -19,7 +19,7 @@ case class ysyx_23060082_Decoder() extends Component {
 
   io.ctrl.rfCtrl.rfWriteAddr := instr(11 downto 7)   // 为了写起来简洁，写寄存器地址在此赋值
 // ================================ 指令匹配 ================================ //    
-  val i_add    = i === M"0000000----------000-----0110011"    // type_R
+  val i_add    = i === M"0000000----------000-----0110011"    // typeR
   val i_sub    = i === M"0100000----------000-----0110011"
   val i_sll    = i === M"0000000----------001-----0110011"
   val i_slt    = i === M"0000000----------010-----0110011"
@@ -30,7 +30,7 @@ case class ysyx_23060082_Decoder() extends Component {
   val i_or     = i === M"0000000----------110-----0110011"
   val i_and    = i === M"0000000----------111-----0110011"
 
-  val i_addi   = i === M"-----------------000-----0010011"    // type_I
+  val i_addi   = i === M"-----------------000-----0010011"    // typeI
   val i_slli   = i === M"0000000----------001-----0010011"
   val i_slti   = i === M"-----------------010-----0010011"
   val i_sltiu  = i === M"-----------------011-----0010011"
@@ -45,22 +45,22 @@ case class ysyx_23060082_Decoder() extends Component {
   val i_lw     = i === M"-----------------010-----0000011"
   val i_lbu    = i === M"-----------------100-----0000011"
   val i_lhu    = i === M"-----------------101-----0000011"
-  val i_sb     = i === M"-----------------000-----0100011"    // type_S
+  val i_sb     = i === M"-----------------000-----0100011"    // typeS
   val i_sh     = i === M"-----------------001-----0100011"
   val i_sw     = i === M"-----------------010-----0100011"
 
-  val i_beq    = i === M"-----------------000-----1100011"    // type_B
+  val i_beq    = i === M"-----------------000-----1100011"    // typeB
   val i_bne    = i === M"-----------------001-----1100011"
   val i_blt    = i === M"-----------------100-----1100011"
   val i_bge    = i === M"-----------------101-----1100011"
   val i_bltu   = i === M"-----------------110-----1100011"
   val i_bgeu   = i === M"-----------------111-----1100011"
-  val i_jalr   = i === M"-----------------000-----1100111"    // type_I
-  val i_jal    = i === M"-------------------------1101111"    // type_J
-  val i_lui    = i === M"-------------------------0110111"    // type_U
+  val i_jalr   = i === M"-----------------000-----1100111"    // typeI
+  val i_jal    = i === M"-------------------------1101111"    // typeJ
+  val i_lui    = i === M"-------------------------0110111"    // typeU
   val i_auipc  = i === M"-------------------------0010111"
 
-  // val i_mul    = i === M"0000001----------000-----0110011" // type_R
+  // val i_mul    = i === M"0000001----------000-----0110011" // typeR
   // val i_mulh   = i === M"0000001----------001-----0110011"
   // val i_mulhsu = i === M"0000001----------010-----0110011"
   // val i_mulhu  = i === M"0000001----------011-----0110011"
@@ -70,7 +70,7 @@ case class ysyx_23060082_Decoder() extends Component {
   // val i_rem    = i === M"0000001----------110-----0110011"
   // val i_remu   = i === M"0000001----------111-----0110011"
 
-  val i_csrrw  = i === M"-----------------001-----1110011"  // 系统指令，暂且命名为type_N
+  val i_csrrw  = i === M"-----------------001-----1110011"  // 系统指令，暂且命名为typeN
   val i_csrrs  = i === M"-----------------010-----1110011"
 
   val i_ecall  = i === M"00000000000000000000000001110011"
@@ -88,13 +88,13 @@ case class ysyx_23060082_Decoder() extends Component {
   val i_illegal = (instr =/= 0) && !isLegal
 
 // ================================ 指令类型 ================================ //
-  val type_U = op(4 downto 2) === U"101"
-  val type_J = op(6 downto 2) === U"11011"
-  val type_I = op(6 downto 2) === U"00100" || op(6 downto 2) === U"00000" || op(6 downto 2) === U"11001" || (op(6 downto 2) === U"11100" && func3 =/= U"000")
-  val type_S = op(6 downto 2) === U"01000"
-  val type_B = op(6 downto 2) === U"11000"
-  val type_R = op(6 downto 2) === U"01100"
-  // val type_N = (op(6 downto 2) === U"11100" && func3 === U"000") || op(6 downto 2) === U"00011"   // 系统指令
+  val typeU = op(4 downto 2) === U"101"
+  val typeJ = op(6 downto 2) === U"11011"
+  val typeI = op(6 downto 2) === U"00100" || op(6 downto 2) === U"00000" || op(6 downto 2) === U"11001" || (op(6 downto 2) === U"11100" && func3 =/= U"000")
+  val typeS = op(6 downto 2) === U"01000"
+  val typeB = op(6 downto 2) === U"11000"
+  val typeR = op(6 downto 2) === U"01100"
+  // val typeN = (op(6 downto 2) === U"11100" && func3 === U"000") || op(6 downto 2) === U"00011"   // 系统指令
   // ================================ 立即数生成 ================================ //
   val immU = instr(31 downto 12) ## B"12'b0"
   val immJ = (instr(31) #* 12) ## instr(19 downto 12) ## instr(20) ## instr(30 downto 21) ## B"0"
@@ -103,19 +103,19 @@ case class ysyx_23060082_Decoder() extends Component {
   val immB = (instr(31) #* 20) ## instr(7) ## instr(30 downto 25) ## instr(11 downto 8) ## B"0"
 
   io.imm := PriorityMux(Seq(
-              type_U -> immU,
-              type_J -> immJ,
-              type_I -> immI,
-              type_S -> immS,
-              type_B -> immB,
+              typeU -> immU,
+              typeJ -> immJ,
+              typeI -> immI,
+              typeS -> immS,
+              typeB -> immB,
               True -> B"32'h0")).asUInt
 // ================================ 控制信号生成 ================================ // 
   val csrWb = i_csrrw | i_csrrs
 
-  io.ctrl.rfCtrl.regWr     := type_U | type_J | type_I | type_R | csrWb
+  io.ctrl.rfCtrl.regWr     := typeU | typeJ | typeI | typeR | csrWb
   io.ctrl.aluCtrl.aluAsrc := i_auipc | i_jal | i_jalr         // 0：选通rdata1，1：选通PC。
 
-  io.ctrl.aluCtrl.aluBsrc :=Mux(type_R | type_B, U"00",       // 选通rdata2
+  io.ctrl.aluCtrl.aluBsrc :=Mux(typeR | typeB, U"00",       // 选通rdata2
                             Mux(i_jal  | i_jalr, U"10",       // 选通4，用于跳转
                             U"01" ))                          // 选通imm
 
@@ -144,7 +144,7 @@ case class ysyx_23060082_Decoder() extends Component {
 
   io.ctrl.rfCtrl.mem2reg := op(6 downto 2) === U"00000"       // i_lb | i_lh | i_lw | i_lbu | i_lhu
   io.ctrl.rfCtrl.csr2reg := csrWb
-  io.ctrl.memCtrl.memWr  := type_S                            // i_sb | i_sh | i_sw
+  io.ctrl.memCtrl.memWr  := typeS                            // i_sb | i_sh | i_sw
   io.ctrl.memCtrl.memOp  := func3  
   // ================================ csr寄存器 ================================ //
   // 操作：

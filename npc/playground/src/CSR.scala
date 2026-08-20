@@ -18,15 +18,15 @@ object CSR {
 
 case class ysyx_23060082_CSR() extends Component {
   val io = new Bundle {
-    val csr_addr   = in  UInt(12 bits)    // csr地址
-    val csr_wdata  = in  UInt(32 bits)    
-    val csr_rdata  = out UInt(32 bits)
+    val csrAddr   = in  UInt(12 bits)    // csr地址
+    val csrWdata  = in  UInt(32 bits)    
+    val csrRdata  = out UInt(32 bits)
     val csrCmd    = in  UInt(3 bits)     // 0=NOP,1=CSRRW,2=CSRRS
     val trapEnter = in  Bool()           // 异常进入
     val trapExit  = in  Bool()           // MRET
 
-    val pc_in      = in  UInt(32 bits)    // 用于写mepc
-    val cause_in   = in  UInt(32 bits)    // 异常原因
+    val pcIn      = in  UInt(32 bits)    // 用于写mepc
+    val causeIn   = in  UInt(32 bits)    // 异常原因
     val mtvec      = out UInt(32 bits)
     val mepc       = out UInt(32 bits)
 
@@ -44,17 +44,17 @@ case class ysyx_23060082_CSR() extends Component {
 
   val writeEnable = io.csrCmd =/= 0 // csr写使能
 
-  val readMcycle  = io.csr_addr === CSR.mcycle
-  val readMcycleh = io.csr_addr === CSR.mcycleh
+  val readMcycle  = io.csrAddr === CSR.mcycle
+  val readMcycleh = io.csrAddr === CSR.mcycleh
   mcycle := mcycle + 1
   val mcyclehTmp = RegNextWhen(mcycle(63 downto 32), readMcycle) init(0)      // 规定先读低位，再立刻读高位
 
-  val readMinstret  = io.csr_addr === CSR.minstret
-  val readMinstreth = io.csr_addr === CSR.minstreth
+  val readMinstret  = io.csrAddr === CSR.minstret
+  val readMinstreth = io.csrAddr === CSR.minstreth
   when(io.instrRetire) { minstret := minstret + 1 }
   val minstrethTmp = RegNextWhen(minstret(63 downto 32), readMinstret) init(0)  // 规定先读低位，再立刻读高位
 
-  io.csr_rdata := io.csr_addr.mux(
+  io.csrRdata := io.csrAddr.mux(
     CSR.mstatus   -> mstatus,
     CSR.mtvec     -> mtvec,
     CSR.mepc      -> mepc,
@@ -69,15 +69,15 @@ case class ysyx_23060082_CSR() extends Component {
   )
 
   val rdataWb = Mux(readMcycleh, mcycle(63 downto 32),
-                Mux(readMinstreth, minstret(63 downto 32),  io.csr_rdata))
+                Mux(readMinstreth, minstret(63 downto 32),  io.csrRdata))
   val writeData = io.csrCmd.mux(
-    U"3'd1" -> io.csr_wdata,                    // CSRRW
-    U"3'd2" -> (rdataWb | io.csr_wdata),   // CSRRS
+    U"3'd1" -> io.csrWdata,                    // CSRRW
+    U"3'd2" -> (rdataWb | io.csrWdata),   // CSRRS
     default -> rdataWb
   )
 
   when(writeEnable){
-    switch(io.csr_addr){
+    switch(io.csrAddr){
       is(CSR.mstatus)   { mstatus   := writeData }
       is(CSR.mtvec)     { mtvec     := writeData }
       is(CSR.mepc)      { mepc      := writeData }
@@ -90,8 +90,8 @@ case class ysyx_23060082_CSR() extends Component {
   }
 
   when(io.trapEnter){
-    mepc   := io.pc_in
-    mcause := io.cause_in
+    mepc   := io.pcIn
+    mcause := io.causeIn
   }
 
   io.mtvec := mtvec

@@ -35,7 +35,7 @@ case class ysyx_23060082_IFU(resetPc: BigInt) extends Component {
     dataValid := dataValid
   }
   // ================================ PC寄存器 ================================ //
-  val pc = RegNextWhen(io.input.pc_next, io.input.fire) init(U(resetPc, 32 bits))
+  val pc = RegNextWhen(io.input.pcNext, io.input.fire) init(U(resetPc, 32 bits))
   // ================================ 读内存 ================================ //
   val axi4Ctrler = ysyx_23060082_Axi4_Ctrler_ReadOnly()
   io.axi4 <> axi4Ctrler.io.axi4

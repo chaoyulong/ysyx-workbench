@@ -6,10 +6,10 @@ import spinal.lib.bus.amba4.axi._
 
 case class Lsu2Wbu_data() extends Bundle {
   val pc            = UInt(32 bits)
-  val pc_next       = UInt(32 bits)
+  val pcNext       = UInt(32 bits)
   val mem_data_out  = UInt(32 bits)
   val alu_data_out  = UInt(32 bits) 
-  val rf_ctrl       = RfCtrl()      // 其中的mem2reg信号会作为读内存信号被用到
+  val rfCtrl       = RfCtrl()      // 其中的mem2reg信号会作为读内存信号被用到
 }
 
 
@@ -25,28 +25,28 @@ case class ysyx_23060082_LSU() extends Component {
   }
   val state = Reg(LsuState()) init(LsuState.Idle)   // 创建一个状态机
   val memAddr   = io.input.aluResult                // alu的输出结果就是访存地址
-  val needRead  = io.input.valid && io.input.rf_ctrl.mem2reg  // 需要读内存
-  val needWrite = io.input.valid && io.input.mem_ctrl.memWr   // 需要写内存
+  val needRead  = io.input.valid && io.input.rfCtrl.mem2reg  // 需要读内存
+  val needWrite = io.input.valid && io.input.memCtrl.memWr   // 需要写内存
   val needMem   = needRead || needWrite                       // 需要访问内存
 
   // ================================ 访存通路 ================================ //
   val dataProcess = ysyx_23060082_DataProcess()   // 数据处理
   val axi4Ctrler  = ysyx_23060082_Axi4_Ctrler()   // AXI总线控制
   // ---- 数据处理连接 ----
-  dataProcess.io.addrOp := memAddr(1 downto 0) ## io.input.mem_ctrl.memOp    // 合并 addr + MemOp 生成 5 位索引
+  dataProcess.io.addrOp := memAddr(1 downto 0) ## io.input.memCtrl.memOp    // 合并 addr + MemOp 生成 5 位索引
   dataProcess.io.wdata  := io.input.rfReadData2                               // 写数据为寄存器2的数据
   // ---- AXI控制器连接 ----
   io.axi4 <> axi4Ctrler.io.axi4
   axi4Ctrler.io.readReq  := needRead  && (state === LsuState.Idle)
   axi4Ctrler.io.writeReq := needWrite && (state === LsuState.Idle)
-  axi4Ctrler.io.size     := (False ## io.input.mem_ctrl.memOp(1 downto 0)).asUInt
+  axi4Ctrler.io.size     := (False ## io.input.memCtrl.memOp(1 downto 0)).asUInt
   axi4Ctrler.io.readAddr := memAddr
   axi4Ctrler.io.writeAddr:= memAddr
   axi4Ctrler.io.writeData:= dataProcess.io.wdataReal  // 处理后的数据
   axi4Ctrler.io.writeMask:= dataProcess.io.wmask
   // ---- 访存结束信号 ----
-  val rdEnd = (state === LsuState.WaitMem) && axi4Ctrler.io.readEnd && io.input.rf_ctrl.mem2reg  // 读内存结束, 需要更新数据
-  val wrEnd = (state === LsuState.WaitMem) && axi4Ctrler.io.writeEnd && io.input.mem_ctrl.memWr
+  val rdEnd = (state === LsuState.WaitMem) && axi4Ctrler.io.readEnd && io.input.rfCtrl.mem2reg  // 读内存结束, 需要更新数据
+  val wrEnd = (state === LsuState.WaitMem) && axi4Ctrler.io.writeEnd && io.input.memCtrl.memWr
   val rdataReg = RegNextWhen(axi4Ctrler.io.readData, rdEnd) init(0)  // 是读内存指令并且已读完
   dataProcess.io.rdata  := Mux(rdEnd, axi4Ctrler.io.readData, rdataReg) // 快一周期读完
 
@@ -70,14 +70,14 @@ case class ysyx_23060082_LSU() extends Component {
   }
   // ================================ CSR寄存器 ================================ //
   val csr = ysyx_23060082_CSR()
-  csr.io.csr_addr    := io.input.imm
-  csr.io.csr_wdata   := io.input.rfReadData1
-  csr.io.csrCmd     := io.input.csr_ctrl.csrCmd
-  csr.io.trapEnter  := io.input.csr_ctrl.trapEnter
-  csr.io.trapExit   := io.input.csr_ctrl.trapExit
-  csr.io.pc_in       := io.input.pc
-  csr.io.cause_in    := Mux(io.input.csr_ctrl.illegal, U(2),
-                        Mux(io.input.csr_ctrl.ebreak,  U(3), io.input.rfReadData1))
+  csr.io.csrAddr    := io.input.imm
+  csr.io.csrWdata   := io.input.rfReadData1
+  csr.io.csrCmd     := io.input.csrCtrl.csrCmd
+  csr.io.trapEnter  := io.input.csrCtrl.trapEnter
+  csr.io.trapExit   := io.input.csrCtrl.trapExit
+  csr.io.pcIn       := io.input.pc
+  csr.io.causeIn    := Mux(io.input.csrCtrl.illegal, U(2),
+                        Mux(io.input.csrCtrl.ebreak,  U(3), io.input.rfReadData1))
   csr.io.instrRetire := io.output.fire    // 指令传出LSU即计数(比写回提前1拍, 总数正确)
 
   // ================================ 用于握手的部分 ================================ //
@@ -89,13 +89,13 @@ case class ysyx_23060082_LSU() extends Component {
 
   // ================================ 数据传输部分 ================================ //
   io.output.pc          := io.input.pc
-  io.output.pc_next     := Mux(io.input.csr_ctrl.trapEnter, csr.io.mtvec,
-                           Mux(io.input.csr_ctrl.trapExit, csr.io.mepc,
-                               io.input.pc_next))
+  io.output.pcNext     := Mux(io.input.csrCtrl.trapEnter, csr.io.mtvec,
+                           Mux(io.input.csrCtrl.trapExit, csr.io.mepc,
+                               io.input.pcNext))
 
-  io.output.mem_data_out:= Mux(io.input.csr_ctrl.csrCmd =/= U"3'd0", csr.io.csr_rdata, dataProcess.io.rdataReal)           // 借用mem_data_out来输出读出的值
+  io.output.mem_data_out:= Mux(io.input.csrCtrl.csrCmd =/= U"3'd0", csr.io.csrRdata, dataProcess.io.rdataReal)           // 借用mem_data_out来输出读出的值
   io.output.alu_data_out:= io.input.aluResult
-  io.output.rf_ctrl     := io.input.rf_ctrl    
+  io.output.rfCtrl     := io.input.rfCtrl    
 }
 
 // ================================ 数据处理单元 ================================ //

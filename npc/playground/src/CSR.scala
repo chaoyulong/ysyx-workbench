@@ -22,7 +22,6 @@ case class ysyx_23060082_CSR() extends Component {
     val csr_wdata  = in  UInt(32 bits)    
     val csr_rdata  = out UInt(32 bits)
     val csrCmd    = in  UInt(3 bits)     // 0=NOP,1=CSRRW,2=CSRRS
-    val csrWr     = in  Bool()           // CSR写使能: 仅真正需要写时置1(csrr读操作不写)
     val trapEnter = in  Bool()           // 异常进入
     val trapExit  = in  Bool()           // MRET
 
@@ -46,15 +45,6 @@ case class ysyx_23060082_CSR() extends Component {
   mcycle := mcycle + 1
   when(io.instrRetire) { minstret := minstret + 1 }
 
-  // 双向快照: 访问任一半(低/高)时同时锁存高低位, 保证两次读取组合的64位值一致
-  val isCsrAccess   = io.csrCmd =/= 0                                  // 仅CSR指令(CSRRW/CSRRS)访问
-  val accMcycle     = isCsrAccess && (io.csr_addr === CSR.mcycle  || io.csr_addr === CSR.mcycleh)
-  val accMinstret   = isCsrAccess && (io.csr_addr === CSR.minstret || io.csr_addr === CSR.minstreth)
-  val mcycleLowSnap    = RegNextWhen(mcycle(31 downto 0),    accMcycle)   init(0)
-  val mcycleHighSnap   = RegNextWhen(mcycle(63 downto 32),   accMcycle)   init(0)
-  val minstretLowSnap  = RegNextWhen(minstret(31 downto 0),  accMinstret) init(0)
-  val minstretHighSnap = RegNextWhen(minstret(63 downto 32), accMinstret) init(0)
-
   io.csr_rdata := io.csr_addr.mux(
     CSR.mstatus   -> mstatus,
     CSR.mtvec     -> mtvec,
@@ -62,25 +52,14 @@ case class ysyx_23060082_CSR() extends Component {
     CSR.mcause    -> mcause,
     CSR.mvendorid -> mvendorid,
     CSR.marchid   -> marchid,
-    CSR.mcycle    -> mcycleLowSnap,
-    CSR.mcycleh   -> mcycleHighSnap,
-    CSR.minstret  -> minstretLowSnap,
-    CSR.minstreth -> minstretHighSnap,
+    CSR.mcycle    -> mcycle(31 downto 0),
+    CSR.mcycleh   -> mcycle(63 downto 32),
+    CSR.minstret  -> minstret(31 downto 0),
+    CSR.minstreth -> minstret(63 downto 32),
     default       -> U"32'h0"
   )
 
-  // 调试: 观察所有 CSR 访问
-  when(io.csrCmd =/= 0) {
-    report(Seq("[CSR] addr=", io.csr_addr, " cmd=", io.csrCmd, " wr=", io.csrWr))
-  }
-  // 调试: 观察 mcycle 访问
-  when(io.csrCmd =/= 0 && (io.csr_addr === CSR.mcycle || io.csr_addr === CSR.mcycleh)) {
-    report(Seq("[CSR] mcycle addr=", io.csr_addr, " cmd=", io.csrCmd, " wr=", io.csrWr,
-               " mcycle=", mcycle, " snapLo=", mcycleLowSnap, " snapHi=", mcycleHighSnap,
-               " rdata=", io.csr_rdata))
-  }
-
-  val writeEnable = io.csrWr     // 只有真正写CSR的指令才使能(防止csrr读操作把计数寄存器写回旧值)
+  val writeEnable = io.csrCmd =/= 0
   val csr_old = io.csr_rdata
 
   val writeData = io.csrCmd.mux(

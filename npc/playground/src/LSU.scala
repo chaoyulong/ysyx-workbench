@@ -73,7 +73,6 @@ case class ysyx_23060082_LSU() extends Component {
   csr.io.csr_addr    := io.input.imm
   csr.io.csr_wdata   := io.input.rfReadData1
   csr.io.csrCmd     := io.input.csr_ctrl.csrCmd
-  csr.io.csrWr      := io.input.csr_ctrl.csrWr
   csr.io.trapEnter  := io.input.csr_ctrl.trapEnter
   csr.io.trapExit   := io.input.csr_ctrl.trapExit
   csr.io.pc_in       := io.input.pc

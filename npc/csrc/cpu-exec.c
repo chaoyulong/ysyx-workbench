@@ -17,22 +17,18 @@ uint64_t g_nr_guest_cycle = 0;    // 运行了多少周期
 NPCState npc_state = { .state = NPC_STOP };
 CPU_state cpu;
 
+// itrace 黑盒总是存在(enableSimDebug=true), 宏总是可用
 #ifdef __npc__
-// npc 平台: itrace 黑盒总是存在(enableSimDebug=true), 宏总是可用
 extern TOP_NAME* top;
 #include "VNPC_TOP___024root.h"
 #define itraceRetireValid   top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireValid
 #define itraceRetirePc      top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetirePc
 #define itraceRetireInstr   top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireInstr
-#endif
-
-#ifdef CONFIG_ITRACE
-#ifdef __ysyxsoc__
+#else
 #include "VysyxSoCFull___024root.h"
 #define itraceRetireValid   top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireValid
 #define itraceRetirePc      top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetirePc
 #define itraceRetireInstr   top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireInstr
-#endif
 #endif
 
 
@@ -69,10 +65,8 @@ static void cpu_state_update() {
   }
 }
 
-
 static void exec_once() 
 {
-#ifdef __npc__
   // 执行一条指令: 循环周期直到 WBU 退休(itraceRetireValid), 上限5000周期防卡死
   // 用 do-while: 至少先跑1拍, 清掉上一条退休的残留脉冲, 再等新指令退休
   uint64_t cycle_cnt = 0;
@@ -90,11 +84,6 @@ static void exec_once()
   // 状态更新: 用退休指令的 PC (ifu.pc 可能已指向流水线后续)
   cpu.pc = itraceRetirePc;
   for (int i = 0; i < REG_NUM; i++) cpu.gpr[i] = gpr(i);
-#else
-  single_cycle();
-  g_nr_guest_cycle++;
-  cpu_state_update();
-#endif
 
 #ifdef CONFIG_ITRACE
   cpu.pc_o   = itraceRetirePc;      // 退休指令的 pc/instr

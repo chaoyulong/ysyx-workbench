@@ -69,6 +69,13 @@ case class ysyx_23060082_CSR() extends Component {
     default       -> U"32'h0"
   )
 
+  // 调试: 观察 mcycle 访问
+  when(io.csrCmd =/= 0 && (io.csr_addr === CSR.mcycle || io.csr_addr === CSR.mcycleh)) {
+    report(Seq("[CSR] mcycle addr=", io.csr_addr, " cmd=", io.csrCmd, " wr=", io.csrWr,
+               " mcycle=", mcycle, " snapLo=", mcycleLowSnap, " snapHi=", mcycleHighSnap,
+               " rdata=", io.csr_rdata))
+  }
+
   val writeEnable = io.csrWr     // 只有真正写CSR的指令才使能(防止csrr读操作把计数寄存器写回旧值)
   val csr_old = io.csr_rdata
 

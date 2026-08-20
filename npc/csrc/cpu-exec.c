@@ -6,15 +6,12 @@
 #include "pmem.h"
 #include "device.h"
 
-#define MAX_INST_TO_PRINT 0    // 最大单步执行多少时打印反汇编
-#define DEVICE_UPDATE_CYCLE 20000   // 每多少个周期更新一次外设(SDL事件/屏幕刷新)
-// 单条指令周期上限(防卡死), 可通过环境变量 ITRACE_TIMEOUT_CYCLE 覆盖
-#ifndef ITRACE_TIMEOUT_CYCLE
-#define ITRACE_TIMEOUT_CYCLE 5000
-#endif
+#define MAX_INST_TO_PRINT 10        // 最大单步执行多少时打印反汇编
+#define DEVICE_UPDATE_CYCLE 20000   // 每多少个周期更新一次外设(SDL事件/屏幕刷新)    
+#define ITRACE_TIMEOUT_CYCLE 5000   // 单条指令周期上限(防卡死)
 
 uint64_t g_timer = 0;
-bool g_print_step = false;
+static bool g_print_step = false;
 uint64_t g_nr_guest_inst = 0;     // 运行了多少条指令
 uint64_t g_nr_guest_cycle = 0;    // 运行了多少周期
 
@@ -35,13 +32,12 @@ CPU_state cpu;
 #define itraceRetireInstr   top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireInstr
 #endif
 
-void cpu_reset(int n){
+void cpu_reset(int n) {
   reset(n);
 }
 
-static void trace_and_difftest() 
-{
-  IFDEF(CONFIG_ITRACE, puts(cpu.decode.log_buf));
+static void trace_and_difftest() {
+  if(g_print_step) {IFDEF(CONFIG_ITRACE, puts(cpu.decode.log_buf));}
   IFDEF(CONFIG_ITRACE, log_write("%s\n", cpu.decode.log_buf)); 
   IFDEF(CONFIG_FTRACE, void func_trace(); func_trace());
   // IFDEF(CONFIG_DIFFTEST, void difftest_step(vaddr_t pc, vaddr_t npc); if(reg_updated && npc_state.state != NPC_END) {difftest_step(cpu.pc, cpu.pc_next); });
@@ -80,13 +76,12 @@ static void exec_once()
 
   // 状态更新: 用退休指令的 PC (ifu.pc 可能已指向流水线后续)
   cpu.pc = itraceRetirePc;
+  cpu.instr  = itraceRetireInstr;
   for (int i = 0; i < REG_NUM; i++) cpu.gpr[i] = gpr(i);
 
 #ifdef CONFIG_ITRACE
-  cpu.pc_o   = itraceRetirePc;      // 退休指令的 pc/instr
-  cpu.instr  = itraceRetireInstr;
   char *p = cpu.decode.log_buf;
-  p += snprintf(p, sizeof(cpu.decode.log_buf), "0x%08x:", cpu.pc_o);
+  p += snprintf(p, sizeof(cpu.decode.log_buf), "0x%08x:", cpu.pc);
   uint8_t *inst = (uint8_t *)&cpu.instr;
   for (int i = 3; i >= 0; i --) {
     p += snprintf(p, 4, " %02x", inst[i]);
@@ -94,7 +89,7 @@ static void exec_once()
   memset(p, ' ', 4);
   p += 4;
   void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
-  disassemble(p, cpu.decode.log_buf + sizeof(cpu.decode.log_buf) - p, cpu.pc_o, (uint8_t *)&cpu.instr, 4);
+  disassemble(p, cpu.decode.log_buf + sizeof(cpu.decode.log_buf) - p, cpu.pc, (uint8_t *)&cpu.instr, 4);
       
   strcpy(cpu.decode.iringbuf[cpu.decode.iringbuf_end], cpu.decode.log_buf);
   cpu.decode.iringbuf_end++;
@@ -111,7 +106,6 @@ static void exec_once()
 static void execute(uint64_t n) {
   for (;n > 0; n --) {
     exec_once();
-
     if (g_nr_guest_cycle % DEVICE_UPDATE_CYCLE == 0) device_update();  // 周期更新外设
     trace_and_difftest();
     if (npc_state.state != NPC_RUNNING) 
@@ -222,9 +216,3 @@ void iringbuf_printf(void) {
   }
 }
 #endif
-
-extern "C" void get_instr(int pc_o, int instr)
-{
-  cpu.pc_o = pc_o;
-  cpu.instr = instr;
-}

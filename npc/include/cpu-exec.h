@@ -23,18 +23,17 @@ typedef struct decode{
 #endif
 
 typedef struct cpu_state{
-  word_t gpr[REG_NUM];       // 寄存器
+  word_t gpr[REG_NUM];  // 寄存器
   paddr_t pc;           // pc
-  paddr_t pc_o;         // 与指令同步的对应的pc,用于itrace
   word_t instr;         // 指令
 #ifdef CONFIG_ITRACE    
-  Decode decode;
+  Decode decode;        // 指令译码
 #endif
 }CPU_state;
 extern CPU_state cpu;
 
-void cpu_state_init();
-int is_exit_status_bad();
+void cpu_state_init(void);
+int is_exit_status_bad(void);
 void cpu_reset(int n);
 void cpu_exec(uint64_t n);
 

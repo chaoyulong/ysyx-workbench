@@ -2,15 +2,6 @@ package playground
 
 import spinal.core._
 
-
-// case class MyEbreak() extends BlackBox{
-//   val io = new Bundle{
-//     val i_ebreak = in Bool()
-//   }
-//   noIoPrefix()
-//   addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/dpi-c.v")   
-// }
-
 case class GetInstr() extends BlackBox{
   val io = new Bundle{
     val pc_o = in UInt(32 bits)

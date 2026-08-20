@@ -69,6 +69,10 @@ case class ysyx_23060082_CSR() extends Component {
     default       -> U"32'h0"
   )
 
+  // 调试: 观察所有 CSR 访问
+  when(io.csrCmd =/= 0) {
+    report(Seq("[CSR] addr=", io.csr_addr, " cmd=", io.csrCmd, " wr=", io.csrWr))
+  }
   // 调试: 观察 mcycle 访问
   when(io.csrCmd =/= 0 && (io.csr_addr === CSR.mcycle || io.csr_addr === CSR.mcycleh)) {
     report(Seq("[CSR] mcycle addr=", io.csr_addr, " cmd=", io.csrCmd, " wr=", io.csrWr,

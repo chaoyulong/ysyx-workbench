@@ -123,7 +123,7 @@ void assert_fail_msg()
 /* Simulate how the CPU works. */
 void cpu_exec(uint64_t n) 
 {
-  g_print_step = (n < MAX_INST_TO_PRINT);
+  g_print_step = (n <= MAX_INST_TO_PRINT);
   switch (npc_state.state) {
     case NPC_END: case NPC_ABORT:
       printf("Program execution has ended. To restart the program, exit NPC and run again.\n");
@@ -204,10 +204,8 @@ void iringbuf_printf(void) {
   int i;
   int buf_last = cpu.decode.iringbuf_end - 1 < 0 ? 15 : cpu.decode.iringbuf_end - 1;
   puts("-- ring buf:");
-  for(i = 0; i < 16; i++)
-  {
-    if(cpu.decode.iringbuf[i][3] != '\0')
-    {
+  for(i = 0; i < 16; i++) {
+    if(cpu.decode.iringbuf[i][3] != '\0') {
       if(i == buf_last)
         printf("-->%s\n", cpu.decode.iringbuf[i]); 
       else

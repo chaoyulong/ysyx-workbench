@@ -22,6 +22,7 @@ case class ysyx_23060082_CSR() extends Component {
     val csr_wdata  = in  UInt(32 bits)    
     val csr_rdata  = out UInt(32 bits)
     val csrCmd    = in  UInt(3 bits)     // 0=NOP,1=CSRRW,2=CSRRS
+    val csrWr     = in  Bool()           // CSR写使能: 仅真正需要写时置1(csrr读操作不写)
     val trapEnter = in  Bool()           // 异常进入
     val trapExit  = in  Bool()           // MRET
 
@@ -68,7 +69,7 @@ case class ysyx_23060082_CSR() extends Component {
     default       -> U"32'h0"
   )
 
-  val writeEnable = io.csrCmd =/= 0
+  val writeEnable = io.csrWr     // 只有真正写CSR的指令才使能(防止csrr读操作把计数寄存器写回旧值)
   val csr_old = io.csr_rdata
 
   val writeData = io.csrCmd.mux(

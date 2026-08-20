@@ -43,7 +43,7 @@ void cpu_reset(int n){
 static void trace_and_difftest() 
 {
   IFDEF(CONFIG_ITRACE, puts(cpu.decode.log_buf));
-  IFDEF(CONFIG_ITRACE,  log_write("%s\n", cpu.decode.log_buf)); 
+  IFDEF(CONFIG_ITRACE, log_write("%s\n", cpu.decode.log_buf)); 
   IFDEF(CONFIG_FTRACE, void func_trace(); func_trace());
   // IFDEF(CONFIG_DIFFTEST, void difftest_step(vaddr_t pc, vaddr_t npc); if(reg_updated && npc_state.state != NPC_END) {difftest_step(cpu.pc, cpu.pc_next); });
 
@@ -74,8 +74,9 @@ static void exec_once()
 {
 #ifdef __npc__
   // 执行一条指令: 循环周期直到 WBU 退休(itraceRetireValid), 上限5000周期防卡死
+  // 用 do-while: 至少先跑1拍, 清掉上一条退休的残留脉冲, 再等新指令退休
   uint64_t cycle_cnt = 0;
-  while (!itraceRetireValid) {
+  do {
     single_cycle();
     g_nr_guest_cycle++;
     if (++cycle_cnt > 5000) {
@@ -83,7 +84,7 @@ static void exec_once()
       npc_state.state = NPC_ABORT;
       break;
     }
-  }
+  } while (!itraceRetireValid);
   if (npc_state.state == NPC_ABORT) return;
 
   // 状态更新: 用退休指令的 PC (ifu.pc 可能已指向流水线后续)
@@ -144,8 +145,7 @@ void assert_fail_msg()
 void cpu_exec(uint64_t n) 
 {
   g_print_step = (n < MAX_INST_TO_PRINT);
-  switch (npc_state.state) 
-  {
+  switch (npc_state.state) {
     case NPC_END: case NPC_ABORT:
       printf("Program execution has ended. To restart the program, exit NPC and run again.\n");
       return;
@@ -161,8 +161,7 @@ void cpu_exec(uint64_t n)
 
   npc_state.halt_ret = gpr(10);
 
-  switch (npc_state.state) 
-  {
+  switch (npc_state.state) {
     case NPC_RUNNING: npc_state.state = NPC_STOP; break;
 
     case NPC_END: case NPC_ABORT:

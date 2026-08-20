@@ -143,7 +143,7 @@ case class ysyx_23060082_ALU() extends Component {
   val lessFlag = Mux(io.aluCtr(3), lessFlag1, lessFlag0)
 
   // ------------------ 输出结果 ------------------ //
-  val result_slt = less.asUInt.resize(32)       // 扩展为32位
+  val result_slt = U(lessFlag).resize(32)       // 扩展为32位
   val result_lui = io.aluIn2
   val result_xor = io.aluIn1 ^ io.aluIn2
   val result_or  = io.aluIn1 | io.aluIn2

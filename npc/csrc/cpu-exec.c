@@ -17,56 +17,53 @@ uint64_t g_nr_guest_cycle = 0;    // 运行了多少周期
 NPCState npc_state = { .state = NPC_STOP };
 CPU_state cpu;
 
+#ifdef __npc__
+// npc 平台: itrace 黑盒总是存在(enableSimDebug=true), 宏总是可用
+#include "VNPC_TOP___024root.h"
+#define itraceRetireValid   top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireValid
+#define itraceRetirePc      top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetirePc
+#define itraceRetireInstr   top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireInstr
+#endif
+
 #ifdef CONFIG_ITRACE
 #ifdef __ysyxsoc__
 #include "VysyxSoCFull___024root.h"
 #define itraceRetireValid   top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireValid
 #define itraceRetirePc      top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetirePc
-#define itraceRetireInstr   top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireInstr                          
-#else
-#include "VNPC_TOP___024root.h"
-#define itraceRetireValid   top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireValid
-#define itraceRetirePc      top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetirePc
-#define itraceRetireInstr   top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireInstr   
+#define itraceRetireInstr   top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireInstr
 #endif
 #endif
 
 
-void cpu_reset(int n)
-{
+void cpu_reset(int n){
   reset(n);
 }
 
 static void trace_and_difftest() 
 {
   IFDEF(CONFIG_ITRACE, puts(cpu.decode.log_buf));
-  IFDEF (CONFIG_ITRACE,  log_write("%s\n", cpu.decode.log_buf)); 
+  IFDEF(CONFIG_ITRACE,  log_write("%s\n", cpu.decode.log_buf)); 
   IFDEF(CONFIG_FTRACE, void func_trace(); /*if(reg_updated)*/ func_trace());
   // IFDEF(CONFIG_DIFFTEST, void difftest_step(vaddr_t pc, vaddr_t npc); if(reg_updated && npc_state.state != NPC_END) {difftest_step(cpu.pc, cpu.pc_next); });
 
 #ifdef CONFIG_WATCHPOINT
-  if(watchpoint_update())
-  {
+  if(watchpoint_update()) {
     npc_state.state = NPC_STOP;
     puts("\nhas changed");
   }
 #endif
 }
 
-void cpu_state_init()
-{
-  for(int i = 0; i < REG_NUM; i++)
-  {
+void cpu_state_init() {
+  for(int i = 0; i < REG_NUM; i++) {
     cpu.gpr[i] = 0;
   }
   cpu.pc = RESET_VECTOR;
 }
 
-static void cpu_state_update()
-{
+static void cpu_state_update() {
   cpu.pc = Rpc();
-  for(int i = 0; i < REG_NUM; i++)
-  {
+  for(int i = 0; i < REG_NUM; i++) {
     cpu.gpr[i] = gpr(i);
   }
 }
@@ -74,10 +71,32 @@ static void cpu_state_update()
 
 static void exec_once() 
 {
+#ifdef __npc__
+  // 执行一条指令: 循环周期直到 WBU 退休(itraceRetireValid), 上限5000周期防卡死
+  uint64_t cycle_cnt = 0;
+  while (!itraceRetireValid) {
+    single_cycle();
+    g_nr_guest_cycle++;
+    if (++cycle_cnt > 5000) {
+      printf("ERROR: [itrace] 一条指令超过5000周期未完成 (pc=0x%08x), CPU可能卡死!\n", (uint32_t)itraceRetirePc);
+      npc_state.state = NPC_ABORT;
+      break;
+    }
+  }
+  if (npc_state.state == NPC_ABORT) return;
+
+  // 状态更新: 用退休指令的 PC (ifu.pc 可能已指向流水线后续)
+  cpu.pc = itraceRetirePc;
+  for (int i = 0; i < REG_NUM; i++) cpu.gpr[i] = gpr(i);
+#else
   single_cycle();
+  g_nr_guest_cycle++;
   cpu_state_update();
+#endif
 
 #ifdef CONFIG_ITRACE
+  cpu.pc_o   = itraceRetirePc;      // 退休指令的 pc/instr
+  cpu.instr  = itraceRetireInstr;
   char *p = cpu.decode.log_buf;
   p += snprintf(p, sizeof(cpu.decode.log_buf), "0x%08x:", cpu.pc_o);
   int i;
@@ -105,7 +124,6 @@ static void exec_once()
 static void execute(uint64_t n) {
   for (;n > 0; n --) {
     exec_once();
-    g_nr_guest_cycle++;
 
     if (g_nr_guest_cycle % DEVICE_UPDATE_CYCLE == 0) device_update();  // 周期更新外设
     trace_and_difftest();

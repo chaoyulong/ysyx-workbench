@@ -1,6 +1,6 @@
 #ifndef __config_h__
 #define __config_h__
 
-// #define CONFIG_ITRACE 1
+#define CONFIG_ITRACE 1
 
 #endif

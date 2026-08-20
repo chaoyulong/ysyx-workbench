@@ -24,6 +24,7 @@ object CpuConfig {
   // ysyxsoc 平台: 综合用, 关闭仿真专用逻辑
   val ysyxSoc = CpuConfig(
     resetPc = 0x30000000L
+    enableSimDebug = true
   )
 }
 

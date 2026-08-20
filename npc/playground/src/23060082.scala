@@ -136,16 +136,16 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig.ysyxSoc) extends Componen
       dbgRetireInstr := dbgInstrWbu
       dbgRetirePc    := wbu.io.input.pc
       dbgRetireValid := True
-      // report 读取信号: 提供fanout阻止剪枝, 仿真时打印指令退休流
+      // report 读取信号提供fanout(阻止SpinalHDL剪枝), 仿真时打印指令退休流
       report(Seq("[WBU] retire pc=", dbgRetirePc, " instr=", dbgRetireInstr, " valid=", dbgRetireValid))
     } otherwise {
       dbgRetireValid := False
     }
 
-    // 固定名字 + Verilator public 注释, C++ 侧可直接指针读取
-    dbgRetireInstr.setName("dbgRetireInstr").addTag(Verilator.public)
-    dbgRetirePc.setName("dbgRetirePc").addTag(Verilator.public)
-    dbgRetireValid.setName("dbgRetireValid").addTag(Verilator.public)
+    // 固定可读名字(与正常信号一致, 不加特殊注释)
+    dbgRetireInstr.setName("dbgRetireInstr")
+    dbgRetirePc.setName("dbgRetirePc")
+    dbgRetireValid.setName("dbgRetireValid")
   }
 }
 

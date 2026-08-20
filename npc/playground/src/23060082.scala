@@ -49,7 +49,7 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig.ysyxSoc) extends Componen
   io.io_slave.r.resp   := B(0)
   io.io_slave.r.last   := False
   io.io_slave.r.id     := U(0)
-  // ------------------------------------------------------ 定义级间寄存器函数 ------------------------------------------------------ //
+  // ================================ 定义级间寄存器函数 ================================ //
   def pipelineConnect[T <: Data, T2 <: Data](
     prevOut: Stream[T],     // 前一级的输出
     thisIn:  Flow[T],       // 这一级的输入  
@@ -72,7 +72,7 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig.ysyxSoc) extends Componen
     
     prevOut.ready := !validReg || thisOut.fire   // 当数据无效，或者下游握手成功即将无效，此时ready置1,表示可以接收新的数据
   }
-  // ------------------------ 用于最后一级的连接
+  // ================================ 用于最后一级的连接 ================================ //
   def pipelineConnectLast[T <: Data](
     prevOut: Stream[T],
     thisIn:  Flow[T]
@@ -90,8 +90,7 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig.ysyxSoc) extends Componen
     thisIn.valid := validReg
     prevOut.ready := True
   }
-  // ------------------------------------------------------------------------------------------------------------------------- //
-
+  // ================================================================ //
   val regFile = ysyx_23060082_RegFile()
   val ifu     = ysyx_23060082_IFU(config.resetPc)
   val idu     = ysyx_23060082_IDU()
@@ -105,11 +104,9 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig.ysyxSoc) extends Componen
   pipelineConnectLast(lsu.io.output, wbu.io.input)   // wbu是最后一级，没有thisOut
   wbu.io.output >> ifu.io.input
 
-
   regFile.io.readBus  <> idu.io.rfRead
   regFile.io.writeBus <> wbu.io.rfWrite
-
-  // ----------------------------------- xbar ----------------------------------- //
+  // ================================ xbar ================================ //
   val xbar = ysyx_23060082_AXI4Xbar()
   val clint = ysyx_23060082_Clint()       
   xbar.io.externalAxi4 <> io.io_master    // 引到外部

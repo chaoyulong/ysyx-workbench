@@ -16,7 +16,7 @@ case class ysyx_23060082_WBU() extends Component {
   }
 
   io.output.pc_next := io.input.pc_next
-  io.rfWrite.addr := io.input.rf_ctrl.rf_write_addr
+  io.rfWrite.addr := io.input.rf_ctrl.rfWriteAddr
   io.rfWrite.en   := io.input.rf_ctrl.regWr && io.input.valid
   io.rfWrite.data := Mux(io.input.rf_ctrl.mem2reg | io.input.rf_ctrl.csr2reg, 
                          io.input.mem_data_out, io.input.alu_data_out)

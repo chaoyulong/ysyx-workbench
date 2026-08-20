@@ -9,9 +9,7 @@ case class Ifu2Idu_data() extends Bundle {
   val instr = UInt(32 bits)
 }
 
-/* ****************************************************************
-  IFU
-**************************************************************** */
+// ================================ ================================ //
 case class ysyx_23060082_IFU(resetPc: BigInt) extends Component {
   val io = new Bundle {
     val input  = slave  Stream(Wbu2Ifu_data())
@@ -23,11 +21,11 @@ case class ysyx_23060082_IFU(resetPc: BigInt) extends Component {
     val Idle, WaitMem, Done = newElement()
   }
   val state = Reg(IfuState()) init(IfuState.Idle)   // 创建一个状态机
-  // --------------------------------- 用于确定复位结束 --------------------------------- //
+  // ============================== 用于确定复位结束 ============================== //
   val rstReg1 = RegNext(True) init(False)
   val rstReg2 = RegNext(rstReg1) init(False)
   val rstEnd = (rstReg1 && !rstReg2)
-  // ----------------------------------- 数据有效信号 ----------------------------------- //
+  // ================================ 数据有效信号 ================================ //
   val dataValid = RegInit(False)
   when(io.input.fire || rstEnd) {     // 上游握手成功，或者复位结束，说明当前数据处于有效状态
     dataValid := True
@@ -36,16 +34,16 @@ case class ysyx_23060082_IFU(resetPc: BigInt) extends Component {
   }otherwise{
     dataValid := dataValid
   }
-  // ------------------------------------ PC寄存器 ------------------------------------ //
+  // ================================ PC寄存器 ================================ //
   val pc = RegNextWhen(io.input.pc_next, io.input.fire) init(U(resetPc, 32 bits))
-  // ------------------------------------- 读内存 ------------------------------------- //
+  // ================================ 读内存 ================================ //
   val axi4Ctrler = ysyx_23060082_Axi4_Ctrler_ReadOnly()
   io.axi4 <> axi4Ctrler.io.axi4
   axi4Ctrler.io.readReq := (state === IfuState.Idle) && dataValid   // 数据开始有效并且处于等待状态，触发一次读取
   axi4Ctrler.io.readAddr:= pc
 
   val rdataReg = RegNextWhen(axi4Ctrler.io.readData, state === IfuState.WaitMem && axi4Ctrler.io.readEnd) init(0)  // 读完时更新数据
-  // ------------------------------------- 状态机 ------------------------------------- //
+  // ================================ 状态机 ================================ //
   switch(state) {
     is(IfuState.Idle) {
       when(dataValid) {state := IfuState.WaitMem}     // 握手成功或者复位结束，都会触发读取 
@@ -64,13 +62,13 @@ case class ysyx_23060082_IFU(resetPc: BigInt) extends Component {
     }
   }
 
-  // ---------------------------------- 用于握手的部分 ---------------------------------- //
+  // ================================ 用于握手的部分 ================================ //
   // willValid的意义就是当前周期就可以完成任务
   val willValid = (state === IfuState.WaitMem && axi4Ctrler.io.readEnd) ||       // 访存完成
                   (state === IfuState.Done)
   io.output.valid := dataValid && willValid  
   io.input.ready := !dataValid || io.output.fire
-  // ----------------------------------- 数据传输部分 ----------------------------------- //
+  // ================================ 数据传输部分 ================================ //
   io.output.pc    := pc
   io.output.instr := Mux(state === IfuState.WaitMem && axi4Ctrler.io.readEnd, axi4Ctrler.io.readData, rdataReg)
 }

@@ -19,7 +19,7 @@ case class ysyx_23060082_LSU() extends Component {
     val output    = master Stream(Lsu2Wbu_data()) 
     val axi4 = master(Axi4(AxiConfig.axiConfig))
   }
-  // ================================ ① 输入信号整理 ================================ //
+  // ================================ 输入信号整理 ================================ //
   object LsuState extends SpinalEnum {
     val Idle, WaitMem, Done = newElement()          // lsu等待读写完成的状态机
   }
@@ -29,7 +29,7 @@ case class ysyx_23060082_LSU() extends Component {
   val needWrite = io.input.valid && io.input.mem_ctrl.memWr   // 需要写内存
   val needMem   = needRead || needWrite                       // 需要访问内存
 
-  // ================================ ② 访存通路 ================================ //
+  // ================================ 访存通路 ================================ //
   val dataProcess = ysyx_23060082_DataProcess()   // 数据处理
   val axi4Ctrler  = ysyx_23060082_Axi4_Ctrler()   // AXI总线控制
   // ---- 数据处理连接 ----
@@ -48,9 +48,9 @@ case class ysyx_23060082_LSU() extends Component {
   val rdEnd = (state === LsuState.WaitMem) && axi4Ctrler.io.readEnd && io.input.rf_ctrl.mem2reg  // 读内存结束, 需要更新数据
   val wrEnd = (state === LsuState.WaitMem) && axi4Ctrler.io.writeEnd && io.input.mem_ctrl.memWr
   val rdataReg = RegNextWhen(axi4Ctrler.io.readData, rdEnd) init(0)  // 是读内存指令并且已读完
-  dataProcess.io.rdata  := Mux(rdEnd, axi4Ctrler.io.readData, rdataReg)
+  dataProcess.io.rdata  := Mux(rdEnd, axi4Ctrler.io.readData, rdataReg) // 快一周期读完
 
-  // ================================ ③ 状态机 ================================ //
+  // ================================ lsu状态机 ================================ //
   switch(state) {
     is(LsuState.Idle) {
       when(needMem) {state := LsuState.WaitMem}      
@@ -68,38 +68,37 @@ case class ysyx_23060082_LSU() extends Component {
       .otherwise{state := state}     
     }
   }
-
-  // ================================ ④ CSR寄存器 ================================ //
+  // ================================ CSR寄存器 ================================ //
   val csr = ysyx_23060082_CSR()
   csr.io.csr_addr    := io.input.imm
   csr.io.csr_wdata   := io.input.rfReadData1
-  csr.io.csr_cmd     := io.input.csr_ctrl.csr_cmd
+  csr.io.csrCmd     := io.input.csr_ctrl.csrCmd
   csr.io.trap_enter  := io.input.csr_ctrl.trap_enter
   csr.io.trap_exit   := io.input.csr_ctrl.trap_exit
   csr.io.pc_in       := io.input.pc
   csr.io.cause_in    := Mux(io.input.csr_ctrl.i_illegal, U(2),
-                         Mux(io.input.csr_ctrl.i_ebreak,  U(3), io.input.rfReadData1))
+                        Mux(io.input.csr_ctrl.i_ebreak,  U(3), io.input.rfReadData1))
   csr.io.instrRetire := io.output.fire    // 指令传出LSU即计数(比写回提前1拍, 总数正确)
 
-  // ================================ ⑤ 握手 ================================ //
+  // ================================ 用于握手的部分 ================================ //
   // willValid的意义就是当前周期就可以完成任务
   val willValid = (rdEnd || wrEnd) ||                       // 需要访存并且访存成功
                   (state === LsuState.Done) ||
                   (state === LsuState.Idle && io.input.valid && !needMem)
   io.output.valid := io.input.valid && willValid  
 
-  // ================================ ⑥ 数据传输 ================================ //
+  // ================================ 数据传输部分 ================================ //
   io.output.pc          := io.input.pc
   io.output.pc_next     := Mux(io.input.csr_ctrl.trap_enter, csr.io.mtvec,
                            Mux(io.input.csr_ctrl.trap_exit, csr.io.mepc,
                                io.input.pc_next))
 
-  io.output.mem_data_out:= Mux(io.input.csr_ctrl.csr_cmd =/= U"3'd0", csr.io.csr_rdata, dataProcess.io.rdataReal)           // 借用mem_data_out来输出读出的值
+  io.output.mem_data_out:= Mux(io.input.csr_ctrl.csrCd =/= U"3'd0", csr.io.csr_rdata, dataProcess.io.rdataReal)           // 借用mem_data_out来输出读出的值
   io.output.alu_data_out:= io.input.aluResult
   io.output.rf_ctrl     := io.input.rf_ctrl    
 }
 
-// ---------------------------------- 数据处理单元 ---------------------------------- //
+// ================================ 数据处理单元 ================================ //
 case class ysyx_23060082_DataProcess() extends Component {
   val io = new Bundle {
     val addrOp    = in  Bits( 5 bits)
@@ -112,7 +111,7 @@ case class ysyx_23060082_DataProcess() extends Component {
 
   val wdata = io.wdata
   val rdata = io.rdata
-// ------------------------------- 读操作 ------------------------------- //
+// ================================ 读操作 ================================ //
   io.rdataReal := io.addrOp.mux(
     B"00010" -> rdata                                       ,   // LW
     B"00001" -> rdata(15 downto  0).asSInt.resize(32).asUInt,   // LH
@@ -134,7 +133,7 @@ case class ysyx_23060082_DataProcess() extends Component {
     B"11100" -> rdata(31 downto 24).resize(32)              ,
     default  -> U"32'h0"
   )
-// ------------------------------- 写操作 ------------------------------- //
+// ================================ 写操作 ================================ //
   io.wdataReal := io.addrOp.mux(
     // mem_addr[1:0] = 00
     B"00010" -> wdata.asBits                             ,// SW
@@ -168,7 +167,6 @@ case class ysyx_23060082_DataProcess() extends Component {
   )
 }
 
-
 /* ****************************************************************
   axi总线控制器
 **************************************************************** */
@@ -186,15 +184,14 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
     val writeEnd  = out Bool()
     val axi4 = master(Axi4(AxiConfig.axiConfig))
   }
-
-  // ------------------------------- 读操作 ------------------------------- //
+  // ================================ 读操作 ================================ //
   io.axi4.ar.valid.setAsReg() init(False)
   io.axi4.ar.addr .setAsReg()
   io.axi4.ar.id   .setAsReg()
   io.axi4.ar.len  .setAsReg()
   io.axi4.ar.size .setAsReg()
   io.axi4.ar.burst.setAsReg()
-  // ---------------- 读地址 ---------------- //
+  // ================================ 读地址 ================================ //
   when(io.readReq) {
     io.axi4.ar.valid := True
   } elsewhen(io.axi4.ar.fire) {
@@ -224,7 +221,7 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
   //   report(Seq("write addr =", io.axi4.aw.addr))
   // }
 
-  // ---------------- 读数据 ---------------- //
+  // ================================ 读数据 ================================ //
   io.axi4.r.ready := io.axi4.r.valid
   io.readEnd := io.axi4.r.fire && io.axi4.r.last   // 突发结束(r.last)才算读完
   io.readData := io.axi4.r.data.asUInt
@@ -234,7 +231,7 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
     report(Seq("[LSU] read resp error! resp =", io.axi4.r.resp, "addr =", io.axi4.ar.addr))
   }
 
-  // ------------------------------- 写操作 ------------------------------- //
+  // ================================ 写操作 ================================ //
   io.axi4.aw.valid.setAsReg() init(False)
   io.axi4.aw.addr .setAsReg()
   io.axi4.aw.id   .setAsReg()
@@ -246,7 +243,7 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
   io.axi4.w.data  .setAsReg()
   io.axi4.w.strb  .setAsReg()
   io.axi4.w.last  .setAsReg()
-  // ---------------- 写地址 ---------------- //
+  // ================================ 写地址 ================================ //
   when(io.writeReq) {
     io.axi4.aw.valid := True
   } elsewhen(io.axi4.aw.fire) {
@@ -268,7 +265,7 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
     io.axi4.aw.size := io.axi4.aw.size  
     io.axi4.aw.burst:= io.axi4.aw.burst // 突发类型INCR
   }
-  // ---------------- 写数据 ---------------- //
+  // ================================ 写数据 ================================ //
   when(io.writeReq) {
     io.axi4.w.valid := True
   } elsewhen(io.axi4.w.fire) {
@@ -286,7 +283,7 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
     io.axi4.w.strb := io.axi4.w.strb
     io.axi4.w.last := io.axi4.w.last
   }
-  // ---------------- 写响应 ---------------- //
+  // ================================ 写响应 ================================ //
   io.axi4.b.ready := io.axi4.b.valid
   io.writeEnd := io.axi4.b.fire
 

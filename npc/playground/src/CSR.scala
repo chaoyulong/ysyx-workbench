@@ -21,7 +21,7 @@ case class ysyx_23060082_CSR() extends Component {
     val csr_addr   = in  UInt(12 bits)    // csr地址
     val csr_wdata  = in  UInt(32 bits)    
     val csr_rdata  = out UInt(32 bits)
-    val csr_cmd    = in  UInt(3 bits)     // 0=NOP,1=CSRRW,2=CSRRS
+    val csrCmd    = in  UInt(3 bits)     // 0=NOP,1=CSRRW,2=CSRRS
     val trap_enter = in  Bool()           // 异常进入
     val trap_exit  = in  Bool()           // MRET
 
@@ -59,10 +59,10 @@ case class ysyx_23060082_CSR() extends Component {
     default       -> U"32'h0"
   )
 
-  val writeEnable = io.csr_cmd =/= 0
+  val writeEnable = io.csrCmd =/= 0
   val csr_old = io.csr_rdata
 
-  val writeData = io.csr_cmd.mux(
+  val writeData = io.csrCmd.mux(
     U"3'd1" -> io.csr_wdata,                // CSRRW
     U"3'd2" -> (csr_old | io.csr_wdata),    // CSRRS
     default -> csr_old

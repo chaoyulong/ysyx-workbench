@@ -25,12 +25,12 @@ case class ysyx_23060082_EXU() extends Component {
   val alu = ysyx_23060082_ALU()
   val banchCond = ysyx_23060082_BranchCond()
 
-  alu.io.aluCtr := io.input.ctrl.alu_si.alu_ctr
-  alu.io.aluIn1 := io.input.ctrl.alu_si.alu_asrc.mux(// 为0时选择rs1，为1时选择PC。
+  alu.io.aluCtr := io.input.ctrl.alu_si.aluCtr
+  alu.io.aluIn1 := io.input.ctrl.alu_si.aluAsrc.mux(// 为0时选择rs1，为1时选择PC。
     True  -> io.input.pc,
     False -> io.input.rfReadData1
   )
-  alu.io.aluIn2 := io.input.ctrl.alu_si.alu_bsrc.mux(          // 为00时选择rs2，为01时选择imm，为10时选择常数4（用于跳转时计算返回地址PC+4）
+  alu.io.aluIn2 := io.input.ctrl.alu_si.aluBrc.mux(          // 为00时选择rs2，为01时选择imm，为10时选择常数4（用于跳转时计算返回地址PC+4）
     U"00" -> io.input.rfReadData2,
     U"01" -> io.input.imm,
     default -> U"32'h4"
@@ -43,10 +43,10 @@ case class ysyx_23060082_EXU() extends Component {
   val pcDataA = Mux(banchCond.io.pc_asrc, io.input.imm, U"32'd4")
   val pcDataB = Mux(banchCond.io.pc_bsrc, io.input.rfReadData1, io.input.pc)
   val pcDataTmp = pcDataA + pcDataB
-  // ------------------ 用于握手的部分 ----------------- //
+  // ================================ 用于握手的部分 ================================ //
   val willValid = True
   io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
-  // ------------------ 数据传输部分 ------------------ //
+  // ================================ 数据传输部分 ================================ //
   io.output.pc          := io.input.pc
   
   io.output.pc_next     := io.input.ctrl.alu_si.branch.mux(
@@ -121,7 +121,7 @@ case class ysyx_23060082_ALU() extends Component {
   }
 
   val subORadd = io.aluCtr(1) | io.aluCtr(3) // 加法器的加减,经过卡诺图化简
-  // ------------------ 加法器 ------------------ //
+  // ================================ 加法器 ================================ //
   val adderDataA       = io.aluIn1
   val adderDataB       = Mux(subORadd, ~io.aluIn2, io.aluIn2)
   val adderCin         = subORadd.asUInt                  // 减法的话相当于转为补码，取反加1
@@ -131,17 +131,17 @@ case class ysyx_23060082_ALU() extends Component {
   val carryFlag        = resultAdder33Bit(32)             // 进位
   val zeroFlag         = (resultAdder === U"32'h0")       // 判0
   val overflowFlag     = (adderDataA(31) === adderDataB(31)) && (resultAdder(31) =/= adderDataA(31))  // 溢出
-  // --------------------- 移位寄存器 --------------------- //
+  // ================================ 移位寄存器 ================================ //
   val resultShift = io.aluCtr(3 downto 2).mux(
     U"01"   -> (io.aluIn1 |>> io.aluIn2(4 downto 0)),     // 逻辑右移
     U"11"   -> U(S(io.aluIn1) >> io.aluIn2(4 downto 0)),  // 算数右移
     default -> (io.aluIn1 |<< io.aluIn2(4 downto 0))      // 左移,使用的逻辑左移
   )
-  // -------------------- 小于比较判断 -------------------- //
+  // ================================ 小于比较判断 ================================ //
   val lessFlag0 = overflowFlag ^ resultAdder(31)          // 有符号小于
   val lessFlag1 = carryFlag ^ subORadd                    // 无符号小于
   val lessFlag = Mux(io.aluCtr(3), lessFlag1, lessFlag0)
-  // ---------------------- 输出结果 --------------------- //
+  // ================================ 输出结果 ================================ //
   val resultSlt = U(lessFlag).resize(32)                  // SLT/SLTU 结果: 0或1, 零扩展
   val resultDir = io.aluIn2                               // 直接输出aluIn2
   val resultXor = io.aluIn1 ^ io.aluIn2

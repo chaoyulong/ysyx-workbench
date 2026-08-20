@@ -17,8 +17,8 @@ case class ysyx_23060082_Decoder() extends Component {
   val func3= instr(14 downto 12)
   // val func7= instr(31 downto 25) // 用不到
 
-  io.ctrl.rf_si.rf_write_addr := instr(11 downto 7)   // 为了写起来简洁，写寄存器地址在此赋值
-// --------------------------------------------------------- 指令匹配 --------------------------------------------------------- //    
+  io.ctrl.rf_si.rfWriteAddr := instr(11 downto 7)   // 为了写起来简洁，写寄存器地址在此赋值
+// ================================ 指令匹配 ================================ //    
   val i_add    = i === M"0000000----------000-----0110011"    // type_R
   val i_sub    = i === M"0100000----------000-----0110011"
   val i_sll    = i === M"0000000----------001-----0110011"
@@ -87,7 +87,7 @@ case class ysyx_23060082_Decoder() extends Component {
                 i_csrrw | i_csrrs | i_ecall | i_ebreak | i_mret | i_fence_i
   val i_illegal = (instr =/= 0) && !isLegal
 
-// --------------------------------------------------------- 指令类型 ------------------------------------------------------ //
+// ================================ 指令类型 ================================ //
   val type_U = op(4 downto 2) === U"101"
   val type_J = op(6 downto 2) === U"11011"
   val type_I = op(6 downto 2) === U"00100" || op(6 downto 2) === U"00000" || op(6 downto 2) === U"11001" || (op(6 downto 2) === U"11100" && func3 =/= U"000")
@@ -95,7 +95,7 @@ case class ysyx_23060082_Decoder() extends Component {
   val type_B = op(6 downto 2) === U"11000"
   val type_R = op(6 downto 2) === U"01100"
   val type_N = (op(6 downto 2) === U"11100" && func3 === U"000") || op(6 downto 2) === U"00011"   // 系统指令
-  // ------------------------------------------------------ 立即数生成 ------------------------------------------------------ //
+  // ================================ 立即数生成 ================================ //
   val immU = instr(31 downto 12) ## B"12'b0"
   val immJ = (instr(31) #* 12) ## instr(19 downto 12) ## instr(20) ## instr(30 downto 21)## B"0"
   val immI = (instr(31) #* 20) ## instr(31 downto 20)
@@ -109,17 +109,17 @@ case class ysyx_23060082_Decoder() extends Component {
               type_S -> immS,
               type_B -> immB,
               True -> B"32'h0")).asUInt
-// ------------------------------------------------------- 控制信号生成 ----------------------------------------------------- // 
+// ================================ 控制信号生成 ================================ // 
   val csrWb = i_csrrw | i_csrrs
 
   io.ctrl.rf_si.regWr     := type_U | type_J | type_I | type_R | csrWb
-  io.ctrl.alu_si.alu_asrc := i_auipc | i_jal | i_jalr         // 0：选通rdata1，1：选通PC。
+  io.ctrl.alu_si.aluAsrc := i_auipc | i_jal | i_jalr         // 0：选通rdata1，1：选通PC。
 
-  io.ctrl.alu_si.alu_bsrc :=Mux(type_R | type_B, U"00",       // 选通rdata2
+  io.ctrl.alu_si.aluBsrc :=Mux(type_R | type_B, U"00",       // 选通rdata2
                             Mux(i_jal  | i_jalr, U"10",       // 选通4，用于跳转
                             U"01" ))                          // 选通imm                                                   // 选通imm
 
-  io.ctrl.alu_si.alu_ctr  := PriorityMux(Seq(
+  io.ctrl.alu_si.aluCtr  := PriorityMux(Seq(
                               (i_and | i_andi) -> U"0111",    // 选择逻辑与输出
                               (i_or  | i_ori ) -> U"0110",    // 选择逻辑或输出
                               (i_xor | i_xori) -> U"0100",    // 选择异或输出
@@ -146,7 +146,7 @@ case class ysyx_23060082_Decoder() extends Component {
   io.ctrl.rf_si.csr2reg := csrWb
   io.ctrl.mem_si.memWr  := type_S                            // i_sb | i_sh | i_sw
   io.ctrl.mem_si.memOp  := func3  
-  // ----------------------- csr寄存器 ----------------------- //
+  // ================================ csr寄存器 ================================ //
   // 操作：
   // csrrw:    R(rd) = CSR[imm]; CSR[imm] = src1; 
   // csrrs:    R(rd) = CSR[imm]; CSR[imm] |= src1;
@@ -154,13 +154,13 @@ case class ysyx_23060082_Decoder() extends Component {
   //           CSR[mepc  ] = pc
   //           pc_next = CSR[mtvec]
   // mret:     pc_next = CSR[mepc  ]
-  // ---------------------------------------------------------//
-  io.ctrl.csr_si.csr_cmd    := Mux(i_csrrw, U"3'd1",             // 0=NOP,1=CSRRW,2=CSRRS
+  // ==================================== ==================================== //
+  io.ctrl.csr_si.csr_cmd    := Mux(i_csrrw, U"3'd1",              // 0=NOP,1=CSRRW,2=CSRRS
                                Mux(i_csrrs, U"3'd2", U"3'd0"))
   io.ctrl.csr_si.i_illegal  := i_illegal
   io.ctrl.csr_si.i_ebreak   := i_ebreak
-  io.ctrl.csr_si.trap_enter := i_ecall | i_ebreak | i_illegal // 异常进入,主动进入或者出现非法指令
-  io.ctrl.csr_si.trap_exit  := i_mret                         // 退出异常,MRET
-  // ---------------------------------------------------------//
+  io.ctrl.csr_si.trap_enter := i_ecall | i_ebreak | i_illegal     // 异常进入,主动进入或者出现非法指令
+  io.ctrl.csr_si.trap_exit  := i_mret                             // 退出异常,MRET
+  // ==================================== ==================================== //
 }
 

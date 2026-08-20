@@ -37,8 +37,26 @@ void cpu_reset(int n) {
 }
 
 static void trace_and_difftest() {
-  if(g_print_step) {IFDEF(CONFIG_ITRACE, puts(cpu.decode.log_buf));}
-  IFDEF(CONFIG_ITRACE, log_write("%s\n", cpu.decode.log_buf)); 
+#ifdef CONFIG_ITRACE
+  // 生成 trace 并存入 ringbuf
+  char *p = cpu.decode.log_buf;
+  p += snprintf(p, sizeof(cpu.decode.log_buf), "0x%08x:", cpu.pc);
+  uint8_t *inst = (uint8_t *)&cpu.instr;
+  for (int i = 3; i >= 0; i --) {
+    p += snprintf(p, 4, " %02x", inst[i]);
+  }
+  memset(p, ' ', 4);
+  p += 4;
+  void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
+  disassemble(p, cpu.decode.log_buf + sizeof(cpu.decode.log_buf) - p, cpu.pc, (uint8_t *)&cpu.instr, 4);
+
+  strcpy(cpu.decode.iringbuf[cpu.decode.iringbuf_end], cpu.decode.log_buf);
+  cpu.decode.iringbuf_end++;
+  if (cpu.decode.iringbuf_end >= 16) cpu.decode.iringbuf_end = 0;
+
+  if(g_print_step) puts(cpu.decode.log_buf);
+  log_write("%s\n", cpu.decode.log_buf);
+#endif
   IFDEF(CONFIG_FTRACE, void func_trace(); func_trace());
   // IFDEF(CONFIG_DIFFTEST, void difftest_step(vaddr_t pc, vaddr_t npc); if(reg_updated && npc_state.state != NPC_END) {difftest_step(cpu.pc, cpu.pc_next); });
 
@@ -79,28 +97,10 @@ static void exec_once()
   cpu.instr  = itraceRetireInstr;
   for (int i = 0; i < REG_NUM; i++) cpu.gpr[i] = gpr(i);
 
-#ifdef CONFIG_ITRACE
-  char *p = cpu.decode.log_buf;
-  p += snprintf(p, sizeof(cpu.decode.log_buf), "0x%08x:", cpu.pc);
-  uint8_t *inst = (uint8_t *)&cpu.instr;
-  for (int i = 3; i >= 0; i --) {
-    p += snprintf(p, 4, " %02x", inst[i]);
-  }
-  memset(p, ' ', 4);
-  p += 4;
-  void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
-  disassemble(p, cpu.decode.log_buf + sizeof(cpu.decode.log_buf) - p, cpu.pc, (uint8_t *)&cpu.instr, 4);
-      
-  strcpy(cpu.decode.iringbuf[cpu.decode.iringbuf_end], cpu.decode.log_buf);
-  cpu.decode.iringbuf_end++;
-  if(cpu.decode.iringbuf_end >= 16)  cpu.decode.iringbuf_end = 0;
-#endif
-
   // 检测程序结束
   if (Rmcause() == 3) {
     npc_state.state = NPC_END;
   }
-
 }
 
 static void execute(uint64_t n) {

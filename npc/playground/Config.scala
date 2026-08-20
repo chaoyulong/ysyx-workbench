@@ -15,10 +15,13 @@ case class CpuConfig(
 )
 
 object CpuConfig {
+  // npc 平台: 仿真用, 开启 itrace 指令退休追踪
   val npc = CpuConfig(
-    resetPc = 0x80000000L
+    resetPc = 0x80000000L,
+    enableSimDebug = true
   )
 
+  // ysyxsoc 平台: 综合用, 关闭仿真专用逻辑
   val ysyxSoc = CpuConfig(
     resetPc = 0x30000000L
   )
@@ -57,7 +60,7 @@ object SpinalToVerilog extends App {
 
   Config.spinal.generateVerilog{
     val top = topName match {
-      case "NPC_TOP" => NPC_TOP(CpuConfig.npc.copy(enableSimDebug = true))   // 仿真版: 开启指令退休追踪
+      case "NPC_TOP" => NPC_TOP(CpuConfig.npc)   // npc平台配置已含 enableSimDebug=true
       case "ysyx_23060082" => ysyx_23060082(CpuConfig.ysyxSoc)
       case _ => throw new Exception(s"Unknown TOP_NAME: $topName")
     }

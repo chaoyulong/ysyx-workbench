@@ -1,14 +1,5 @@
 
-// ---------------------------- 将取到的指令传入trice中 ---------------------------- //
-module GetInstr(
-  input [31:0] pc_o,
-  input [31:0] instr
-);
-  import "DPI-C" function void get_instr(int pc_o, int instr);
-  always @(*) begin
-    get_instr(pc_o, instr);
-  end
-endmodule
+
 // ----------------------------------- 内存读写 ----------------------------------- //
 module NpcMemRW(
   input             clock,

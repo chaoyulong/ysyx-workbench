@@ -55,9 +55,6 @@ object Config {
 object SpinalToVerilog extends App {
   // 读取环境变量
   val topName   = sys.env.getOrElse("SPINAL_TOPNAME", "NPC_TOP")
-  val resetPcStr = sys.env.getOrElse("RESET_PC", "0x80000000")
-
-  val resetPc = BigInt(resetPcStr.replace("0x", ""), 16)
 
   Config.spinal.generateVerilog{
     val top = topName match {
@@ -67,15 +64,6 @@ object SpinalToVerilog extends App {
     }
     top
   }
-  // val report = SpinalVerilog{
-  // val top = topName match {
-  //   case "NPC_TOP" => NPC_TOP(CpuConfig(resetPc))
-  //   case "ysyx_23060082" => ysyx_23060082(CpuConfig(resetPc))
-  //   case _ => throw new Exception(s"Unknown TOP_NAME: $topName")
-  // }
-  // top
-  // }
-  // report.printPruned()
 }
 
 // object SpinalToVerilog extends App {

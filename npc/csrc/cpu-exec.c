@@ -17,6 +17,21 @@ uint64_t g_nr_guest_cycle = 0;    // 运行了多少周期
 NPCState npc_state = { .state = NPC_STOP };
 CPU_state cpu;
 
+#ifdef CONFIG_ITRACE
+#ifdef __ysyxsoc__
+#include "VysyxSoCFull___024root.h"
+#define itraceRetireValid   top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireValid
+#define itraceRetirePc      top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetirePc
+#define itraceRetireInstr   top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireInstr                          
+#else
+#include "VNPC_TOP___024root.h"
+#define itraceRetireValid   top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireValid
+#define itraceRetirePc      top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetirePc
+#define itraceRetireInstr   top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireInstr   
+#endif
+#endif
+
+
 void cpu_reset(int n)
 {
   reset(n);
@@ -87,10 +102,8 @@ static void exec_once()
 
 }
 
-static void execute(uint64_t n) 
-{
-  for (;n > 0; n --) 
-  {
+static void execute(uint64_t n) {
+  for (;n > 0; n --) {
     exec_once();
     g_nr_guest_cycle++;
 
@@ -145,15 +158,12 @@ void cpu_exec(uint64_t n)
   }
 }
 
-int is_exit_status_bad() 
-{
-  int good = (npc_state.state == NPC_END && npc_state.halt_ret == 0) ||
-    (npc_state.state == NPC_QUIT);
+int is_exit_status_bad() {
+  int good = (npc_state.state == NPC_END && npc_state.halt_ret == 0) || (npc_state.state == NPC_QUIT);
   return !good;
 }
 
-static void statistic() 
-{
+static void statistic() {
   Log("host time spent = %lu us", g_timer);
   Log("total execution cycle = %lu", g_nr_guest_cycle);
   // Log("total execution inst  = %lu", g_nr_guest_inst);    
@@ -192,8 +202,7 @@ static void statistic()
 }
 
 #ifdef CONFIG_ITRACE
-void iringbuf_printf(void)
-{
+void iringbuf_printf(void) {
   int i;
   int buf_last = cpu.decode.iringbuf_end - 1 < 0 ? 15 : cpu.decode.iringbuf_end - 1;
   puts("-- ring buf:");

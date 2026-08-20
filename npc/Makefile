@@ -4,13 +4,11 @@ PARTFORM ?= npc
 # NPC环境下，spinalhdl编译的顶层与verilator仿真的顶层一样为NPC_TOP
 # NPC环境下，spinalhdl编译的顶层ysyx_23060082,verilator仿真ysyxSoCFull
 ifeq ($(PARTFORM),ysyxsoc)
-	RESET_PC = 0x30000000
 	SPINAL_TOPNAME = ysyx_23060082
 	TOPNAME = ysyxSoCFull
 	VSRCS += $(abspath ../ysyxSoC/build/ysyxSoCFull.v)
 	VSRCS += $(shell find $(abspath ../ysyxSoC/perip) -name "*.v") 
 else ifeq ($(PARTFORM),npc)
-	RESET_PC = 0x80000000
 	SPINAL_TOPNAME = NPC_TOP
 	TOPNAME = $(SPINAL_TOPNAME)
 else
@@ -86,7 +84,7 @@ $(LIBCAPSTONE):
 	$(MAKE) -C tools/capstone
 
 # 只操作spinal的两条命令:verilog与test
-SPINAL_GEN_ENV := SPINAL_TOPNAME=$(SPINAL_TOPNAME) BUILD_DIR=$(BUILD_DIR) RESET_PC=$(RESET_PC)
+SPINAL_GEN_ENV := SPINAL_TOPNAME=$(SPINAL_TOPNAME) BUILD_DIR=$(BUILD_DIR)
 SPINAL_SIM_ENV := SPINAL_SIM_DIR=$(BUILD_DIR)/simulations
 
 verilog:

@@ -8,6 +8,10 @@
 
 #define MAX_INST_TO_PRINT 0    // 最大单步执行多少时打印反汇编
 #define DEVICE_UPDATE_CYCLE 20000   // 每多少个周期更新一次外设(SDL事件/屏幕刷新)
+// 单条指令周期上限(防卡死), 可通过环境变量 ITRACE_TIMEOUT_CYCLE 覆盖
+#ifndef ITRACE_TIMEOUT_CYCLE
+#define ITRACE_TIMEOUT_CYCLE 5000
+#endif
 
 uint64_t g_timer = 0;
 bool g_print_step = false;
@@ -59,19 +63,20 @@ void cpu_state_init() {
 
 static void exec_once() 
 {
-  // 执行一条指令: 循环周期直到 WBU 退休(itraceRetireValid), 上限5000周期防卡死
+  // 执行一条指令: 循环周期直到 WBU 退休(itraceRetireValid), 上限防卡死
   // 用 do-while: 至少先跑1拍, 清掉上一条退休的残留脉冲, 再等新指令退休
   uint64_t cycle_cnt = 0;
   do {
     single_cycle();
     g_nr_guest_cycle++;
-    if (++cycle_cnt > 5000) {
-      printf("ERROR: [itrace] 一条指令超过5000周期未完成 (pc=0x%08x), CPU可能卡死!\n", (uint32_t)itraceRetirePc);
+    if (++cycle_cnt > ITRACE_TIMEOUT_CYCLE) {
+      printf("ERROR: [itrace] 一条指令超过%u周期未完成 (pc=0x%08x), CPU可能卡死!\n", ITRACE_TIMEOUT_CYCLE, (uint32_t)itraceRetirePc);
       npc_state.state = NPC_ABORT;
       break;
     }
   } while (!itraceRetireValid);
   if (npc_state.state == NPC_ABORT) return;
+  g_nr_guest_inst++;   // 完成一条指令
 
   // 状态更新: 用退休指令的 PC (ifu.pc 可能已指向流水线后续)
   cpu.pc = itraceRetirePc;
@@ -82,9 +87,8 @@ static void exec_once()
   cpu.instr  = itraceRetireInstr;
   char *p = cpu.decode.log_buf;
   p += snprintf(p, sizeof(cpu.decode.log_buf), "0x%08x:", cpu.pc_o);
-  int i;
   uint8_t *inst = (uint8_t *)&cpu.instr;
-  for (i = 3; i >= 0; i --) {
+  for (int i = 3; i >= 0; i --) {
     p += snprintf(p, 4, " %02x", inst[i]);
   }
   memset(p, ' ', 4);
@@ -165,7 +169,8 @@ int is_exit_status_bad() {
 static void statistic() {
   Log("host time spent = %lu us", g_timer);
   Log("total execution cycle = %lu", g_nr_guest_cycle);
-  // Log("total execution inst  = %lu", g_nr_guest_inst);    
+  Log("total execution inst  = %lu", g_nr_guest_inst);
+  if (g_nr_guest_inst > 0) Log("instructions per cycle = %1.4f inst/cycle", (float)g_nr_guest_inst / (float)g_nr_guest_cycle);
   if (g_timer > 0) Log("simulation frequency = %lu cycle/s", g_nr_guest_cycle * 1000000 / g_timer); // 仿真频率
   else Log("Finish running in less than 1 us and can not calculate the simulation frequency");  
   

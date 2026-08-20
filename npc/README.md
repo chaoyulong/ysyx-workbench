@@ -26,4 +26,16 @@
   - `0x21200000` VGACTL（读 [0]=wh，写 [4]=sync 触发屏幕刷新）。
 - 窗口关闭（SDL_QUIT）会以 `NPC_QUIT` 状态正常结束仿真。
 
+## 2026-08-19 总线互连与 CLINT 重构
+
+- **Xbar 重构（方案 A）**：`crossState` 拆分为 `readState` / `writeState` 两个独立状态机，读事务（ar/r）与写事务（aw/w/b）可并行，互不阻塞。
+- **地址映射宏定义**：`Xbar.scala` 顶部新增 `AddressMap`（`CLINT_BASE` / `CLINT_SIZE` / `CLINT_MTIME` / `CLINT_MTIMEH` / `isClint`），clint 地址集中配置，修改只动一处。
+- **CLINT 独立成文件**：`CLINT.scala`，寄存器地址（mtime 高低位）由 `AddressMap` 派生，可配置。
+- **CLINT 双向快照**：读任一侧都同时锁存高低位快照，任意读取顺序下高低位保持一致。
+- **CLINT / Axi4MemSlave 支持突发读**：按 `len` 计数，`r.last` 在最后一拍拉高（不再假设 len=0）；`readCnt`/`readActive` 采用单一赋值源（when-elsewhen）写法。
+- **Axi4MemSlave 支持 INCR 突发读**：地址按 `base + cnt<<size` 递增，len=0 时不发多余越界读。
+- **NPC_TOP 封装 AXI 从机模块**：`ysyx_23060082_Axi4MemSlave`（NpcMemRW 黑盒 + 握手/响应），响应信号显式赋值（`r.resp`/`b.resp` = `Axi4.resp.OKAY`、`r.last`、`r.id`/`b.id` 回传）。
+- **IFU/LSU 控制器**：新增 resp 错误检查（非 OKAY 时仿真 `report`）；`readEnd` 规范为 `r.fire && r.last`。
+- **resp 统一使用库枚举** `Axi4.resp.OKAY`，不再写裸 `B"00"`。
+
 

@@ -104,17 +104,18 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig.ysyxSoc) extends Componen
   pipelineConnect(exu.io.output, lsu.io.input, lsu.io.output)
   pipelineConnectLast(lsu.io.output, wbu.io.input)   // wbu是最后一级，没有thisOut
   wbu.io.output >> ifu.io.input
+  lsu.io.instrRetire := wbu.io.output.fire    // 指令退休(提交), 用于 minstret 计数
 
 
   regFile.io.readBus  <> idu.io.rfRead
   regFile.io.writeBus <> wbu.io.rfWrite
 
-  // ----------------------------------- 暂时的axi从机 ----------------------------------- //
+  // ----------------------------------- xbar ----------------------------------- //
   val xbar = ysyx_23060082_AXI4Xbar()
-  val clint = ysyx_23060082_Clint()
-  xbar.io.externalAxi4 <> io.io_master   // 引到外部
-  xbar.io.clintAxi4 <> clint.io.clintAxi4
-  xbar.io.ifuAxi4 <> ifu.io.axi4
-  xbar.io.lsuAxi4 <> lsu.io.axi4
+  val clint = ysyx_23060082_Clint()       
+  xbar.io.externalAxi4 <> io.io_master    // 引到外部
+  xbar.io.clintAxi4    <> clint.io.clintAxi4
+  xbar.io.ifuAxi4      <> ifu.io.axi4
+  xbar.io.lsuAxi4      <> lsu.io.axi4
 }
 

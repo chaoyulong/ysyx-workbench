@@ -157,10 +157,10 @@ case class ysyx_23060082_Decoder() extends Component {
   // ==================================== ==================================== //
   io.ctrl.csrCtrl.csrCmd    := Mux(i_csrrw, U"3'd1",              // 0=NOP,1=CSRRW,2=CSRRS
                                Mux(i_csrrs, U"3'd2", U"3'd0"))
-  io.ctrl.csrCtrl.i_illegal  := i_illegal
-  io.ctrl.csrCtrl.i_ebreak   := i_ebreak
-  io.ctrl.csrCtrl.trap_enter := i_ecall | i_ebreak | i_illegal     // 异常进入,主动进入或者出现非法指令
-  io.ctrl.csrCtrl.trap_exit  := i_mret                             // 退出异常,MRET
+  io.ctrl.csrCtrl.illegal  := i_illegal
+  io.ctrl.csrCtrl.ebreak   := i_ebreak
+  io.ctrl.csrCtrl.trapEnter := i_ecall | i_ebreak | i_illegal     // 异常进入,主动进入或者出现非法指令
+  io.ctrl.csrCtrl.trapExit  := i_mret                             // 退出异常,MRET
   // ==================================== ==================================== //
 }
 

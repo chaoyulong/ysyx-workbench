@@ -73,11 +73,11 @@ case class ysyx_23060082_LSU() extends Component {
   csr.io.csr_addr    := io.input.imm
   csr.io.csr_wdata   := io.input.rfReadData1
   csr.io.csrCmd     := io.input.csr_ctrl.csrCmd
-  csr.io.trap_enter  := io.input.csr_ctrl.trap_enter
-  csr.io.trap_exit   := io.input.csr_ctrl.trap_exit
+  csr.io.trapEnter  := io.input.csr_ctrl.trapEnter
+  csr.io.trapExit   := io.input.csr_ctrl.trapExit
   csr.io.pc_in       := io.input.pc
-  csr.io.cause_in    := Mux(io.input.csr_ctrl.i_illegal, U(2),
-                        Mux(io.input.csr_ctrl.i_ebreak,  U(3), io.input.rfReadData1))
+  csr.io.cause_in    := Mux(io.input.csr_ctrl.illegal, U(2),
+                        Mux(io.input.csr_ctrl.ebreak,  U(3), io.input.rfReadData1))
   csr.io.instrRetire := io.output.fire    // 指令传出LSU即计数(比写回提前1拍, 总数正确)
 
   // ================================ 用于握手的部分 ================================ //
@@ -89,8 +89,8 @@ case class ysyx_23060082_LSU() extends Component {
 
   // ================================ 数据传输部分 ================================ //
   io.output.pc          := io.input.pc
-  io.output.pc_next     := Mux(io.input.csr_ctrl.trap_enter, csr.io.mtvec,
-                           Mux(io.input.csr_ctrl.trap_exit, csr.io.mepc,
+  io.output.pc_next     := Mux(io.input.csr_ctrl.trapEnter, csr.io.mtvec,
+                           Mux(io.input.csr_ctrl.trapExit, csr.io.mepc,
                                io.input.pc_next))
 
   io.output.mem_data_out:= Mux(io.input.csr_ctrl.csrCmd =/= U"3'd0", csr.io.csr_rdata, dataProcess.io.rdataReal)           // 借用mem_data_out来输出读出的值

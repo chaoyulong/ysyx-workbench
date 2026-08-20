@@ -22,8 +22,8 @@ case class ysyx_23060082_CSR() extends Component {
     val csr_wdata  = in  UInt(32 bits)    
     val csr_rdata  = out UInt(32 bits)
     val csrCmd    = in  UInt(3 bits)     // 0=NOP,1=CSRRW,2=CSRRS
-    val trap_enter = in  Bool()           // 异常进入
-    val trap_exit  = in  Bool()           // MRET
+    val trapEnter = in  Bool()           // 异常进入
+    val trapExit  = in  Bool()           // MRET
 
     val pc_in      = in  UInt(32 bits)    // 用于写mepc
     val cause_in   = in  UInt(32 bits)    // 异常原因
@@ -81,7 +81,7 @@ case class ysyx_23060082_CSR() extends Component {
     }
   }
 
-  when(io.trap_enter){
+  when(io.trapEnter){
     mepc   := io.pc_in
     mcause := io.cause_in
   }

@@ -152,7 +152,7 @@ case class ysyx_23060082_ALU() extends Component {
   io.less := lessFlag
   io.zero := zeroFlag
   io.aluResult := io.aluCtr(2 downto 0).mux(
-    U"3'b000" -> result_adder,
+    U"3'b000" -> resultAdder,
     U"3'b001" -> result_shift,
     U"3'b010" -> result_slt  ,
     U"3'b011" -> result_lui  ,

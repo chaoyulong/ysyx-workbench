@@ -19,34 +19,38 @@ case class ysyx_23060082_LSU() extends Component {
     val output    = master Stream(Lsu2Wbu_data()) 
     val axi4 = master(Axi4(AxiConfig.axiConfig))
   }
+  // ================================ ① 输入信号整理 ================================ //
   object LsuState extends SpinalEnum {
-    val Idle, WaitMem, Done = newElement()                    // lsu等待读写完成的状态机
+    val Idle, WaitMem, Done = newElement()          // lsu等待读写完成的状态机
   }
-  val state = Reg(LsuState()) init(LsuState.Idle)             // 创建一个状态机
-  val memAddr   = io.input.aluResult                          // alu的输出结果就是访存地址
+  val state = Reg(LsuState()) init(LsuState.Idle)   // 创建一个状态机
+  val memAddr   = io.input.aluResult                // alu的输出结果就是访存地址
   val needRead  = io.input.valid && io.input.rf_ctrl.mem2reg  // 需要读内存
   val needWrite = io.input.valid && io.input.mem_ctrl.memWr   // 需要写内存
   val needMem   = needRead || needWrite                       // 需要访问内存
-  // ------------------------------------- 内存控制器 ------------------------------------- // 
+
+  // ================================ ② 访存通路 ================================ //
   val dataProcess = ysyx_23060082_DataProcess()   // 数据处理
-  val axi4Ctrler  = ysyx_23060082_Axi4_Ctrler()          // AXI总线控制
-
-  val rdEnd = (state === LsuState.WaitMem) && axi4Ctrler.io.readEnd && io.input.rf_ctrl.mem2reg  // 读内存结束，需要更新数据
-  val wrEnd = (state === LsuState.WaitMem) && axi4Ctrler.io.writeEnd && io.input.mem_ctrl.memWr
-  val rdataReg = RegNextWhen(axi4Ctrler.io.readData, rdEnd) init(0)  // 是读内存指令并且已读完
-  dataProcess.io.addrOp := memAddr(1 downto 0) ## io.input.mem_ctrl.memOp      // 合并 addr + MemOp 生成 5 位索引
-  dataProcess.io.wdata  := io.input.rfReadData2 // 写数据为寄存器2的数据
-  dataProcess.io.rdata  := Mux(rdEnd, axi4Ctrler.io.readData, rdataReg)
-
+  val axi4Ctrler  = ysyx_23060082_Axi4_Ctrler()   // AXI总线控制
+  // ---- 数据处理连接 ----
+  dataProcess.io.addrOp := memAddr(1 downto 0) ## io.input.mem_ctrl.memOp    // 合并 addr + MemOp 生成 5 位索引
+  dataProcess.io.wdata  := io.input.rfReadData2                               // 写数据为寄存器2的数据
+  // ---- AXI控制器连接 ----
   io.axi4 <> axi4Ctrler.io.axi4
   axi4Ctrler.io.readReq  := needRead  && (state === LsuState.Idle)
   axi4Ctrler.io.writeReq := needWrite && (state === LsuState.Idle)
-  axi4Ctrler.io.size     := (False ## io.input.mem_ctrl.memOp(1 downto 0)).asUInt   
+  axi4Ctrler.io.size     := (False ## io.input.mem_ctrl.memOp(1 downto 0)).asUInt
   axi4Ctrler.io.readAddr := memAddr
   axi4Ctrler.io.writeAddr:= memAddr
-  axi4Ctrler.io.writeData:= dataProcess.io.wdataReal // 处理后的数据
+  axi4Ctrler.io.writeData:= dataProcess.io.wdataReal  // 处理后的数据
   axi4Ctrler.io.writeMask:= dataProcess.io.wmask
-  // ------------------------------------- 状态机 ------------------------------------- // 
+  // ---- 访存结束信号 ----
+  val rdEnd = (state === LsuState.WaitMem) && axi4Ctrler.io.readEnd && io.input.rf_ctrl.mem2reg  // 读内存结束, 需要更新数据
+  val wrEnd = (state === LsuState.WaitMem) && axi4Ctrler.io.writeEnd && io.input.mem_ctrl.memWr
+  val rdataReg = RegNextWhen(axi4Ctrler.io.readData, rdEnd) init(0)  // 是读内存指令并且已读完
+  dataProcess.io.rdata  := Mux(rdEnd, axi4Ctrler.io.readData, rdataReg)
+
+  // ================================ ③ 状态机 ================================ //
   switch(state) {
     is(LsuState.Idle) {
       when(needMem) {state := LsuState.WaitMem}      
@@ -64,27 +68,27 @@ case class ysyx_23060082_LSU() extends Component {
       .otherwise{state := state}     
     }
   }
-  // ----------------------------------- csr寄存器 ----------------------------------- // 
+
+  // ================================ ④ CSR寄存器 ================================ //
   val csr = ysyx_23060082_CSR()
-  csr.io.csr_addr   := io.input.imm
-  csr.io.csr_wdata  := io.input.rfReadData1
-  csr.io.csr_cmd    := io.input.csr_ctrl.csr_cmd
-  csr.io.trap_enter := io.input.csr_ctrl.trap_enter
-  csr.io.trap_exit  := io.input.csr_ctrl.trap_exit
-  csr.io.pc_in      := io.input.pc
-  csr.io.cause_in   := Mux(io.input.csr_ctrl.i_illegal, U(2),
-                        Mux(io.input.csr_ctrl.i_ebreak,  U(3), io.input.rfReadData1))
+  csr.io.csr_addr    := io.input.imm
+  csr.io.csr_wdata   := io.input.rfReadData1
+  csr.io.csr_cmd     := io.input.csr_ctrl.csr_cmd
+  csr.io.trap_enter  := io.input.csr_ctrl.trap_enter
+  csr.io.trap_exit   := io.input.csr_ctrl.trap_exit
+  csr.io.pc_in       := io.input.pc
+  csr.io.cause_in    := Mux(io.input.csr_ctrl.i_illegal, U(2),
+                         Mux(io.input.csr_ctrl.i_ebreak,  U(3), io.input.rfReadData1))
   csr.io.instrRetire := io.output.fire    // 指令传出LSU即计数(比写回提前1拍, 总数正确)
-                         
 
-
-  // --------------------------------- 用于握手的部分 --------------------------------- //
+  // ================================ ⑤ 握手 ================================ //
   // willValid的意义就是当前周期就可以完成任务
   val willValid = (rdEnd || wrEnd) ||                       // 需要访存并且访存成功
                   (state === LsuState.Done) ||
                   (state === LsuState.Idle && io.input.valid && !needMem)
   io.output.valid := io.input.valid && willValid  
-  // ---------------------------------- 数据传输部分 ---------------------------------- //
+
+  // ================================ ⑥ 数据传输 ================================ //
   io.output.pc          := io.input.pc
   io.output.pc_next     := Mux(io.input.csr_ctrl.trap_enter, csr.io.mtvec,
                            Mux(io.input.csr_ctrl.trap_exit, csr.io.mepc,

@@ -45,6 +45,15 @@ case class ysyx_23060082_CSR() extends Component {
   mcycle := mcycle + 1
   when(io.instrRetire) { minstret := minstret + 1 }
 
+  // 双向快照: 访问任一半(低/高)时同时锁存高低位, 保证两次读取组合的64位值一致
+  val isCsrAccess   = io.csrCmd =/= 0                                  // 仅CSR指令(CSRRW/CSRRS)访问
+  val accMcycle     = isCsrAccess && (io.csr_addr === CSR.mcycle  || io.csr_addr === CSR.mcycleh)
+  val accMinstret   = isCsrAccess && (io.csr_addr === CSR.minstret || io.csr_addr === CSR.minstreth)
+  val mcycleLowSnap    = RegNextWhen(mcycle(31 downto 0),    accMcycle)   init(0)
+  val mcycleHighSnap   = RegNextWhen(mcycle(63 downto 32),   accMcycle)   init(0)
+  val minstretLowSnap  = RegNextWhen(minstret(31 downto 0),  accMinstret) init(0)
+  val minstretHighSnap = RegNextWhen(minstret(63 downto 32), accMinstret) init(0)
+
   io.csr_rdata := io.csr_addr.mux(
     CSR.mstatus   -> mstatus,
     CSR.mtvec     -> mtvec,
@@ -52,10 +61,10 @@ case class ysyx_23060082_CSR() extends Component {
     CSR.mcause    -> mcause,
     CSR.mvendorid -> mvendorid,
     CSR.marchid   -> marchid,
-    CSR.mcycle    -> mcycle(31 downto 0),
-    CSR.mcycleh   -> mcycle(63 downto 32),
-    CSR.minstret  -> minstret(31 downto 0),
-    CSR.minstreth -> minstret(63 downto 32),
+    CSR.mcycle    -> mcycleLowSnap,
+    CSR.mcycleh   -> mcycleHighSnap,
+    CSR.minstret  -> minstretLowSnap,
+    CSR.minstreth -> minstretHighSnap,
     default       -> U"32'h0"
   )
 

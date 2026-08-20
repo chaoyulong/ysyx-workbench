@@ -44,7 +44,7 @@ static void trace_and_difftest()
 {
   IFDEF(CONFIG_ITRACE, puts(cpu.decode.log_buf));
   IFDEF(CONFIG_ITRACE,  log_write("%s\n", cpu.decode.log_buf)); 
-  IFDEF(CONFIG_FTRACE, void func_trace(); /*if(reg_updated)*/ func_trace());
+  IFDEF(CONFIG_FTRACE, void func_trace(); func_trace());
   // IFDEF(CONFIG_DIFFTEST, void difftest_step(vaddr_t pc, vaddr_t npc); if(reg_updated && npc_state.state != NPC_END) {difftest_step(cpu.pc, cpu.pc_next); });
 
 #ifdef CONFIG_WATCHPOINT

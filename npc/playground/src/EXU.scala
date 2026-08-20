@@ -124,27 +124,26 @@ case class ysyx_23060082_ALU() extends Component {
   // ------------------ 加法器 ------------------ //
   val adderDataA       = io.aluIn1
   val adderDataB       = Mux(subORadd, ~io.aluIn2, io.aluIn2)
-  val adderCin         = subORadd.asUInt
+  val adderCin         = subORadd.asUInt                  // 减法的话相当于转为补码，取反加1
   val resultAdder33Bit = adderDataA.resize(33) + adderDataB.resize(33) + adderCin.resize(33)    // 扩展为33位计算，便于查看溢出情况
 
   val resultAdder      = resultAdder33Bit(31 downto 0)    // 计算结果
   val carryFlag        = resultAdder33Bit(32)             // 进位
   val zeroFlag         = (resultAdder === U"32'h0")       // 判0
   val overflowFlag     = (adderDataA(31) === adderDataB(31)) && (resultAdder(31) =/= adderDataA(31))  // 溢出
-  // ------------------ 移位寄存器 ------------------ //
+  // --------------------- 移位寄存器 --------------------- //
   val resultShift = io.aluCtr(3 downto 2).mux(
-    U"01"   -> (io.aluIn1 |>> io.aluIn2(4 downto 0)),         // 逻辑右移
-    U"11"   -> U(S(io.aluIn1) >> io.aluIn2(4 downto 0)),    // 算数右移
-    default -> (io.aluIn1 |<< io.aluIn2(4 downto 0))          // 左移,使用的逻辑左移
+    U"01"   -> (io.aluIn1 |>> io.aluIn2(4 downto 0)),     // 逻辑右移
+    U"11"   -> U(S(io.aluIn1) >> io.aluIn2(4 downto 0)),  // 算数右移
+    default -> (io.aluIn1 |<< io.aluIn2(4 downto 0))      // 左移,使用的逻辑左移
   )
-  // ------------------ 小于比较判断 ------------------ //
-  val lessFlag0 = overflowFlag ^ resultAdder(31)
-  val lessFlag1 = carryFlag ^ subORadd
+  // -------------------- 小于比较判断 -------------------- //
+  val lessFlag0 = overflowFlag ^ resultAdder(31)          // 有符号小于
+  val lessFlag1 = carryFlag ^ subORadd                    // 无符号小于
   val lessFlag = Mux(io.aluCtr(3), lessFlag1, lessFlag0)
-
-  // ------------------ 输出结果 ------------------ //
-  val resultSlt = U(lessFlag).resize(32)    // 扩展为32位
-  val resultDir = io.aluIn2                 // 直接输出aluIn2
+  // ---------------------- 输出结果 --------------------- //
+  val resultSlt = U(lessFlag).resize(32)                  // SLT/SLTU 结果: 0或1, 零扩展
+  val resultDir = io.aluIn2                               // 直接输出aluIn2
   val resultXor = io.aluIn1 ^ io.aluIn2
   val resultOr  = io.aluIn1 | io.aluIn2
   val resultAnd = io.aluIn1 & io.aluIn2
@@ -159,6 +158,6 @@ case class ysyx_23060082_ALU() extends Component {
     U"3'b100" -> resultXor  ,
     U"3'b101" -> resultShift,
     U"3'b110" -> resultOr   ,
-    U"3'b111" -> resultAnd  ,
+    U"3'b111" -> resultAnd  
   )
 }

@@ -36,7 +36,7 @@ case class ysyx_23060082_LSU() extends Component {
   val rdataReg = RegNextWhen(axi4Ctrler.io.readData, rdEnd) init(0)  // 是读内存指令并且已读完
   dataProcess.io.addrOp := memAddr(1 downto 0) ## io.input.mem_ctrl.memOp      // 合并 addr + MemOp 生成 5 位索引
   dataProcess.io.wdata  := io.input.rfReadData2 // 写数据为寄存器2的数据
-  dataProcess.io.rdata  := Mux(state === LsuState.WaitMem && rdEnd, axi4Ctrler.io.readData, rdataReg)
+  dataProcess.io.rdata  := Mux(rdEnd, axi4Ctrler.io.readData, rdataReg)
 
   io.axi4 <> axi4Ctrler.io.axi4
   axi4Ctrler.io.readReq  := needRead  && (state === LsuState.Idle)
@@ -66,21 +66,21 @@ case class ysyx_23060082_LSU() extends Component {
   }
   // ----------------------------------- csr寄存器 ----------------------------------- // 
   val csr = ysyx_23060082_CSR()
-    csr.io.csr_addr   := io.input.imm
-    csr.io.csr_wdata  := io.input.rfReadData1
-    csr.io.csr_cmd    := io.input.csr_ctrl.csr_cmd
-    csr.io.trap_enter := io.input.csr_ctrl.trap_enter
-    csr.io.trap_exit  := io.input.csr_ctrl.trap_exit
-    csr.io.pc_in      := io.input.pc
-    csr.io.cause_in   := Mux(io.input.csr_ctrl.i_illegal, U(2),
-                         Mux(io.input.csr_ctrl.i_ebreak,  U(3), io.input.rfReadData1))
-    csr.io.instrRetire := io.output.fire    // 指令传出LSU即计数(比写回提前1拍, 总数正确)
+  csr.io.csr_addr   := io.input.imm
+  csr.io.csr_wdata  := io.input.rfReadData1
+  csr.io.csr_cmd    := io.input.csr_ctrl.csr_cmd
+  csr.io.trap_enter := io.input.csr_ctrl.trap_enter
+  csr.io.trap_exit  := io.input.csr_ctrl.trap_exit
+  csr.io.pc_in      := io.input.pc
+  csr.io.cause_in   := Mux(io.input.csr_ctrl.i_illegal, U(2),
+                        Mux(io.input.csr_ctrl.i_ebreak,  U(3), io.input.rfReadData1))
+  csr.io.instrRetire := io.output.fire    // 指令传出LSU即计数(比写回提前1拍, 总数正确)
                          
 
 
   // --------------------------------- 用于握手的部分 --------------------------------- //
   // willValid的意义就是当前周期就可以完成任务
-  val willValid = (state === LsuState.WaitMem && rdEnd || wrEnd) ||       // 需要访存并且访存成功
+  val willValid = (rdEnd || wrEnd) ||                       // 需要访存并且访存成功
                   (state === LsuState.Done) ||
                   (state === LsuState.Idle && io.input.valid && !needMem)
   io.output.valid := io.input.valid && willValid  

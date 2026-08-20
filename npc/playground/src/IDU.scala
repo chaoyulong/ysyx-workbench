@@ -6,8 +6,8 @@ import spinal.lib._    // 使用spinal的模块库
 case class Idu2Exu_data() extends Bundle {
   val pc    = UInt(32 bits)
 
-  val ctrl = Ctrl()
-  val imm            = UInt(32 bits)
+  val ctrl        = Ctrl()
+  val imm         = UInt(32 bits)
   val rfReadData1 = UInt(32 bits)
   val rfReadData2 = UInt(32 bits)
 }
@@ -54,7 +54,7 @@ case class ysyx_23060082_IDU() extends Component {
     val rfRead = master(RegFileReadBus())
   }
 
-  val instr = io.input.instr
+  val instr   = io.input.instr
   val decoder = ysyx_23060082_Decoder()
   decoder.instr := instr         
   // ----------------------- 用于握手的部分 ----------------------- //
@@ -66,9 +66,9 @@ case class ysyx_23060082_IDU() extends Component {
                          False -> instr(19 downto 15))
   io.rfRead.addr2  := instr(24 downto 20)  // 为了写起来简洁，写寄存器地址在decoder中赋值
   
-  io.output.pc              := io.input.pc
-  io.output.rfReadData1  := io.rfRead.data1
-  io.output.rfReadData2  := io.rfRead.data2
-  io.output.ctrl            := decoder.io.ctrl
-  io.output.imm             := decoder.io.imm
+  io.output.pc          := io.input.pc
+  io.output.rfReadData1 := io.rfRead.data1
+  io.output.rfReadData2 := io.rfRead.data2
+  io.output.ctrl        := decoder.io.ctrl
+  io.output.imm         := decoder.io.imm
 }

@@ -93,7 +93,7 @@ static void exec_once()
       
   strcpy(cpu.decode.iringbuf[cpu.decode.iringbuf_end], cpu.decode.log_buf);
   cpu.decode.iringbuf_end++;
-  if(cpu.decode.iringbuf_end > 15)  cpu.decode.iringbuf_end = 0;
+  if(cpu.decode.iringbuf_end >= 16)  cpu.decode.iringbuf_end = 0;
 #endif
 
   // 检测程序结束
@@ -201,16 +201,14 @@ static void statistic() {
 
 #ifdef CONFIG_ITRACE
 void iringbuf_printf(void) {
-  int i;
-  int buf_last = cpu.decode.iringbuf_end - 1 < 0 ? 15 : cpu.decode.iringbuf_end - 1;
+  // 环形缓冲: 未满时从0开始; 已满时最旧条目在 end(下一个写入位置)
+  int total = g_nr_guest_inst < 16 ? (int)g_nr_guest_inst : 16;
+  int start = g_nr_guest_inst < 16 ? 0 : cpu.decode.iringbuf_end;
   puts("-- ring buf:");
-  for(i = 0; i < 16; i++) {
-    if(cpu.decode.iringbuf[i][3] != '\0') {
-      if(i == buf_last)
-        printf("-->%s\n", cpu.decode.iringbuf[i]); 
-      else
-        printf("   %s\n", cpu.decode.iringbuf[i]);
-    }
+  for (int i = 0; i < total; i++) {
+    int idx = (start + i) % 16;
+    const char *mark = (i == total - 1) ? "-->" : "   ";   // 最新标 -->
+    printf("%s%s\n", mark, cpu.decode.iringbuf[idx]);
   }
 }
 #endif

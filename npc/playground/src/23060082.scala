@@ -104,7 +104,6 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig.ysyxSoc) extends Componen
   pipelineConnect(exu.io.output, lsu.io.input, lsu.io.output)
   pipelineConnectLast(lsu.io.output, wbu.io.input)   // wbu是最后一级，没有thisOut
   wbu.io.output >> ifu.io.input
-  lsu.io.instrRetire := wbu.io.output.fire    // 指令退休(提交), 用于 minstret 计数
 
 
   regFile.io.readBus  <> idu.io.rfRead

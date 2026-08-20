@@ -18,7 +18,6 @@ case class ysyx_23060082_LSU() extends Component {
     val input     = slave  Flow(Exu2Lsu_data())
     val output    = master Stream(Lsu2Wbu_data()) 
     val axi4 = master(Axi4(AxiConfig.axiConfig))
-    val instrRetire = in Bool()   // 指令退休信号(来自WBU), 用于minstret计数
   }
   object LsuState extends SpinalEnum {
     val Idle, WaitMem, Done = newElement()
@@ -75,7 +74,7 @@ case class ysyx_23060082_LSU() extends Component {
     csr.io.pc_in      := io.input.pc
     csr.io.cause_in   := Mux(io.input.csr_ctrl.i_illegal, U(2),
                          Mux(io.input.csr_ctrl.i_ebreak,  U(3), io.input.rfReadData1))
-    csr.io.instrRetire := io.instrRetire
+    csr.io.instrRetire := io.output.fire    // 指令传出LSU即计数(比写回提前1拍, 总数正确)
                          
 
 

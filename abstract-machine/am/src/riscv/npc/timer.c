@@ -9,8 +9,10 @@ void __am_timer_config(AM_TIMER_CONFIG_T *cfg) {
 }
 
 void __am_timer_uptime(AM_TIMER_UPTIME_T *uptime) {
-  // uptime->us = ((uint64_t)inl(RTC_ADDR + 4) << 32) + (uint64_t)inl(RTC_ADDR);
-  uptime->us = ((uint64_t)inl(RTC_ADDR + 4) << 32) + (uint64_t)inl(RTC_ADDR);
+  // 64位读取协议: 先读低位(硬件锁存高位), 再读高位返回锁存值
+  uint32_t lo = inl(RTC_ADDR);
+  uint32_t hi = inl(RTC_ADDR + 4);
+  uptime->us = ((uint64_t)hi << 32) + lo;
 }
 
 void __am_timer_rtc(AM_TIMER_RTC_T *rtc) {

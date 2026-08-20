@@ -18,11 +18,11 @@ case class ysyx_23060082_Clint() extends Component {
   val timeCount = RegInit(U"64'h0")   // 系统计时器
   timeCount := timeCount + 1
 
-  // 双向快照: 读任一侧(低位/高位)都同时锁存高低位, 任意读取顺序下高低位保持一致
+  // 读取协议: 先读低位(mtime), 硬件锁存当时的高位; 再读高位(mtimeh)返回锁存值
+  // 与 mcycle 的"先读低再读高"协议保持一致
   val readLow  = io.clintAxi4.ar.fire && (io.clintAxi4.ar.addr === MTIME)
   val readHigh = io.clintAxi4.ar.fire && (io.clintAxi4.ar.addr === MTIMEH)
-  val timeCountLow  = RegNextWhen(timeCount(31 downto 0),  readLow || readHigh) init(0)
-  val timeCountHigh = RegNextWhen(timeCount(63 downto 32), readLow || readHigh) init(0)
+  val timeCountHighSnap = RegNextWhen(timeCount(63 downto 32), readLow) init(0)  // 读低位时锁存高位
 
   io.clintAxi4.b.valid.setAsReg() init(False)
 
@@ -51,8 +51,8 @@ case class ysyx_23060082_Clint() extends Component {
   val readData = Reg(UInt(32 bits))
   when(io.clintAxi4.ar.fire) {
     readData := io.clintAxi4.ar.addr.mux(
-      MTIMEH -> timeCountHigh,
-      MTIME  -> timeCountLow,
+      MTIMEH -> timeCountHighSnap,          // 读高: 锁存值(读低时锁存的)
+      MTIME  -> timeCount(31 downto 0),     // 读低: 实时低位
       default -> U(0)
     )
   }

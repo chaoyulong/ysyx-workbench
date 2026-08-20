@@ -4,7 +4,10 @@
 static uint64_t time_base = 0;
 
 void __am_timer_init() {
-  time_base = ((uint64_t)RTC->MSB << 32) + ((uint64_t)RTC->LSB);
+  // 64位读取协议: 先读低位, 再读高位
+  uint32_t lo = RTC->LSB;
+  uint32_t hi = RTC->MSB;
+  time_base = ((uint64_t)hi << 32) + lo;
 }
 
 void __am_timer_config(AM_TIMER_CONFIG_T *cfg) {
@@ -12,7 +15,10 @@ void __am_timer_config(AM_TIMER_CONFIG_T *cfg) {
 }
 
 void __am_timer_uptime(AM_TIMER_UPTIME_T *uptime) {
-  uptime->us = ((uint64_t)RTC->MSB << 32) + (uint64_t)RTC->LSB - time_base;
+  // 64位读取协议: 先读低位, 再读高位
+  uint32_t lo = RTC->LSB;
+  uint32_t hi = RTC->MSB;
+  uptime->us = ((uint64_t)hi << 32) + lo - time_base;
 }
 
 void __am_timer_rtc(AM_TIMER_RTC_T *rtc) {

@@ -6,7 +6,7 @@ import spinal.lib._    // 使用spinal的模块库
 case class ysyx_23060082_Decoder() extends Component {
   val io = new Bundle {
     val instr       = in  UInt(32 bits)
-    val ctrl        = out(Ctrl())
+    val ctrl        = out(CtrlSignals())
     val imm         = out UInt(32 bits)
   }
 
@@ -17,7 +17,7 @@ case class ysyx_23060082_Decoder() extends Component {
   val func3= instr(14 downto 12)
   // val func7= instr(31 downto 25) // 用不到
 
-  io.ctrl.rf_si.rfWriteAddr := instr(11 downto 7)   // 为了写起来简洁，写寄存器地址在此赋值
+  io.ctrl.rfCtrl.rfWriteAddr := instr(11 downto 7)   // 为了写起来简洁，写寄存器地址在此赋值
 // ================================ 指令匹配 ================================ //    
   val i_add    = i === M"0000000----------000-----0110011"    // type_R
   val i_sub    = i === M"0100000----------000-----0110011"
@@ -112,14 +112,14 @@ case class ysyx_23060082_Decoder() extends Component {
 // ================================ 控制信号生成 ================================ // 
   val csrWb = i_csrrw | i_csrrs
 
-  io.ctrl.rf_si.regWr     := type_U | type_J | type_I | type_R | csrWb
-  io.ctrl.alu_si.aluAsrc := i_auipc | i_jal | i_jalr         // 0：选通rdata1，1：选通PC。
+  io.ctrl.rfCtrl.regWr     := type_U | type_J | type_I | type_R | csrWb
+  io.ctrl.aluCtrl.aluAsrc := i_auipc | i_jal | i_jalr         // 0：选通rdata1，1：选通PC。
 
-  io.ctrl.alu_si.aluBsrc :=Mux(type_R | type_B, U"00",       // 选通rdata2
+  io.ctrl.aluCtrl.aluBsrc :=Mux(type_R | type_B, U"00",       // 选通rdata2
                             Mux(i_jal  | i_jalr, U"10",       // 选通4，用于跳转
                             U"01" ))                          // 选通imm                                                   // 选通imm
 
-  io.ctrl.alu_si.aluCtr  := PriorityMux(Seq(
+  io.ctrl.aluCtrl.aluCtr  := PriorityMux(Seq(
                               (i_and | i_andi) -> U"0111",    // 选择逻辑与输出
                               (i_or  | i_ori ) -> U"0110",    // 选择逻辑或输出
                               (i_xor | i_xori) -> U"0100",    // 选择异或输出
@@ -133,7 +133,7 @@ case class ysyx_23060082_Decoder() extends Component {
                               (i_sltu| i_sltiu| i_bltu| i_bgeu)                -> U"1010",  // 做减法，选择无符号小于置位结果输出, Less按无符号结果设置
                               True             -> U"0000"))
                      
-  io.ctrl.alu_si.branch   := PriorityMux(Seq(
+  io.ctrl.aluCtrl.branch   := PriorityMux(Seq(
                               i_jal            -> U"001",     // 无条件跳转PC目标
                               i_jalr           -> U"010",     // 无条件跳转寄存器目标
                               i_beq            -> U"100",     // 条件分支，等于
@@ -142,10 +142,10 @@ case class ysyx_23060082_Decoder() extends Component {
                               (i_bge | i_bgeu) -> U"111",     // 条件分支，大于等于
                               True             -> U"000"))
 
-  io.ctrl.rf_si.mem2reg := op(6 downto 2) === U"00000"       // i_lb | i_lh | i_lw | i_lbu | i_lhu
-  io.ctrl.rf_si.csr2reg := csrWb
-  io.ctrl.mem_si.memWr  := type_S                            // i_sb | i_sh | i_sw
-  io.ctrl.mem_si.memOp  := func3  
+  io.ctrl.rfCtrl.mem2reg := op(6 downto 2) === U"00000"       // i_lb | i_lh | i_lw | i_lbu | i_lhu
+  io.ctrl.rfCtrl.csr2reg := csrWb
+  io.ctrl.memCtrl.memWr  := type_S                            // i_sb | i_sh | i_sw
+  io.ctrl.memCtrl.memOp  := func3  
   // ================================ csr寄存器 ================================ //
   // 操作：
   // csrrw:    R(rd) = CSR[imm]; CSR[imm] = src1; 
@@ -155,12 +155,12 @@ case class ysyx_23060082_Decoder() extends Component {
   //           pc_next = CSR[mtvec]
   // mret:     pc_next = CSR[mepc  ]
   // ==================================== ==================================== //
-  io.ctrl.csr_si.csr_cmd    := Mux(i_csrrw, U"3'd1",              // 0=NOP,1=CSRRW,2=CSRRS
+  io.ctrl.csrCtrl.csrCmd    := Mux(i_csrrw, U"3'd1",              // 0=NOP,1=CSRRW,2=CSRRS
                                Mux(i_csrrs, U"3'd2", U"3'd0"))
-  io.ctrl.csr_si.i_illegal  := i_illegal
-  io.ctrl.csr_si.i_ebreak   := i_ebreak
-  io.ctrl.csr_si.trap_enter := i_ecall | i_ebreak | i_illegal     // 异常进入,主动进入或者出现非法指令
-  io.ctrl.csr_si.trap_exit  := i_mret                             // 退出异常,MRET
+  io.ctrl.csrCtrl.i_illegal  := i_illegal
+  io.ctrl.csrCtrl.i_ebreak   := i_ebreak
+  io.ctrl.csrCtrl.trap_enter := i_ecall | i_ebreak | i_illegal     // 异常进入,主动进入或者出现非法指令
+  io.ctrl.csrCtrl.trap_exit  := i_mret                             // 退出异常,MRET
   // ==================================== ==================================== //
 }
 

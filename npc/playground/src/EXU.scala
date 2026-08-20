@@ -25,18 +25,18 @@ case class ysyx_23060082_EXU() extends Component {
   val alu = ysyx_23060082_ALU()
   val banchCond = ysyx_23060082_BranchCond()
 
-  alu.io.aluCtr := io.input.ctrl.alu_si.aluCtr
-  alu.io.aluIn1 := io.input.ctrl.alu_si.aluAsrc.mux(// 为0时选择rs1，为1时选择PC。
+  alu.io.aluCtr := io.input.ctrl.aluCtrl.aluCtr
+  alu.io.aluIn1 := io.input.ctrl.aluCtrl.aluAsrc.mux(// 为0时选择rs1，为1时选择PC。
     True  -> io.input.pc,
     False -> io.input.rfReadData1
   )
-  alu.io.aluIn2 := io.input.ctrl.alu_si.aluBrc.mux(          // 为00时选择rs2，为01时选择imm，为10时选择常数4（用于跳转时计算返回地址PC+4）
+  alu.io.aluIn2 := io.input.ctrl.aluCtrl.aluBsrc.mux(          // 为00时选择rs2，为01时选择imm，为10时选择常数4（用于跳转时计算返回地址PC+4）
     U"00" -> io.input.rfReadData2,
     U"01" -> io.input.imm,
     default -> U"32'h4"
   )
 
-  banchCond.io.branch := io.input.ctrl.alu_si.branch
+  banchCond.io.branch := io.input.ctrl.aluCtrl.branch
   banchCond.io.less   := alu.io.less
   banchCond.io.zero   := alu.io.zero
 
@@ -48,8 +48,7 @@ case class ysyx_23060082_EXU() extends Component {
   io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
   // ================================ 数据传输部分 ================================ //
   io.output.pc          := io.input.pc
-  
-  io.output.pc_next     := io.input.ctrl.alu_si.branch.mux(
+  io.output.pc_next     := io.input.ctrl.aluCtrl.branch.mux(
     U"010"  -> (pcDataTmp(31 downto 1) ## B"1'b0").asUInt,
     default -> pcDataTmp
   )
@@ -57,9 +56,9 @@ case class ysyx_23060082_EXU() extends Component {
   io.output.imm         := io.input.imm(11 downto 0)
   io.output.rfReadData1 := io.input.rfReadData1
   io.output.rfReadData2 := io.input.rfReadData2
-  io.output.rf_ctrl     := io.input.ctrl.rf_si      // 直通数据，在EXU中无作用
-  io.output.mem_ctrl    := io.input.ctrl.mem_si     // 直通数据，在EXU中无作用
-  io.output.csr_ctrl    := io.input.ctrl.csr_si     // 直通数据，在EXU中无作用
+  io.output.rf_ctrl     := io.input.ctrl.rfCtrl      // 直通数据，在EXU中无作用
+  io.output.mem_ctrl    := io.input.ctrl.memCtrl     // 直通数据，在EXU中无作用
+  io.output.csr_ctrl    := io.input.ctrl.csrCtrl     // 直通数据，在EXU中无作用
 }
 
 /*    Branch      跳转类型

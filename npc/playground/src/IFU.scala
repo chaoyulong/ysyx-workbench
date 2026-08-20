@@ -115,8 +115,8 @@ case class ysyx_23060082_Axi4_Ctrler_ReadOnly() extends Component {
   }
 
   io.axi4.r.ready := io.axi4.r.valid
-  io.readEnd := io.axi4.r.fire && io.axi4.r.last   // 突发结束(r.last)才算读完
-  io.readData := io.axi4.r.data.asUInt
+  io.readEnd      := io.axi4.r.fire && io.axi4.r.last   // 突发结束(r.last)才算读完
+  io.readData     := U(io.axi4.r.data)
 
   // 读响应错误检查: 从机返回非 OKAY 时仿真报错
   when(io.axi4.r.fire && io.axi4.r.resp =/= Axi4.resp.OKAY) {

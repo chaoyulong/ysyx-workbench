@@ -20,16 +20,16 @@ case class ysyx_23060082_LSU() extends Component {
     val axi4 = master(Axi4(AxiConfig.axiConfig))
   }
   object LsuState extends SpinalEnum {
-    val Idle, WaitMem, Done = newElement()
+    val Idle, WaitMem, Done = newElement()                    // lsu等待读写完成的状态机
   }
-  val state = Reg(LsuState()) init(LsuState.Idle)   // 创建一个状态机
-  val memAddr    = io.input.aluResult    // alu的输出结果就是访存地址
+  val state = Reg(LsuState()) init(LsuState.Idle)             // 创建一个状态机
+  val memAddr   = io.input.aluResult                          // alu的输出结果就是访存地址
   val needRead  = io.input.valid && io.input.rf_ctrl.mem2reg  // 需要读内存
   val needWrite = io.input.valid && io.input.mem_ctrl.memWr   // 需要写内存
   val needMem   = needRead || needWrite                       // 需要访问内存
   // ------------------------------------- 内存控制器 ------------------------------------- // 
   val dataProcess = ysyx_23060082_DataProcess()   // 数据处理
-  val axi4Ctrler = ysyx_23060082_Axi4_Ctrler()          // AXI总线控制
+  val axi4Ctrler  = ysyx_23060082_Axi4_Ctrler()          // AXI总线控制
 
   val rdEnd = (state === LsuState.WaitMem) && axi4Ctrler.io.readEnd && io.input.rf_ctrl.mem2reg  // 读内存结束，需要更新数据
   val wrEnd = (state === LsuState.WaitMem) && axi4Ctrler.io.writeEnd && io.input.mem_ctrl.memWr

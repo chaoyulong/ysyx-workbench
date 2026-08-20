@@ -43,7 +43,7 @@ case class ysyx_23060082_EXU() extends Component {
   val pcDataA = Mux(banchCond.io.pc_asrc, io.input.imm, U"32'd4")
   val pcDataB = Mux(banchCond.io.pc_bsrc, io.input.rfReadData1, io.input.pc)
   val pcDataTmp = pcDataA + pcDataB
-  // ------------------ 用于握手的部分 ------------------ //
+  // ------------------ 用于握手的部分 ----------------- //
   val willValid = True
   io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
   // ------------------ 数据传输部分 ------------------ //
@@ -57,9 +57,9 @@ case class ysyx_23060082_EXU() extends Component {
   io.output.imm         := io.input.imm(11 downto 0)
   io.output.rfReadData1 := io.input.rfReadData1
   io.output.rfReadData2 := io.input.rfReadData2
-  io.output.rf_ctrl  := io.input.ctrl.rf_si      // 直通数据，在EXU中无作用
-  io.output.mem_ctrl  := io.input.ctrl.mem_si    // 直通数据，在EXU中无作用
-  io.output.csr_ctrl  := io.input.ctrl.csr_si    // 直通数据，在EXU中无作用
+  io.output.rf_ctrl     := io.input.ctrl.rf_si      // 直通数据，在EXU中无作用
+  io.output.mem_ctrl    := io.input.ctrl.mem_si     // 直通数据，在EXU中无作用
+  io.output.csr_ctrl    := io.input.ctrl.csr_si     // 直通数据，在EXU中无作用
 }
 
 /*    Branch      跳转类型
@@ -122,15 +122,15 @@ case class ysyx_23060082_ALU() extends Component {
 
   val sub_add = io.aluCtr(1) | io.aluCtr(3) // 加法器的加减,经过卡诺图化简
   // ------------------ 加法器 ------------------ //
-  val adder_dat_a = io.aluIn1
-  val adder_dat_b = Mux(sub_add, ~io.aluIn2, io.aluIn2)
-  val adder_cin = sub_add.asUInt
-  val adder_result_33 = adder_dat_a.resize(33) + adder_dat_b.resize(33) + adder_cin.resize(33)    // 扩展为33位计算，便于查看溢出情况
+  val adderDataA = io.aluIn1
+  val adderDataB = Mux(sub_add, ~io.aluIn2, io.aluIn2)
+  val adderCin = sub_add.asUInt
+  val adder_result_33 = adderDataA.resize(33) + adderDataB.resize(33) + adderCin.resize(33)    // 扩展为33位计算，便于查看溢出情况
 
-  val result_adder = adder_result_33(31 downto 0)   // 计算结果
+  val resultAdder = adder_result_33(31 downto 0)   // 计算结果
   val carry = adder_result_33(32)
-  val zero = (result_adder === U"32'h0")
-  val overflow = (adder_dat_a(31) === adder_dat_b(31)) && (result_adder(31) =/= adder_dat_a(31));
+  val zeroFlag = (resultAdder === U"32'h0")
+  val overflow = (adderDataA(31) === adderDataB(31)) && (resultAdder(31) =/= adderDataA(31))
   // ------------------ 移位寄存器 ------------------ //
   val result_shift = io.aluCtr(3 downto 2).mux(
     U"01"   -> (io.aluIn1 |>> io.aluIn2(4 downto 0)),         // 逻辑右移
@@ -138,19 +138,19 @@ case class ysyx_23060082_ALU() extends Component {
     default -> (io.aluIn1 |<< io.aluIn2(4 downto 0))          // 左移,使用的逻辑左移
   )
   // ------------------ 小于比较判断 ------------------ //
-  val less_0 = overflow ^ result_adder(31)
-  val less_1 = carry ^ sub_add
-  val less = Mux(io.aluCtr(3), less_1, less_0)
+  val lessFlag0 = overflow ^ resultAdder(31)
+  val lessFlag1 = carry ^ sub_add
+  val lessFlag = Mux(io.aluCtr(3), lessFlag1, lessFlag0)
 
   // ------------------ 输出结果 ------------------ //
   val result_slt = less.asUInt.resize(32)       // 扩展为32位
   val result_lui = io.aluIn2
-  val result_xor = io.aluIn1 ^ io.aluIn2;
-  val result_or  = io.aluIn1 | io.aluIn2;
-  val result_and = io.aluIn1 & io.aluIn2;
+  val result_xor = io.aluIn1 ^ io.aluIn2
+  val result_or  = io.aluIn1 | io.aluIn2
+  val result_and = io.aluIn1 & io.aluIn2
 
-  io.less := less
-  io.zero := zero
+  io.less := lessFlag
+  io.zero := zeroFlag
   io.aluResult := io.aluCtr(2 downto 0).mux(
     U"3'b000" -> result_adder,
     U"3'b001" -> result_shift,

@@ -94,7 +94,7 @@ case class ysyx_23060082_Decoder() extends Component {
   val type_S = op(6 downto 2) === U"01000"
   val type_B = op(6 downto 2) === U"11000"
   val type_R = op(6 downto 2) === U"01100"
-  val type_N = (op(6 downto 2) === U"11100" && func3 === U"000") || op(6 downto 2) === U"00011"   // 系统指令
+  // val type_N = (op(6 downto 2) === U"11100" && func3 === U"000") || op(6 downto 2) === U"00011"   // 系统指令
   // ================================ 立即数生成 ================================ //
   val immU = instr(31 downto 12) ## B"12'b0"
   val immJ = (instr(31) #* 12) ## instr(19 downto 12) ## instr(20) ## instr(30 downto 21)## B"0"

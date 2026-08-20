@@ -9,7 +9,8 @@ case class CpuConfig(
   resetPc:          Long,             // 上电后的初始PC
   enableMul:        Boolean = false,  // 乘法器
   enableDiv:        Boolean = false,  // 触发器
-  enableInterrupt:  Boolean = false   // 中断
+  enableInterrupt:  Boolean = false,  // 中断
+  enableSimDebug:   Boolean = false   // 仿真专用调试信号(指令退休追踪), 综合时关闭
   // 以后继续加选项
 )
 
@@ -56,7 +57,7 @@ object SpinalToVerilog extends App {
 
   Config.spinal.generateVerilog{
     val top = topName match {
-      case "NPC_TOP" => NPC_TOP(CpuConfig.npc)
+      case "NPC_TOP" => NPC_TOP(CpuConfig.npc.copy(enableSimDebug = true))   // 仿真版: 开启指令退休追踪
       case "ysyx_23060082" => ysyx_23060082(CpuConfig.ysyxSoc)
       case _ => throw new Exception(s"Unknown TOP_NAME: $topName")
     }

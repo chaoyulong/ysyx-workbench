@@ -1,6 +1,7 @@
 package playground
 
 import spinal.core._
+import spinal.core.sim._
 import spinal.lib._       // 使用spinal的模块库
 import spinal.lib.bus.amba4.axi._
 
@@ -113,5 +114,38 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig.ysyxSoc) extends Componen
   xbar.io.clintAxi4    <> clint.io.clintAxi4
   xbar.io.ifuAxi4      <> ifu.io.axi4
   xbar.io.lsuAxi4      <> lsu.io.axi4
+
+  // ==================== 仿真专用: 指令退休追踪 (仅仿真, 不加顶层端口) ====================
+  // 用 Verilator.public 保留内部信号, C++ 侧通过指针直接读取
+  if (config.enableSimDebug) {
+    // 指令随流水线逐级传递(仿真专用寄存器链)
+    val dbgInstrIdu = Reg(Bits(32 bits)) init(0)
+    val dbgInstrExu = Reg(Bits(32 bits)) init(0)
+    val dbgInstrLsu = Reg(Bits(32 bits)) init(0)
+    val dbgInstrWbu = Reg(Bits(32 bits)) init(0)
+    val dbgRetireInstr = Reg(Bits(32 bits)) init(0)
+    val dbgRetirePc    = Reg(UInt(32 bits)) init(0)
+    val dbgRetireValid = Reg(Bool()) init(False)
+
+    when(ifu.io.output.fire) { dbgInstrIdu := ifu.io.output.instr.asBits }
+    when(idu.io.output.fire) { dbgInstrExu := dbgInstrIdu }
+    when(exu.io.output.fire) { dbgInstrLsu := dbgInstrExu }
+    when(lsu.io.output.fire) { dbgInstrWbu := dbgInstrLsu }
+
+    when(wbu.io.input.valid) {          // 指令到达WBU = 执行完毕
+      dbgRetireInstr := dbgInstrWbu
+      dbgRetirePc    := wbu.io.input.pc
+      dbgRetireValid := True
+      // report 读取信号: 提供fanout阻止剪枝, 仿真时打印指令退休流
+      report(Seq("[WBU] retire pc=", dbgRetirePc, " instr=", dbgRetireInstr, " valid=", dbgRetireValid))
+    } otherwise {
+      dbgRetireValid := False
+    }
+
+    // 固定名字 + Verilator public 注释, C++ 侧可直接指针读取
+    dbgRetireInstr.setName("dbgRetireInstr").addTag(Verilator.public)
+    dbgRetirePc.setName("dbgRetirePc").addTag(Verilator.public)
+    dbgRetireValid.setName("dbgRetireValid").addTag(Verilator.public)
+  }
 }
 

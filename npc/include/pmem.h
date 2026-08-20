@@ -8,7 +8,12 @@
 #define PSRAM_SIZE   (paddr_t)4*1024*1024
 
 #define CONFIG_MSIZE FLASH_SIZE
+
+#ifdef __ysyxsoc__
+#define CONFIG_MBASE (paddr_t)0x30000000
+#else
 #define CONFIG_MBASE (paddr_t)0x80000000
+#endif
 
 #define PMEM_LEFT  ((paddr_t)CONFIG_MBASE)
 #define PMEM_RIGHT ((paddr_t)CONFIG_MBASE + CONFIG_MSIZE - 1)

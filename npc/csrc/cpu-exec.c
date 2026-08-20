@@ -17,20 +17,19 @@ uint64_t g_nr_guest_cycle = 0;    // 运行了多少周期
 NPCState npc_state = { .state = NPC_STOP };
 CPU_state cpu;
 
+
 // itrace 黑盒总是存在(enableSimDebug=true), 宏总是可用
-#ifdef __npc__
-extern TOP_NAME* top;
-#include "VNPC_TOP___024root.h"
-#define itraceRetireValid   top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireValid
-#define itraceRetirePc      top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetirePc
-#define itraceRetireInstr   top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireInstr
-#else
+#ifdef __ysyxsoc__
 #include "VysyxSoCFull___024root.h"
 #define itraceRetireValid   top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireValid
 #define itraceRetirePc      top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetirePc
 #define itraceRetireInstr   top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireInstr
+#else
+#include "VNPC_TOP___024root.h"
+#define itraceRetireValid   top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireValid
+#define itraceRetirePc      top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetirePc
+#define itraceRetireInstr   top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireInstr
 #endif
-
 
 void cpu_reset(int n){
   reset(n);
@@ -56,13 +55,6 @@ void cpu_state_init() {
     cpu.gpr[i] = 0;
   }
   cpu.pc = RESET_VECTOR;
-}
-
-static void cpu_state_update() {
-  cpu.pc = Rpc();
-  for(int i = 0; i < REG_NUM; i++) {
-    cpu.gpr[i] = gpr(i);
-  }
 }
 
 static void exec_once() 

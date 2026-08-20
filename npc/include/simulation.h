@@ -5,6 +5,8 @@
 #define STR(x) STR_HELPER(x)
 #include STR(TOP_NAME.h)    // 自动生成
 
+extern TOP_NAME* top;
+
 void single_cycle(void);
 void n_cycle(int n);
 void reset(int n);

@@ -19,6 +19,7 @@ CPU_state cpu;
 
 #ifdef __npc__
 // npc 平台: itrace 黑盒总是存在(enableSimDebug=true), 宏总是可用
+extern TOP_NAME* top;
 #include "VNPC_TOP___024root.h"
 #define itraceRetireValid   top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireValid
 #define itraceRetirePc      top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetirePc

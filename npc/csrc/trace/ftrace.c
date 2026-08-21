@@ -138,8 +138,19 @@ void print_func(void) {
   for (int i = 0; i < fun_buf_count; i++)
     if (fun_buf[i].call_count > 0)
       printf("  %-30s %u calls\n", fun_buf[i].name, fun_buf[i].call_count);
-  printf("CALL SEQUENCE (按执行顺序):\n");
-  for (int i = 0; i < trace_seq_cnt; i++)
-    printf("  %s\n", trace_seq[i]->name);
+  // 调用顺序横向打印(按字符宽度 ~80 自动换行, 避免一行一个刷屏顶掉前面)
+  printf("CALL SEQUENCE (按执行顺序):\n  ");
+  int col = 2;
+  for (int i = 0; i < trace_seq_cnt; i++) {
+    int len = (int)strlen(trace_seq[i]->name);
+    if (col > 2 && col + 3 + len > 80) {   // 超过一行宽度则换行
+      printf("\n  ");
+      col = 2;
+    }
+    if (col > 2) { printf(" -> "); col += 3; }
+    printf("%s", trace_seq[i]->name);
+    col += len;
+  }
+  printf("\n");
 }
 #endif

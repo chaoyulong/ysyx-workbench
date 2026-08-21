@@ -7,7 +7,6 @@ typedef struct watchpoint {
   int NO;
   struct watchpoint *next;
   /* TODO: Add more members if necessary */
-  int seted;        // 是否已被设置的标志
   char exec[100];   // 记录表达式
   word_t new_value;
   word_t old_value;
@@ -28,7 +27,6 @@ void init_wp_pool() {
   free_ = wp_pool;
 }
 
-// static void wp_list_sorting(WP *list, WP* wp);
 static WP * wp_list_sorting(WP *list, WP *wp)
 {
   WP *temp_wp;
@@ -113,8 +111,8 @@ void create_watchpoint(char* arg)   // 创建一个监视点
   head = wp_list_sorting(head, temp_wp);  // 申请成功就将其加入head
 
   temp_wp->new_value = temp_wp->old_value = outcome;   // 赋初始值
-  strcpy(temp_wp->exec, arg);
-  temp_wp->exec[99] = '\0';         // 防止字符串过长导致复制不到结束符
+  strncpy(temp_wp->exec, arg, sizeof(temp_wp->exec) - 1);   // 防越界
+  temp_wp->exec[sizeof(temp_wp->exec) - 1] = '\0';
   printf("New watchpoint NO%d  \"%s\"\n", temp_wp->NO, temp_wp->exec);
 }
 
@@ -131,6 +129,7 @@ void delete_watchpoint(int no)   // 删除一个监视点
   }
   else
   {
+    bool found = false;
     for(temp_wp = head; temp_wp->next != NULL; temp_wp = temp_wp->next)
     {
       if(temp_wp->next->NO == no)
@@ -139,9 +138,11 @@ void delete_watchpoint(int no)   // 删除一个监视点
         temp_wp->next = temp_wp->next->next;    // 如果找到了值相等的，链表就直接将其跳过
         free_wp(p);
         printf("Delete watchpoint NO%d\n", no);
+        found = true;
         break;
       }
     }
+    if (!found) printf("Watchpoint NO%d not found\n", no);
   }
 }
 

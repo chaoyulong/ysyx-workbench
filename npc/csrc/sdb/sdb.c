@@ -141,7 +141,7 @@ static int cmd_info(char *args)
     arg = strtok(NULL, " ");  // 获取下一个字符
     if(arg == NULL)
     {
-      // display_all_watchpoints();        // 打印所有监视点的值
+      display_all_watchpoints();        // 打印所有监视点的值
     }
     else
     {
@@ -171,6 +171,10 @@ static int cmd_x(char *args)
         sscanf(temp_arg, "%x", &addr);    // 获取首地址
         printf("   addr              hex               dec\n");
         for(int i = 0; i < len; i++) {
+          if(!in_pmem(addr)) {                       // 平台相关范围检查(npc flash / ysyxsoc flash)
+            printf("address 0x%08x not accessible\n", addr);
+            break;
+          }
           word_t dat = host_read(guest_to_host(addr));
           printf("-- 0x%08x        0x%08x        %u\n", addr, dat, dat);
           addr += 4;
@@ -214,9 +218,8 @@ static int cmd_d(char *args) {
 #endif
   int no = 555555;
   if(args == NULL)  return 0;
-  char *arg = strtok(NULL, " ");  // extract the first argument
-  if(strspn(arg, "0123456789") == strlen(arg)) { // 如果x之后的字符为纯数字
-    no = atoi(arg);
+  if(strspn(args, "0123456789") == strlen(args)) { // 如果d之后的字符为纯数字
+    no = atoi(args);
     delete_watchpoint(no);
   }
   return 0;

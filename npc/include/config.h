@@ -23,7 +23,7 @@
 #endif
 #endif
 // 监视点: 启用 sdb 的 w/d/info w 命令(见 watchpoint.c)
-// #define CONFIG_WATCHPOINT 1
+#define CONFIG_WATCHPOINT 1
 
 // 差分测试: 与参考实现对比(需要 -d <ref.so> / -p <port> 参数)
 // #define CONFIG_DIFFTEST 1

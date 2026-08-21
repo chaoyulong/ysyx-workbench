@@ -83,7 +83,7 @@ uint32_t keyboard_data_io_handler(void) {
 void keyboard_init(void) { init_keymap(); }
 
 #else   // __ysyxsoc__ 等平台: 真实 RTL 外设, 空实现
-
+void keyboard_init(void) { }
 uint32_t keyboard_data_io_handler(void) { return 0; }
 
 #endif

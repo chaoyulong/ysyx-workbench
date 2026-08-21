@@ -18,9 +18,15 @@ static int difftest_port = 1234;
 static void welcome() 
 {
   Log("Trace: %s", MUXDEF(CONFIG_TRACE, ANSI_FMT("ON", ANSI_FG_GREEN), ANSI_FMT("OFF", ANSI_FG_RED)));
-  IFDEF(CONFIG_TRACE, Log("If trace is enabled, a log file will be generated "
-        "to record the trace. This may lead to a large log file. "
-        "If it is not necessary, you can disable it in csrc/config.h"));
+#ifdef CONFIG_TRACE
+  // trace 总开关开启时, 顺带打印各子 trace 状态
+  Log("  itrace: %s | ftrace: %s",
+      MUXDEF(CONFIG_ITRACE, ANSI_FMT("ON", ANSI_FG_GREEN), ANSI_FMT("OFF", ANSI_FG_RED)),
+      MUXDEF(CONFIG_FTRACE, ANSI_FMT("ON", ANSI_FG_GREEN), ANSI_FMT("OFF", ANSI_FG_RED)));
+  Log("If trace is enabled, a log file will be generated "
+      "to record the trace. This may lead to a large log file. "
+      "If it is not necessary, you can disable it in csrc/config.h");
+#endif
   Log("Build time: %s, %s", __TIME__, __DATE__);
   Log("Welcome to %s!", ANSI_FMT(str(riscv32e) "-npc", ANSI_FG_YELLOW ANSI_BG_RED));
   Log("For help, type \"help\"");

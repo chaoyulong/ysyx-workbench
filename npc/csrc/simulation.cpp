@@ -36,15 +36,12 @@ void reset(int n) {
   top->reset = 0;
 }
 
-void n_cycle(int n)
-{
+void n_cycle(int n) {
   while (n -- > 0) single_cycle();
 }
 
-void sim_init(int argc, char *argv[])
-{
+void sim_init(int argc, char *argv[]) {
   contextp ->commandArgs(argc, argv);
-
 #ifdef __GET_WAVE__
   contextp->traceEverOn(true);      // 环境里打开波形开关
   top->trace(tfp, 99);              // 深度为99
@@ -52,7 +49,6 @@ void sim_init(int argc, char *argv[])
 #else
   tfp->close();
 #endif
-
 #ifdef __USE_NVBOARD__
   void nvboard_bind_all_pins(TOP_NAME* top);
   nvboard_bind_all_pins(top);
@@ -61,8 +57,7 @@ void sim_init(int argc, char *argv[])
 #endif
 }
 
-void sim_exit(void)
-{
+void sim_exit(void) {
   step_and_dump_wave();
   // Final model cleanup
   top->final();

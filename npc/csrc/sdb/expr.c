@@ -70,7 +70,7 @@ typedef struct token {
   char str[32];
 } Token;
 
-static Token tokens[65535] __attribute__((used)) = {};
+static Token tokens[128] __attribute__((used)) = {};
 static int nr_token __attribute__((used))  = 0;
 
 static bool make_token(char *e) {
@@ -140,7 +140,7 @@ static bool make_token(char *e) {
   // 负数处理部分
   for(i = 0; i < nr_token; i++)// 除去开头负号以外的负数识别，识别完token之后进行负数识别
   {                                                                   // -后面是十进制数字，并且是开头或者前面不是数字类型
-    if(tokens[i].type == '-' && tokens[i+1].type == TK_DEC && (i == 0 || (tokens[i-1].type != TK_DEC && tokens[i-1].type != TK_HEX && tokens[i-1].type != ')'))) 
+    if(i + 1 < nr_token && tokens[i].type == '-' && tokens[i+1].type == TK_DEC && (i == 0 || (tokens[i-1].type != TK_DEC && tokens[i-1].type != TK_HEX && tokens[i-1].type != ')'))) 
     {
       tokens[i+1].type = TK_NEG;    // 变为负数类型，同时删除前面的-
       for(int j = i; j < nr_token; j++)
@@ -154,7 +154,7 @@ static bool make_token(char *e) {
   // 指针解引用部分
   for(i = 0; i < nr_token; i++)// 除去开头负号以外的负数识别，识别完token之后进行负数识别
   {                                                                   // *后面是十六进制，并且是开头或者前面不是数字类型
-    if(tokens[i].type == '*' && tokens[i+1].type == TK_HEX && (i == 0 || (tokens[i-1].type != TK_DEC && tokens[i-1].type != TK_HEX && tokens[i-1].type != ')'))) 
+    if(i + 1 < nr_token && tokens[i].type == '*' && tokens[i+1].type == TK_HEX && (i == 0 || (tokens[i-1].type != TK_DEC && tokens[i-1].type != TK_HEX && tokens[i-1].type != ')'))) 
     {
       tokens[i+1].type = TK_POI;    // 变为解指针类型，同时删除前面的*
       for(int j = i; j < nr_token; j++)

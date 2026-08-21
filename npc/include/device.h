@@ -26,4 +26,7 @@ void gpu_init(void);
 void keyboard_init(void);
 void device_update(void);
 
+uint64_t get_time(void);   // 宿主时间(us, 相对启动)
+
+
 #endif

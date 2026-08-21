@@ -1,10 +1,10 @@
 // #include <cstdlib>
 #include <getopt.h>
-#include <sys/time.h>
 #include "common.h"
 #include "log.h"
 #include "simulation.h"
 #include "pmem.h"
+#include "device.h"
 #include "monitor.h"
 #include "sdb.h"
 #include "trace.h"
@@ -13,22 +13,6 @@ static char *log_file = NULL;
 static char *img_file = NULL;
 static char *diff_so_file = NULL;
 static int difftest_port = 1234;
-
-// *********************************************** monitor使用的计时器 *********************************************** //
-static uint64_t boot_time = 0;
-
-static uint64_t get_time_internal() {
-  struct timeval now;
-  gettimeofday(&now, NULL);
-  uint64_t us = now.tv_sec * 1000000 + now.tv_usec;
-  return us;
-}
-
-uint64_t get_time() {
-  if (boot_time == 0) boot_time = get_time_internal();
-  uint64_t now = get_time_internal();
-  return now - boot_time;
-}
 
 // *********************************************** 欢迎页面 *********************************************** //
 static void welcome() 

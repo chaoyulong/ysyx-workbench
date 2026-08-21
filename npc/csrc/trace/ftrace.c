@@ -10,7 +10,9 @@ int fun_buf_count = 0;
 
 // 解析 ELF 文件, 收集函数符号(地址/大小/名字)到 fun_buf
 // 供 ftrace 查询当前 pc 属于哪个函数
+// 仅在 CONFIG_FTRACE 开启时解析(避免不需要时加载 ELF 浪费启动时间)
 void elf_get_func(const char *filename) {
+#ifdef CONFIG_FTRACE
   if (filename == NULL) return;
   FILE *fp = fopen(filename, "rb");
   if (fp == NULL) return;
@@ -79,6 +81,7 @@ cleanup:
   free(sym);
   free(strtab);
   fclose(fp);
+#endif
 }
 
 // ============================== 调用栈 ============================== //

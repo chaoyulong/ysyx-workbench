@@ -86,11 +86,17 @@ cleanup:
 
 // ============================== 调用栈 ============================== //
 // 原理: 用 pc 查所属函数; 跨函数时新函数不在栈中 => call(入栈),
-//       新函数已在栈中(返回到调用者) => ret(出栈到该位置)
+//       新函数已在栈中(返回到调用者) => ret(弹出到 pos+1, 保留调用者)
+#ifdef CONFIG_FTRACE
 #define TRACE_STACK_SIZE 128
 static elf_fun *trace_stack[TRACE_STACK_SIZE];
 static int trace_top = -1;
 static elf_fun *prev_func = NULL;
+
+// 调用顺序记录(按执行顺序的 call 序列, 供 print_func 打印)
+#define TRACE_SEQ_MAX 4096
+static elf_fun *trace_seq[TRACE_SEQ_MAX];
+static int trace_seq_cnt = 0;
 
 static elf_fun *find_func(uint32_t pc) {
   for (int i = 0; i < fun_buf_count; i++)
@@ -100,7 +106,6 @@ static elf_fun *find_func(uint32_t pc) {
 }
 
 void func_trace(void) {
-#ifdef CONFIG_FTRACE
   if (fun_buf_count == 0) return;
   elf_fun *cur = find_func(cpu.pc);
   if (cur == prev_func) return;            // 同函数内, 忽略
@@ -113,22 +118,24 @@ void func_trace(void) {
       trace_stack[++trace_top] = cur;
       cur->call_count++;
       log_write("call  %s\n", cur->name);
+      if (trace_seq_cnt < TRACE_SEQ_MAX) trace_seq[trace_seq_cnt++] = cur;   // 记录调用顺序
     }
-  } else if (pos >= 0) {                   // 在栈中 => 返回(弹出到 pos)
-    while (trace_top >= pos) {
+  } else if (pos >= 0) {                   // 在栈中 => 返回(弹出到 pos+1, 保留调用者)
+    while (trace_top > pos) {
       log_write("ret   %s\n", trace_stack[trace_top]->name);
       trace_top--;
     }
   }
   prev_func = cur;
-#endif
 }
 
 void print_func(void) {
-#ifdef CONFIG_FTRACE
   printf("FUNC TRACE:\n");
   for (int i = 0; i < fun_buf_count; i++)
     if (fun_buf[i].call_count > 0)
       printf("  %-30s %u calls\n", fun_buf[i].name, fun_buf[i].call_count);
-#endif
+  printf("CALL SEQUENCE (按执行顺序):\n");
+  for (int i = 0; i < trace_seq_cnt; i++)
+    printf("  %s\n", trace_seq[i]->name);
 }
+#endif

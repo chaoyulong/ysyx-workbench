@@ -348,14 +348,11 @@ static uint32_t eval(int p, int q)
 
 word_t expr(char *e, bool *success) 
 {
-  printf("[expr-dbg] e='%s'\n", e);   // 临时调试
   if (!make_token(e))     // 如果表达式包含未定义字符
   {
-    printf("[expr-dbg] make_token failed, nr_token=%d\n", nr_token);
     *success = false;
     return 0;
   }
-  printf("[expr-dbg] nr_token=%d\n", nr_token);
 
   int outcome = eval(0,nr_token - 1);
   if(outcome == err_num)  // 如果返回的是错误结果

@@ -81,7 +81,8 @@ extern "C" void psram_write(uint32_t waddr, uint32_t wdata, uint32_t wmask) {
 }
 
 void pmem_init(){
-  gpu_init();   // 初始化 SDL 与显存
+  gpu_init();       // 初始化 SDL 与显存
+  keyboard_init();  // 初始化键盘 keymap
   *(word_t *)(flash + sizeof(word_t) * 0) = 0x00000297;  // auipc t0,0
   *(word_t *)(flash + sizeof(word_t) * 1) = 0x00028823;  // sb  zero,16(t0)
   *(word_t *)(flash + sizeof(word_t) * 2) = 0x0102c503;  // lbu a0,16(t0)

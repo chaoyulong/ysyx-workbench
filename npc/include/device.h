@@ -23,6 +23,7 @@ void     vga_fb_write(uint32_t offset, uint32_t wdata, uint8_t wmask);
 uint32_t *vga_fb_addr(void);
 
 void gpu_init(void);
+void keyboard_init(void);
 void device_update(void);
 
 #endif

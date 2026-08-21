@@ -77,10 +77,6 @@ void sdl_poll_events(void) {
 // 读键盘: 弹出一个按键事件, 队列为空返回 0
 uint32_t keyboard_data_io_handler(void) {
   sdl_poll_events();
-  // 调试: 第5000次读后持续注入 q 键(up), 验证 snake "Press Q to Exit"
-  static uint64_t dbg_cnt = 0;
-  if (dbg_cnt > 5000) key_enqueue(KEY_Q);
-  dbg_cnt++;
   return key_dequeue();
 }
 

@@ -20,6 +20,9 @@ void elf_get_func(const char *filename);  // 解析 ELF, 收集函数符号
 void func_trace(void);                    // 每条指令调用, 记录函数调用/返回
 void print_func(void);                    // 程序结束打印调用统计
 
+// ============================== mtrace ============================== //
+void mtrace_trace(void);                  // 记录访存踪迹(由 trace_and_difftest 调用)
+
 // ============================== itrace ============================== //
 void itrace_set_print(uint64_t n);        // 设置单步打印开关(由 cpu_exec 入口调用)
 void itrace_trace(void);                  // 生成指令 trace(格式化/ringbuf/输出)

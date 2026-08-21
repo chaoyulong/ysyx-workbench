@@ -96,7 +96,7 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig.ysyxSoc) extends Componen
   val ifu     = ysyx_23060082_IFU(config.resetPc)
   val idu     = ysyx_23060082_IDU()
   val exu     = ysyx_23060082_EXU()
-  val lsu     = ysyx_23060082_LSU()
+  val lsu     = ysyx_23060082_LSU(config)
   val wbu     = ysyx_23060082_WBU()
   
   pipelineConnect(ifu.io.output, idu.io.input, idu.io.output)

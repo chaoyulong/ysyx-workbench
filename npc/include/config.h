@@ -14,6 +14,9 @@
 // 指令 trace: 每条指令打印到 log + ringbuf(程序结束时显示最后16条)
 #define CONFIG_ITRACE 1
 
+// 访存 trace: 记录每次数据访存(load/store)的 pc/地址/数据
+#define CONFIG_MTRACE 1
+
 // 函数 trace: 记录函数调用(需要 -f <elf> 参数, 见 monitor.c elf_get_func)
 // #define CONFIG_FTRACE 1
 

@@ -58,4 +58,40 @@ module ItraceReg(
   end
 endmodule
 
+// ------------------- 仿真专用: mtrace 访存踪迹 (仅仿真, 综合不实例化) ------------------- //
+// LSU 每次数据访存(load/store)时 valid 拉高, 锁存 wen/pc/addr/wdata, 计数器递增
+// C 侧通过比较 mtraceCnt 判断是否有新访存, 不丢事件
+module MtraceReg(
+  input             clock,
+  input             reset,
+  input             valid,
+  input             wen,
+  input      [31:0] pc,
+  input      [31:0] addr,
+  input      [31:0] wdata
+);
+  reg [63:0] mtraceCnt;
+  reg        mtraceWen;
+  reg [31:0] mtracePc;
+  reg [31:0] mtraceAddr;
+  reg [31:0] mtraceWdata;
+
+  always @(posedge clock or posedge reset) begin
+    if (reset) begin
+      mtraceCnt    <= 64'h0;
+      mtraceWen    <= 1'b0;
+      mtracePc     <= 32'h0;
+      mtraceAddr   <= 32'h0;
+      mtraceWdata  <= 32'h0;
+    end
+    else if (valid) begin
+      mtraceCnt    <= mtraceCnt + 1;
+      mtraceWen    <= wen;
+      mtracePc     <= pc;
+      mtraceAddr   <= addr;
+      mtraceWdata  <= wdata;
+    end
+  end
+endmodule
+
 

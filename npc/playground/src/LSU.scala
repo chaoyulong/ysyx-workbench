@@ -13,7 +13,7 @@ case class Lsu2Wbu_data() extends Bundle {
 }
 
 
-case class ysyx_23060082_LSU() extends Component {
+case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig.npc) extends Component {
   val io = new Bundle {
     val input     = slave  Flow(Exu2Lsu_data())
     val output    = master Stream(Lsu2Wbu_data()) 
@@ -96,7 +96,18 @@ case class ysyx_23060082_LSU() extends Component {
   io.output.mem_data_out:= Mux(io.input.csrCtrl.csrCmd =/= U"3'd0", csr.io.csrRdata, dataProcess.io.rdataReal)           // 借用mem_data_out来输出读出的值
   io.output.alu_data_out:= io.input.aluResult
   io.output.rfCtrl     := io.input.rfCtrl    
+  // ==================== 仿真专用: mtrace 访存踪迹 (仅仿真, 不加顶层端口) ====================
+  // 记录每次数据访存的 读写类型/pc/地址/写数据, C 侧通过计数器比较读取
+  if (config.enableSimDebug) {
+    val mtrace = MtraceReg()
+    mtrace.io.valid := needMem          // 访存指令(读或写)
+    mtrace.io.wen   := needWrite        // 1=store 0=load
+    mtrace.io.pc    := io.input.pc
+    mtrace.io.addr  := memAddr
+    mtrace.io.wdata := io.input.rfReadData2
+  }
 }
+
 
 // ================================ 数据处理单元 ================================ //
 case class ysyx_23060082_DataProcess() extends Component {

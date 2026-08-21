@@ -150,7 +150,10 @@ void sdl_poll_events(void) {
 // 读键盘: 弹出一个扫描码字节, FIFO 为空返回 0
 uint32_t keyboard_data_io_handler(void) {
   sdl_poll_events();
-  return fifo_pop();
+  uint8_t byte = fifo_pop();
+  static uint64_t dbg_cnt = 0;
+  if (dbg_cnt++ < 30) printf("[kbd-read] pop=0x%02x (%u)\n", byte, byte);   // 调试
+  return byte;
 }
 
 #else   // __ysyxsoc__ 等平台: 真实 RTL 外设, 空实现

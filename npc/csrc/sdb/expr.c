@@ -19,7 +19,6 @@ enum {
   TK_NEG,     // 十进制负数
   TK_POI,     // 指针
   TK_REG,     // 寄存器
-  /* TODO: Add more token types */
 };
 
 static struct rule {
@@ -124,6 +123,7 @@ static bool make_token(char *e) {
             nr_token++;
           default: break;
         }
+        break;    // 匹配成功, 跳出规则循环(否则 i==NR_REGEX 会误判为无匹配)
       }
     }
     if (i == NR_REGEX) {

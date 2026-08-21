@@ -7,12 +7,10 @@
 #include "device.h"
 #include "trace.h"
 
-#define MAX_INST_TO_PRINT 10        // 最大单步执行多少时打印反汇编
 #define DEVICE_UPDATE_CYCLE 20000   // 每多少个周期更新一次外设(SDL事件/屏幕刷新)    
 #define ITRACE_TIMEOUT_CYCLE 5000   // 单条指令周期上限(防卡死)
 
 uint64_t g_timer = 0;
-bool g_print_step = false;
 uint64_t g_nr_guest_inst = 0;     // 运行了多少条指令
 uint64_t g_nr_guest_cycle = 0;    // 运行了多少周期
 
@@ -33,10 +31,6 @@ CPU_state cpu;
 #define itraceRetireInstr   top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireInstr
 #endif
 
-void cpu_reset(int n) {
-  reset(n);
-}
-
 static void trace_and_difftest() {
   IFDEF(CONFIG_ITRACE, itrace_trace());
   IFDEF(CONFIG_FTRACE, func_trace());
@@ -48,6 +42,10 @@ static void trace_and_difftest() {
     puts("\nhas changed");
   }
 #endif
+}
+
+void cpu_reset(int n) {
+  reset(n);
 }
 
 void cpu_state_init() {
@@ -106,7 +104,7 @@ void assert_fail_msg()
 /* Simulate how the CPU works. */
 void cpu_exec(uint64_t n) 
 {
-  g_print_step = (n <= MAX_INST_TO_PRINT);
+  itrace_set_print(n);   // 单步(<=MAX)时打印指令反汇编
   switch (npc_state.state) {
     case NPC_END: case NPC_ABORT:
       Log("Program execution has ended. To restart the program, exit NPC and run again.");

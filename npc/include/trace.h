@@ -21,6 +21,7 @@ void func_trace(void);                    // 每条指令调用, 记录函数调
 void print_func(void);                    // 程序结束打印调用统计
 
 // ============================== itrace ============================== //
+void itrace_set_print(uint64_t n);        // 设置单步打印开关(由 cpu_exec 入口调用)
 void itrace_trace(void);                  // 生成指令 trace(格式化/ringbuf/输出)
 void iringbuf_printf(void);               // 程序结束打印最后16条指令
 

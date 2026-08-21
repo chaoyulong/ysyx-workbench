@@ -79,7 +79,7 @@ IMG ?=
 LIBCAPSTONE = tools/capstone/repo/libcapstone.so.5
 INC_PATH +=  $(abspath tools/capstone/repo/include)
 CXXFLAGS += -DCONFIG_ISA_riscv
-$(abspath csrc/disasm.c): $(LIBCAPSTONE)
+$(abspath csrc/trace/disasm.c): $(LIBCAPSTONE)
 $(LIBCAPSTONE):
 	$(MAKE) -C tools/capstone
 

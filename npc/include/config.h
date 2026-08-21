@@ -28,7 +28,7 @@
 // 差分测试: 与参考实现对比(需要 -d <ref.so> / -p <port> 参数)
 // #define CONFIG_DIFFTEST 1
 
-// 日志写文件: 配合 init_log 的 -l <file> 参数
+// 日志写文件: 配合 log_init 的 -l <file> 参数
 // #define CONFIG_LOG 1
 
 #endif

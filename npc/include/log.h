@@ -1,7 +1,7 @@
 #ifndef __log_h__
 #define __log_h__
 
-void init_log(const char *log_file);
+void log_init(const char *log_file);
 
 #define ANSI_FG_BLACK   "\33[1;30m"
 #define ANSI_FG_RED     "\33[1;31m"

@@ -98,7 +98,7 @@ void monitor_init(int argc, char *argv[]) {
   parse_args(argc, argv);
 
   IFDEF(CONFIG_ITRACE, void disasm_init(); disasm_init());
-  init_log(log_file);
+  log_init(log_file);
   cpu_state_init();
   pmem_init();
   long img_size = load_img();

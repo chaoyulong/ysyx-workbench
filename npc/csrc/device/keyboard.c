@@ -77,6 +77,11 @@ void sdl_poll_events(void) {
 // 读键盘: 弹出一个按键事件, 队列为空返回 0
 uint32_t keyboard_data_io_handler(void) {
   sdl_poll_events();
+  // 调试: 自动注入 TAB 按下+抬起事件, 绕过 SDL 验证驱动链路
+  static uint64_t dbg_cnt = 0;
+  if (dbg_cnt == 50) key_enqueue(KEY_TAB | KEYDOWN_MASK);   // TAB down
+  if (dbg_cnt == 60) key_enqueue(KEY_TAB);                  // TAB up
+  dbg_cnt++;
   return key_dequeue();
 }
 

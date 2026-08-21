@@ -49,13 +49,11 @@ static regex_t re[NR_REGEX] = {};
 /* Rules are used for many times.
  * Therefore we compile them only once before any usage.
  */
-void init_regex() 
-{
-  int i;
+void init_regex() {
   char error_msg[128];
   int ret;
 
-  for (i = 0; i < NR_REGEX; i ++) {
+  for (int i = 0; i < NR_REGEX; i ++) {
     ret = regcomp(&re[i], rules[i].regex, REG_EXTENDED);
     if (ret != 0) {
       regerror(ret, &re[i], error_msg, 128);
@@ -95,10 +93,6 @@ static bool make_token(char *e) {
 
         position += substr_len;
 
-        /* TODO: Now a new token is recognized with rules[i]. Add codes
-         * to record the token in the array `tokens'. For certain types
-         * of tokens, some extra actions should be performed.
-         */
         substr_len = substr_len > 31 ? 31 : substr_len;   // 防止数据溢出
         // Assert(substr_len < 32, "your num is too long");
 
@@ -138,13 +132,11 @@ static bool make_token(char *e) {
     }
   }
   // 负数处理部分
-  for(i = 0; i < nr_token; i++)// 除去开头负号以外的负数识别，识别完token之后进行负数识别
-  {                                                                   // -后面是十进制数字，并且是开头或者前面不是数字类型
-    if(i + 1 < nr_token && tokens[i].type == '-' && tokens[i+1].type == TK_DEC && (i == 0 || (tokens[i-1].type != TK_DEC && tokens[i-1].type != TK_HEX && tokens[i-1].type != ')'))) 
-    {
+  for(i = 0; i < nr_token; i++) {   // 除去开头负号以外的负数识别，识别完token之后进行负数识别
+    // -后面是十进制数字，并且是开头或者前面不是数字类型                                                                 // 
+    if(i + 1 < nr_token && tokens[i].type == '-' && tokens[i+1].type == TK_DEC && (i == 0 || (tokens[i-1].type != TK_DEC && tokens[i-1].type != TK_HEX && tokens[i-1].type != ')'))) {
       tokens[i+1].type = TK_NEG;    // 变为负数类型，同时删除前面的-
-      for(int j = i; j < nr_token; j++)
-      {
+      for(int j = i; j < nr_token; j++) {
         tokens[j].type = tokens[j+1].type;
         strcpy(tokens[j].str, tokens[j+1].str);
       }
@@ -152,8 +144,8 @@ static bool make_token(char *e) {
     }
   }
   // 指针解引用部分
-  for(i = 0; i < nr_token; i++)// 除去开头负号以外的负数识别，识别完token之后进行负数识别
-  {                                                                   // *后面是十六进制，并且是开头或者前面不是数字类型
+  for(i = 0; i < nr_token; i++) {   // 除去开头负号以外的负数识别，识别完token之后进行负数识别
+    // *后面是十六进制，并且是开头或者前面不是数字类型
     if(i + 1 < nr_token && tokens[i].type == '*' && tokens[i+1].type == TK_HEX && (i == 0 || (tokens[i-1].type != TK_DEC && tokens[i-1].type != TK_HEX && tokens[i-1].type != ')'))) 
     {
       tokens[i+1].type = TK_POI;    // 变为解指针类型，同时删除前面的*
@@ -356,11 +348,14 @@ static uint32_t eval(int p, int q)
 
 word_t expr(char *e, bool *success) 
 {
+  printf("[expr-dbg] e='%s'\n", e);   // 临时调试
   if (!make_token(e))     // 如果表达式包含未定义字符
   {
+    printf("[expr-dbg] make_token failed, nr_token=%d\n", nr_token);
     *success = false;
     return 0;
   }
+  printf("[expr-dbg] nr_token=%d\n", nr_token);
 
   int outcome = eval(0,nr_token - 1);
   if(outcome == err_num)  // 如果返回的是错误结果

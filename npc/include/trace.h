@@ -26,6 +26,7 @@ void mtrace_stat(void);                   // 程序结束时打印内存/设备�
 
 // ============================== itrace ============================== //
 void itrace_set_print(uint64_t n);        // 设置单步打印开关(由 cpu_exec 入口调用)
+bool itrace_print_step(void);                 // 是否单步打印模式(供 mtrace 终端显示用)
 void itrace_trace(void);                  // 生成指令 trace(格式化/ringbuf/输出)
 void iringbuf_printf(void);               // 程序结束打印最后16条指令
 

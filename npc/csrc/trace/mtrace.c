@@ -31,8 +31,10 @@ static const char *dev_name(uint32_t addr) {
 
 // 每条指令后调用: 若黑盒计数器增长(有新的访存), 分类记录
 // pc 取 cpu.pc(exec_once 后 = 退休指令 pc, 访存指令在 LSU->WBU 退休时即当前指令)
+// 单步模式(g_print_step)时终端灰色缩进显示(与 itrace 区分), 否则只写日志文件
 void mtrace_trace(void) {
   uint64_t cnt = mtraceCnt;
+  bool step = itrace_print_step();
   while (cnt != mtrace_last_cnt) {     // 可能一次多条(防丢)
     mtrace_last_cnt++;
     const char *kind = mtraceIsDev ? dev_name(mtraceAddr) : "mem";
@@ -41,8 +43,12 @@ void mtrace_trace(void) {
 #ifdef CONFIG_MTRACE_PC
     log_write("mtrace: [%-6s] %s pc=0x%08x addr=0x%08x data=0x%08x\n",
               kind, mtraceWen ? "store" : "load ", cpu.pc, mtraceAddr, mtraceWdata);
+    if (step) printf(ANSI_FMT("  mtrace: [%-6s] %s pc=0x%08x addr=0x%08x data=0x%08x", ANSI_FG_BLACK) "\n",
+              kind, mtraceWen ? "store" : "load ", cpu.pc, mtraceAddr, mtraceWdata);
 #else
     log_write("mtrace: [%-6s] %s addr=0x%08x data=0x%08x\n",
+              kind, mtraceWen ? "store" : "load ", mtraceAddr, mtraceWdata);
+    if (step) printf(ANSI_FMT("  mtrace: [%-6s] %s addr=0x%08x data=0x%08x", ANSI_FG_BLACK) "\n",
               kind, mtraceWen ? "store" : "load ", mtraceAddr, mtraceWdata);
 #endif
   }

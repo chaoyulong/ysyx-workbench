@@ -16,6 +16,11 @@ void itrace_set_print(uint64_t n) {
   g_print_step = (n <= MAX_INST_TO_PRINT);
 }
 
+// 是否单步打印模式(供 mtrace 等单步终端显示用)
+bool itrace_print_step(void) {
+  return g_print_step;
+}
+
 // 生成当前指令的 trace: 格式化 log_buf + 存入 ringbuf + 输出(log/屏幕)
 // 由 trace_and_difftest 每条指令调用(cpu.pc/cpu.instr 已是退休指令)
 void itrace_trace(void) {

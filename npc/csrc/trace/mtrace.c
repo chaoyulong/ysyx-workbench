@@ -1,4 +1,5 @@
 #include "common.h"
+#include "simulation.h"   // 定义 TOP_NAME 类型
 #include "cpu-exec.h"
 #include "log.h"
 #include "trace.h"

@@ -16,7 +16,7 @@ CFLAGS    += -fdata-sections -ffunction-sections
 LDSCRIPTS += $(AM_HOME)/scripts/linker_ysyxsoc.ld
 LDFLAGS   += --gc-sections -e _bootloader
 YSYXSOCFLAGS += -l $(shell dirname $(IMAGE).elf)/ysyxsoc-log.txt
-YSYXSOCFLAGS += -e $(IMAGE).elf
+YSYXSOCFLAGS += -f $(IMAGE).elf
 
 SDB_VAL := $(SDB) $(sdb)
 ifneq ($(filter N n, $(SDB_VAL)),)

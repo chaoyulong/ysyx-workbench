@@ -99,7 +99,7 @@ void sdl_quit_request(void) { sdl_quit = true; }
 
 #else   // __ysyxsoc__ 等平台: 真实 RTL 外设, 空实现
 
-void init_gpu(void) {}
+void gpu_init(void) {}
 void device_update(void) {}
 void vga_set_dirty(void) {}
 uint32_t *vga_fb_addr(void) { return NULL; }

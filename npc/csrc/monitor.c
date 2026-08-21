@@ -54,10 +54,6 @@ static long load_img() {
   return size;
 }
 
-void sdb_set_batch_mode();
-
-
-
 static int parse_args(int argc, char *argv[]) {
   const struct option table[] = {
     {"batch"    , no_argument      , NULL, 'b'},
@@ -71,7 +67,7 @@ static int parse_args(int argc, char *argv[]) {
   int o;
   while ( (o = getopt_long(argc, argv, "-bhl:p:d:f:", table, NULL)) != -1) {
     switch (o) {
-      case 'b': sdb_set_batch_mode(); break;
+      case 'b': void sdb_set_batch_mode(); sdb_set_batch_mode(); break;
       case 'p': sscanf(optarg, "%d", &difftest_port); break;
       case 'l': log_file = optarg; break;
       case 'd': diff_so_file = optarg; break;
@@ -97,12 +93,11 @@ static int parse_args(int argc, char *argv[]) {
 // }
 void pmem_init();
 void cpu_state_init();
-void disasm_init();
 
 void monitor_init(int argc, char *argv[]) {
   parse_args(argc, argv);
 
-  IFDEF(CONFIG_ITRACE, disasm_init());
+  IFDEF(CONFIG_ITRACE, void disasm_init(); disasm_init());
   init_log(log_file);
   cpu_state_init();
   pmem_init();

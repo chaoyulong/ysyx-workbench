@@ -16,6 +16,10 @@
 
 // 访存 trace: 记录每次数据访存(load/store)的 pc/地址/数据
 #define CONFIG_MTRACE 1
+#ifdef CONFIG_MTRACE
+// 在 mtrace 记录中打印访存指令的 pc(默认开, 关闭可减小日志量)
+#define CONFIG_MTRACE_PC 1
+#endif
 
 // 函数 trace: 记录函数调用(需要 -f <elf> 参数, 见 monitor.c elf_get_func)
 // #define CONFIG_FTRACE 1

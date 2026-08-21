@@ -38,7 +38,7 @@ static void welcome()
         "to record the trace. This may lead to a large log file. "
         "If it is not necessary, you can disable it in csrc/config.h"));
   Log("Build time: %s, %s", __TIME__, __DATE__);
-  Log("Welcome to %s-npc!", str(riscv32e));
+  Log("Welcome to %s!", ANSI_FMT(str(riscv32e) "-npc", ANSI_FG_YELLOW ANSI_BG_RED));
   Log("For help, type \"help\"");
 }
 

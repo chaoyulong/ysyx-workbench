@@ -72,6 +72,15 @@ typedef struct token {
 static Token tokens[128] __attribute__((used)) = {};
 static int nr_token __attribute__((used))  = 0;
 
+// 删除 tokens[i](符号token), 将后续 token 前移
+static void remove_token(int i) {
+  for (int j = i; j < nr_token; j++) {
+    tokens[j].type = tokens[j+1].type;
+    strcpy(tokens[j].str, tokens[j+1].str);
+  }
+  nr_token--;
+}
+
 static bool make_token(char *e) {
   int position = 0;
   int i;
@@ -93,6 +102,11 @@ static bool make_token(char *e) {
 
         substr_len = substr_len > 31 ? 31 : substr_len;   // 防止数据溢出
         // Assert(substr_len < 32, "your num is too long");
+
+        if (nr_token >= 128) {        // token 数超限, 防数组越界
+          printf("too many tokens\n");
+          return false;
+        }
 
         switch(rules[i].token_type) {
           case '+':
@@ -130,30 +144,23 @@ static bool make_token(char *e) {
       return false;
     }
   }
-  // 负数处理部分
-  for(i = 0; i < nr_token; i++) {   // 除去开头负号以外的负数识别，识别完token之后进行负数识别
-    // -后面是十进制数字，并且是开头或者前面不是数字类型                                                                 // 
-    if(i + 1 < nr_token && tokens[i].type == '-' && tokens[i+1].type == TK_DEC && (i == 0 || (tokens[i-1].type != TK_DEC && tokens[i-1].type != TK_HEX && tokens[i-1].type != ')'))) {
-      tokens[i+1].type = TK_NEG;    // 变为负数类型，同时删除前面的-
-      for(int j = i; j < nr_token; j++) {
-        tokens[j].type = tokens[j+1].type;
-        strcpy(tokens[j].str, tokens[j+1].str);
-      }
-      nr_token--;
+  // 负数处理: - 后跟十进制(表达式开头或前面不是数字/右括号) => 负数字面量
+  for(i = 0; i < nr_token; i++) {
+    if(i + 1 < nr_token && tokens[i].type == '-' && tokens[i+1].type == TK_DEC &&
+       (i == 0 || (tokens[i-1].type != TK_DEC && tokens[i-1].type != TK_HEX && tokens[i-1].type != ')'))) {
+      tokens[i+1].type = TK_NEG;   // 后一个变为负数, 删除前面的 '-'
+      remove_token(i);
     }
   }
-  // 指针解引用部分
-  for(i = 0; i < nr_token; i++) {   // 除去开头负号以外的负数识别，识别完token之后进行负数识别
-    // *后面是十六进制，并且是开头或者前面不是数字类型
-    if(i + 1 < nr_token && tokens[i].type == '*' && tokens[i+1].type == TK_HEX && (i == 0 || (tokens[i-1].type != TK_DEC && tokens[i-1].type != TK_HEX && tokens[i-1].type != ')'))) {
-      tokens[i+1].type = TK_POI;    // 变为解指针类型，同时删除前面的*
-      for(int j = i; j < nr_token; j++) {
-        tokens[j].type = tokens[j+1].type;
-        strcpy(tokens[j].str, tokens[j+1].str);
-      }
-      nr_token--;
+  // 指针解引用: * 后跟十六进制(表达式开头或前面不是数字/右括号) => 解指针
+  for(i = 0; i < nr_token; i++) {
+    if(i + 1 < nr_token && tokens[i].type == '*' && tokens[i+1].type == TK_HEX &&
+       (i == 0 || (tokens[i-1].type != TK_DEC && tokens[i-1].type != TK_HEX && tokens[i-1].type != ')'))) {
+      tokens[i+1].type = TK_POI;   // 后一个变为解指针, 删除前面的 '*'
+      remove_token(i);
     }
   }
+
 
   return true;
 }
@@ -219,15 +226,19 @@ static uint32_t eval(int p, int q) {
      */
 
     switch(tokens[p].type) {
-      case TK_HEX:  sscanf(tokens[p].str, "%x", &val1); break;  // 如果数字是十六进制
-      case TK_DEC:  sscanf(tokens[p].str, "%u", &val1); break;  // 如果是普通十进制
-      case TK_NEG:                                              // 如果是负数十进制
-          sscanf(tokens[p].str, "%u", &val1); 
-          val1 = 0 - val1;   // 无符号取负, 避免有符号溢出 UB
-          break;  
+      case TK_HEX:
+        if (sscanf(tokens[p].str, "%x", &val1) != 1) return err_num;
+        break;
+      case TK_DEC:
+        if (sscanf(tokens[p].str, "%u", &val1) != 1) return err_num;
+        break;
+      case TK_NEG:
+        if (sscanf(tokens[p].str, "%u", &val1) != 1) return err_num;
+        val1 = 0 - val1;   // 无符号取负, 避免有符号溢出 UB
+        break;
       case TK_POI:                                              // 如果是需要解指针
           paddr_t addr;
-          sscanf(tokens[p].str, "%x", &addr);
+          if (sscanf(tokens[p].str, "%x", &addr) != 1) return err_num;
           if(in_pmem(addr)) {
             val1 = host_read(guest_to_host(addr));
           }

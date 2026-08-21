@@ -10,8 +10,7 @@
 static int is_batch_mode = false;
 
 /* We use the `readline' library to provide more flexibility to read from stdin. */
-static char* rl_gets() 
-{
+static char* rl_gets() {
   static char *line_read = NULL;
 
   if (line_read) {
@@ -56,8 +55,7 @@ static struct {
 
 #define NR_CMD ARRLEN(cmd_table)
 
-static int cmd_help(char *args) 
-{
+static int cmd_help(char *args) {
   /* extract the first argument */
   char *arg = strtok(NULL, " ");
   int i;
@@ -67,8 +65,7 @@ static int cmd_help(char *args)
     for (i = 0; i < NR_CMD; i ++) {
       printf("%s - %s\n", cmd_table[i].name, cmd_table[i].description);
     }
-  }
-  else {
+  } else {
     for (i = 0; i < NR_CMD; i ++) {
       if (strcmp(arg, cmd_table[i].name) == 0) {
         printf("%s - %s\n", cmd_table[i].name, cmd_table[i].description);
@@ -80,14 +77,12 @@ static int cmd_help(char *args)
   return 0;
 }
 
-static int cmd_c(char *args) 
-{
+static int cmd_c(char *args) {
   cpu_exec(-1);
   return 0;
 }
 
-static int cmd_q(char *args) 
-{
+static int cmd_q(char *args) {
   npc_state.state = NPC_QUIT;
   return -1;
 }
@@ -95,20 +90,14 @@ static int cmd_q(char *args)
 static int cmd_si(char *args) 
 {
   int steps = 0;
-  if (args == NULL)  // 没有参数默认执行一步
-  {
+  if (args == NULL) { // 没有参数默认执行一步
     cpu_exec(1);  // 模拟CPU执行一条命令
-  }
-  else 
-  {
-    if(strspn(args, "0123456789") == strlen(args))  // 如果si之后的字符为纯数字
-    {
+  } else {
+    if(strspn(args, "0123456789") == strlen(args)) { // 如果si之后的字符为纯数字
       steps = atoi(args);
       cpu_exec(steps); 
       printf("-- The program executes %d step forward\n", steps);
-    }
-    else
-    {
+    } else {
       printf("Please enter the right number after <si>\n");
     }
   }
@@ -214,7 +203,7 @@ static int cmd_w(char *args) {
   return 0;
 #endif
   if(args == NULL)  return 0;
-  // create_watchpoint(args);
+  create_watchpoint(args);
   return 0;
 }
 
@@ -228,7 +217,7 @@ static int cmd_d(char *args) {
   char *arg = strtok(NULL, " ");  // extract the first argument
   if(strspn(arg, "0123456789") == strlen(arg)) { // 如果x之后的字符为纯数字
     no = atoi(arg);
-    // delete_watchpoint(no);
+    delete_watchpoint(no);
   }
   return 0;
 }

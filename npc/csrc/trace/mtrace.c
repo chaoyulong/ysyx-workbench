@@ -5,6 +5,7 @@
 
 // mtrace: 访存踪迹(仅 npc 平台, LSU 的 MtraceReg 黑盒; ysyxsoc 是 Rocket Chip 无此黑盒)
 #ifdef __npc__
+extern TOP_NAME* top;
 #include "VNPC_TOP___024root.h"
 #define mtraceCnt     top->rootp->NPC_TOP__DOT__cpu__DOT__lsu__DOT__mtraceReg_1__DOT__mtraceCnt
 #define mtraceWen     top->rootp->NPC_TOP__DOT__cpu__DOT__lsu__DOT__mtraceReg_1__DOT__mtraceWen

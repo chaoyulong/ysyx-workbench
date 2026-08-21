@@ -172,54 +172,43 @@ static int cmd_x(char *args)
   paddr_t addr = 0;     // 地址
   char *temp_arg;       // 用来储存截断后的后一段字符串
 
-  if(arg == NULL)                 //
-  {
+  if(arg == NULL) {
     printf("Please enter the right cmd after <x>\n");
-  }
-  else
-  {
-    if(strspn(arg, "0123456789") == strlen(arg))  // 如果x之后的字符为纯数字
-    {
+  } else {
+    if(strspn(arg, "0123456789") == strlen(arg)) { // 如果x之后的字符为纯数字
       len = atoi(arg);        // 获取第二个参数：读取的长度
       temp_arg = arg + strlen(arg) + 1; // 获取截断后的另一半字符串
-      if(strspn(temp_arg + 2, "0123456789abcdefABCDEF") == strlen(temp_arg)-2 && temp_arg[0] == '0' && (temp_arg[1] == 'x' || temp_arg[1] == 'X'))
-      {
+      if(strspn(temp_arg + 2, "0123456789abcdefABCDEF") == strlen(temp_arg)-2 && temp_arg[0] == '0' && (temp_arg[1] == 'x' || temp_arg[1] == 'X')) {
         sscanf(temp_arg, "%x", &addr);    // 获取首地址
         printf("   addr              hex               dec\n");
-        for(int i = 0; i < len; i++)
-        {
+        for(int i = 0; i < len; i++) {
           word_t dat = host_read(guest_to_host(addr));
           printf("-- 0x%08x        0x%08x        %u\n", addr, dat, dat);
           addr += 4;
         }        
-      }
-      else
-      {
+      } else {
         printf("Please enter the right addr after <x N>\n");
       }
-    }
-    else
-    {
+    } else {
       printf("Please enter the right num after <x>\n");
     }
   }
   return 0;
 }
 
-static int cmd_p(char *args) 
-{
+static int cmd_p(char *args) {
   bool success = false;
   word_t outcome = 0;
   outcome = expr(args,&success);
-  if(success)
+  if(success) {
     printf("%s = %u\n", args, outcome);
-  else
+  } else {
     printf("There is an error in the expression\n");
+  }
   return 0;
 }
 
-static int cmd_w(char *args) 
-{
+static int cmd_w(char *args) {
 #ifndef CONFIG_WATCHPOINT
   printf("The monitoring point is not enabled, please go to menuconfig to enable it\n");
   return 0;
@@ -229,8 +218,7 @@ static int cmd_w(char *args)
   return 0;
 }
 
-static int cmd_d(char *args) 
-{
+static int cmd_d(char *args) {
 #ifndef CONFIG_WATCHPOINT
   printf("The monitoring point is not enabled, please go to menuconfig to enable it\n");
   return 0;
@@ -238,8 +226,7 @@ static int cmd_d(char *args)
   int no = 555555;
   if(args == NULL)  return 0;
   char *arg = strtok(NULL, " ");  // extract the first argument
-  if(strspn(arg, "0123456789") == strlen(arg))  // 如果x之后的字符为纯数字
-  {
+  if(strspn(arg, "0123456789") == strlen(arg)) { // 如果x之后的字符为纯数字
     no = atoi(arg);
     // delete_watchpoint(no);
   }
@@ -251,8 +238,7 @@ void sdb_set_batch_mode() {
 }
 
 void sdb_mainloop() {
-  if (is_batch_mode) 
-  {
+  if (is_batch_mode) {
     cmd_c(NULL);
     return;
   }

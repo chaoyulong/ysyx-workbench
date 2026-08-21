@@ -58,6 +58,7 @@ static long load_img() {
 
   fseek(fp, 0, SEEK_END);
   long size = ftell(fp);
+  Assert(size <= FLASH_SIZE, "Image %s size %ld exceeds flash size %u", img_file, size, (unsigned)FLASH_SIZE);
 
   Log("The image is %s, size = %ld", img_file, size);
 

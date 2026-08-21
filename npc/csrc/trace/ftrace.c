@@ -148,19 +148,17 @@ void print_func(void) {
   for (int i = 0; i < fun_buf_count; i++)
     if (fun_buf[i].call_count > 0)
       printf("  %-30s %u calls\n", fun_buf[i].name, fun_buf[i].call_count);
-  // 调用/返回序列横向打印(-> 调用, <- 返回; 按字符宽度 ~80 自动换行)
-  printf("CALL/RET SEQUENCE (-> 调用, <- 返回):\n  ");
-  int col = 2;
+  // 调用/返回序列: call 缩进加深打印函数名, ret 打印 "ret" 靠缩进看返回层级
+  printf("CALL/RET SEQUENCE (缩进 = 调用深度):\n");
+  int depth = 0;
   for (int i = 0; i < trace_seq_cnt; i++) {
-    const char *arrow = trace_seq[i].is_ret ? "<- " : "-> ";   // " <- " / " -> " 的标记
-    int len = (int)strlen(trace_seq[i].func->name) + 3;
-    if (col > 2 && col + len > 80) {   // 超过一行宽度则换行
-      printf("\n  ");
-      col = 2;
+    if (trace_seq[i].is_ret) {
+      if (depth > 0) depth--;
+      printf("%*sret\n", depth * 2, "");
+    } else {
+      printf("%*s%s\n", depth * 2, "", trace_seq[i].func->name);
+      depth++;
     }
-    printf("%s%s%s", (col > 2 ? " " : "  "), arrow, trace_seq[i].func->name);
-    col += len;
   }
-  printf("\n");
 }
 #endif

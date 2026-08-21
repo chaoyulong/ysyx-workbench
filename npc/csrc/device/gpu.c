@@ -1,6 +1,7 @@
 #include <SDL2/SDL.h>
 #include "device.h"
 #include "cpu-exec.h"
+#include "log.h"
 
 // SDL 外设模拟仅用于 npc 平台; ysyxsoc 平台使用真实 RTL 外设
 #ifdef __npc__
@@ -71,27 +72,27 @@ void gpu_init(void) {
   assert(vga_fb);
 
   if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-    printf("[gpu] SDL_Init failed: %s\n", SDL_GetError());
+    Log("SDL_Init failed: %s", SDL_GetError());
     return;
   }
   sdl_window = SDL_CreateWindow("NPC-VGA", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
                                 VGA_W, VGA_H, SDL_WINDOW_SHOWN);
   if (sdl_window == NULL) {
-    printf("[gpu] SDL_CreateWindow failed: %s\n", SDL_GetError());
+    Log("SDL_CreateWindow failed: %s", SDL_GetError());
     return;
   }
   sdl_renderer = SDL_CreateRenderer(sdl_window, -1, SDL_RENDERER_ACCELERATED);
   if (sdl_renderer == NULL) {
-    printf("[gpu] SDL_CreateRenderer failed: %s\n", SDL_GetError());
+    Log("SDL_CreateRenderer failed: %s", SDL_GetError());
     return;
   }
   sdl_texture = SDL_CreateTexture(sdl_renderer, SDL_PIXELFORMAT_ARGB8888,
                                   SDL_TEXTUREACCESS_STREAMING, VGA_W, VGA_H);
   if (sdl_texture == NULL) {
-    printf("[gpu] SDL_CreateTexture failed: %s\n", SDL_GetError());
+    Log("SDL_CreateTexture failed: %s", SDL_GetError());
     return;
   }
-  printf("[gpu] VGA window created: %dx%d\n", VGA_W, VGA_H);
+  Log("VGA window created: %dx%d", VGA_W, VGA_H);
 }
 
 void sdl_quit_request(void) { sdl_quit = true; }

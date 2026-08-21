@@ -39,3 +39,21 @@
 - **resp 统一使用库枚举** `Axi4.resp.OKAY`，不再写裸 `B"00"`。
 
 
+## 2026-08-20 更新
+
+- **mcycle / minstret 64 位计数器**：`mcycle` 每周期 +1、`minstret` 每条退休指令 +1；支持读写（用于调试/性能统计）。
+- **64 位计数器读取协议统一为"先读低再读高"**（mcycle 与 CLINT mtime 一致）：
+  - 读低位时硬件锁存当时的高位，读高位返回锁存值，保证组合的 64 位一致；
+  - CLINT 由双向快照改为单向"先低后高"（逻辑更简单，与 mcycle 统一）；
+  - AM 驱动（npc / ysyxsoc 的 `timer.c`）同步改为先读低再读高。
+- **CSR 写回旧值用实时寄存器值**（`rdataWb`），避免读高时把锁存值写回计数器导致回退。
+- **命名统一驼峰**：`csr_addr/csr_wdata/csr_rdata/pc_in/cause_in` → `csrAddr/csrWdata/...`；`pc_next` → `pcNext`；`rf_ctrl/mem_ctrl/csr_ctrl` → `rfCtrl/memCtrl/csrCtrl`；`type_U` → `typeU`；`pc_asrc/pc_bsrc` → `pcAsrc/pcBsrc`。
+- **itrace 指令退休追踪**：
+  - 新增 `ItraceReg` 黑盒（`vsrc/dpi-c.v`）：记录 WBU 退休指令的 `pc/instr/valid`，C++ 通过 Verilator rootp 层次指针直接读取；
+  - `enableSimDebug` 条件生成（`CpuConfig` 开关，npc/ysyxSoc 均开启，STA 时关闭），不加顶层端口，综合零开销；
+  - `exec_once` 改为"执行一条指令"粒度：`do-while` 循环周期直到 `itraceRetireValid`，`ITRACE_TIMEOUT_CYCLE`（默认 5000，可配置）上限防卡死；
+  - 状态更新改用退休指令的 PC；新增 `g_nr_guest_inst` 计数与 CPI 统计；
+  - `iringbuf` 修复：按时间顺序（从最旧到最新）打印环形缓冲，最新一条标 `-->`；
+  - `trace_and_difftest` 承担 trace 生成与输出，`exec_once` 保持纯执行（职责分离）。
+- **mcycle 测试程序**：`am-kernels/tests/cpu-tests/tests/mcycle.c`（验证递增、快照一致性、低 32 位回绕进位）。
+- **Makefile 清理**：移除无用的 `RESET_PC`（复位地址由 `CpuConfig.npc/ysyxSoc` 平台配置统一管理）。

@@ -246,21 +246,18 @@ static int cmd_d(char *args)
   return 0;
 }
 
-void sdb_set_batch_mode() 
-{
+void sdb_set_batch_mode() {
   is_batch_mode = true;
 }
 
-void sdb_mainloop() 
-{
+void sdb_mainloop() {
   if (is_batch_mode) 
   {
     cmd_c(NULL);
     return;
   }
 
-  for (char *str; (str = rl_gets()) != NULL; ) 
-  {
+  for (char *str; (str = rl_gets()) != NULL; ) {
     char *str_end = str + strlen(str);
 
     /* extract the first token as the command */
@@ -290,8 +287,7 @@ void sdb_mainloop()
 void init_regex();
 void init_wp_pool();
 
-void init_sdb() 
-{
+void init_sdb() {
   /* Compile the regular expressions. */
   init_regex();
 

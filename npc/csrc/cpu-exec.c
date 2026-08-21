@@ -84,7 +84,8 @@ static void exec_once()
     single_cycle();
     g_nr_guest_cycle++;
     if (++cycle_cnt > ITRACE_TIMEOUT_CYCLE) {
-      printf("ERROR: [itrace] 一条指令超过%u周期未完成 (pc=0x%08x), CPU可能卡死!\n", ITRACE_TIMEOUT_CYCLE, (uint32_t)itraceRetirePc);
+      Log(ANSI_FMT("ERROR: 一条指令超过%u周期未完成 (pc=0x%08x), CPU可能卡死!", ANSI_FG_RED),
+          ITRACE_TIMEOUT_CYCLE, (uint32_t)itraceRetirePc);
       npc_state.state = NPC_ABORT;
       break;
     }
@@ -126,7 +127,7 @@ void cpu_exec(uint64_t n)
   g_print_step = (n <= MAX_INST_TO_PRINT);
   switch (npc_state.state) {
     case NPC_END: case NPC_ABORT:
-      printf("Program execution has ended. To restart the program, exit NPC and run again.\n");
+      Log("Program execution has ended. To restart the program, exit NPC and run again.");
       return;
     default: npc_state.state = NPC_RUNNING;
   }

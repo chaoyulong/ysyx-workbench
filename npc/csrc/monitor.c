@@ -38,13 +38,12 @@ static void welcome()
         "to record the trace. This may lead to a large log file. "
         "If it is not necessary, you can disable it in csrc/config.h"));
   Log("Build time: %s, %s", __TIME__, __DATE__);
-  printf("Welcome to %s-npc!\n", ANSI_FMT(str(riscv32e), ANSI_FG_YELLOW ANSI_BG_RED));
-  printf("For help, type \"help\"\n");
+  Log("Welcome to %s-npc!", str(riscv32e));
+  Log("For help, type \"help\"");
 }
 
 // 加载程序
-static long load_img() 
-{
+static long load_img() {
   extern uint8_t flash[];
   if (img_file == NULL) {
     Log("No image is given. Use the default build-in image.");
@@ -52,8 +51,7 @@ static long load_img()
   }
 
   FILE *fp = fopen(img_file, "rb");
-  if(fp == NULL)  
-  {
+  if(fp == NULL) {
     Log("Image %s not found.", img_file);
     return 4096;
   }
@@ -112,16 +110,14 @@ static int parse_args(int argc, char *argv[])
 }
 
 // 如果加载bin文件则会覆盖
-// static void init_mem(void) 
-// {
+// static void init_mem(void) {
 //   flash_init();
 // }
 void pmem_init();
 void cpu_state_init();
 void disasm_init();
 
-void monitor_init(int argc, char *argv[]) 
-{
+void monitor_init(int argc, char *argv[]) {
   parse_args(argc, argv);
 
   IFDEF(CONFIG_ITRACE, disasm_init());
@@ -135,18 +131,15 @@ void monitor_init(int argc, char *argv[])
   welcome();
 }
 
-void monitor_mainloop()
-{
+void monitor_mainloop() {
   sdb_mainloop();
 }
 
-void monitor_exit()
-{
+void monitor_exit() {
   sim_exit();
 }
 
-static void elf_get_func(char *filename) 
-{  
+static void elf_get_func(char *filename) {  
 #ifdef CONFIG_FTRACE
   FILE *fp;
   size_t rs;

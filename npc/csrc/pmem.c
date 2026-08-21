@@ -1,5 +1,6 @@
 #include "pmem.h"
 #include "device.h"
+#include "log.h"
 
 // uint8_t pmem[CONFIG_MSIZE];
 uint8_t flash[FLASH_SIZE];
@@ -8,9 +9,8 @@ uint8_t psram[PSRAM_SIZE];
 static void out_of_bound(int addr, int rw) 
 {
   const char *a[2]={"read", "write"};
-  printf("%s address = 0x%08x is out of bound of pmem [0x%08x, 0x%08x]\n", 
-          a[rw], addr, PMEM_LEFT, PMEM_RIGHT);
-  assert(0);
+  Assert(0, "%s address = 0x%08x is out of bound of pmem [0x%08x, 0x%08x]",
+         a[rw], addr, PMEM_LEFT, PMEM_RIGHT);
 }
 
 uint8_t* guest_to_host(paddr_t paddr) { return flash + paddr - CONFIG_MBASE; }

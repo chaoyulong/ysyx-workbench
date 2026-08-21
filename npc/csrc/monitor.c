@@ -140,77 +140,83 @@ void monitor_exit() {
   sim_exit();
 }
 
-static void elf_get_func(char *filename) {  
+// ----------------------------------- ftrace ----------------------------------- //
+#define FUN_BUF_MAX 1024
+static elf_fun fun_buf[FUN_BUF_MAX];
+static int fun_buf_count = 0;
+
+// 解析 ELF 文件, 收集函数符号(地址/大小/名字)到 fun_buf
+// 供 ftrace 查询当前 pc 属于哪个函数
+static void elf_get_func(char *filename) {
 #ifdef CONFIG_FTRACE
-  FILE *fp;
-  size_t rs;
-  int ostype = 0;
+  if (filename == NULL) return;
+  FILE *fp = fopen(filename, "rb");
+  if (fp == NULL) return;
 
-  char headtable[5];
-  Elf32_Ehdr ehdr;    
-  Elf32_Shdr shdr[512], _symtab, _strtab;  // 
+  Elf32_Ehdr ehdr;
+  Elf32_Shdr *shdr = NULL;
+  char *shstrtab = NULL;
+  Elf32_Sym *sym = NULL;
+  char *strtab = NULL;
 
-  uint32_t shdr_count;  // 节头表数据的数量
-  uint32_t sym_count;   // 符号表数据的数量
+  if (fread(&ehdr, 1, sizeof(ehdr), fp) != sizeof(ehdr)) goto cleanup;
+  // 检查 ELF 魔数与位数(32位)
+  if (memcmp(ehdr.e_ident, ELFMAG, SELFMAG) != 0 || ehdr.e_ident[EI_CLASS] != ELFCLASS32) goto cleanup;
 
-  if(filename == NULL) return;
-  fp = fopen(filename, "r");
-  if(fp == NULL) return;
-  rs = fread(headtable, 1, 5, fp); if(rs == 0) return;
-  if(headtable[0] != 0x7f || headtable[1] != 'E' || headtable[2] != 'L' || headtable[3] != 'F') return;
-  ostype = headtable[4] == 1 ? 32 : 64;// 判断elf文件为32位还是64位,
-  if(ostype != 32) return;
+  // 节头表: e_shnum 边界检查后 malloc(替代固定数组)
+  if (ehdr.e_shnum == 0 || ehdr.e_shoff == 0) goto cleanup;
+  shdr = malloc(ehdr.e_shnum * sizeof(Elf32_Shdr));
+  if (!shdr) goto cleanup;
+  if (fseek(fp, ehdr.e_shoff, SEEK_SET) != 0 ||
+      fread(shdr, sizeof(Elf32_Shdr), ehdr.e_shnum, fp) != ehdr.e_shnum) goto cleanup;
 
-  fseek(fp, 0, SEEK_SET);
-  rs = fread(&ehdr, sizeof(Elf32_Ehdr), 1, fp); if(rs == 0) return;// 获取ELF头
-  shdr_count = ehdr.e_shnum;    
+  // 节名字符串表(替代 VLA)
+  if (ehdr.e_shstrndx >= ehdr.e_shnum) goto cleanup;
+  const Elf32_Shdr *shstr = &shdr[ehdr.e_shstrndx];
+  if (shstr->sh_size == 0) goto cleanup;
+  shstrtab = malloc(shstr->sh_size);
+  if (!shstrtab) goto cleanup;
+  if (fseek(fp, shstr->sh_offset, SEEK_SET) != 0 ||
+      fread(shstrtab, 1, shstr->sh_size, fp) != shstr->sh_size) goto cleanup;
 
-  fseek(fp, ehdr.e_shoff, SEEK_SET);
-  rs = fread(shdr, sizeof(Elf32_Shdr), shdr_count, fp); if(rs == 0) return;
-
-  char shdr_strtable[shdr[ehdr.e_shstrndx].sh_size];  // 字符串数据暂存
-  fseek(fp, shdr[ehdr.e_shstrndx].sh_offset, SEEK_SET); 
-  rs = fread(shdr_strtable, 1, shdr[ehdr.e_shstrndx].sh_size, fp); if(rs == 0) return; // 获取结头表的字符串数据
-
-  for(int i = 0; i < shdr_count; i++) // 从结头表分离出符号表和字符串表
-  {
-    if(strcmp(".symtab", &shdr_strtable[shdr[i].sh_name]) == 0)    // 获取SYMTAB
-    {
-      _symtab = shdr[i];
-    }
-    else if(strcmp(".strtab", &shdr_strtable[shdr[i].sh_name]) == 0)    // 获取STRTAB
-    {
-      _strtab = shdr[i];
-    }
+  // 分离出 .symtab 和 .strtab
+  const Elf32_Shdr *symtab = NULL, *strtab_hdr = NULL;
+  for (int i = 0; i < ehdr.e_shnum; i++) {
+    if (shdr[i].sh_name >= shstr->sh_size) continue;
+    const char *name = &shstrtab[shdr[i].sh_name];
+    if (strcmp(name, ".symtab") == 0)        symtab = &shdr[i];
+    else if (strcmp(name, ".strtab") == 0)   strtab_hdr = &shdr[i];
   }
+  if (!symtab || !strtab_hdr || symtab->sh_entsize == 0 || symtab->sh_size == 0) goto cleanup;
 
-  Elf32_Sym symbuf[_symtab.sh_size];
-  sym_count = _symtab.sh_size/_symtab.sh_entsize;
-  fseek(fp, _symtab.sh_offset, SEEK_SET);  
-  rs = fread(symbuf, _symtab.sh_entsize, _symtab.sh_size, fp); if(rs == 0) return;// 获取符号表中的数据
+  // 符号表 + 字符串表(替代 VLA)
+  sym = malloc(symtab->sh_size);
+  strtab = malloc(strtab_hdr->sh_size);
+  if (!sym || !strtab) goto cleanup;
+  if (fseek(fp, symtab->sh_offset, SEEK_SET) != 0 ||
+      fread(sym, symtab->sh_entsize, symtab->sh_size / symtab->sh_entsize, fp) != symtab->sh_size / symtab->sh_entsize) goto cleanup;
+  if (fseek(fp, strtab_hdr->sh_offset, SEEK_SET) != 0 ||
+      fread(strtab, 1, strtab_hdr->sh_size, fp) != strtab_hdr->sh_size) goto cleanup;
 
-  char strtable[_strtab.sh_size];  // 字符串数据暂存
-  fseek(fp, _strtab.sh_offset, SEEK_SET);   
-  rs = fread(strtable, 1, _strtab.sh_size, fp); if(rs == 0) return; // 获取字符串表中的数据
-
-  for(int j = 0; j < sym_count; j++)
-  {
-    unsigned char sym_type = ELF32_ST_TYPE(symbuf[j].st_info);
-
-    if(sym_type == STT_FUNC && symbuf[j].st_size != 0 )
-    {
-      fun_buf[fun_buf_count].addr = symbuf[j].st_value;
-      fun_buf[fun_buf_count].size = symbuf[j].st_size;
-      strcpy(fun_buf[fun_buf_count].name, &strtable[symbuf[j].st_name]);
+  // 收集函数符号(带边界检查)
+  int sym_count = symtab->sh_size / symtab->sh_entsize;
+  for (int j = 0; j < sym_count && fun_buf_count < FUN_BUF_MAX; j++) {
+    if (ELF32_ST_TYPE(sym[j].st_info) == STT_FUNC && sym[j].st_size != 0) {
+      if (sym[j].st_name >= strtab_hdr->sh_size) continue;   // 防字符串表越界
+      fun_buf[fun_buf_count].addr = sym[j].st_value;
+      fun_buf[fun_buf_count].size = sym[j].st_size;
+      snprintf(fun_buf[fun_buf_count].name, sizeof(fun_buf[fun_buf_count].name), "%s", &strtab[sym[j].st_name]);
       fun_buf_count++;
     }
   }
-  // // 打印所有函数名
-  // for (int i = 0; i < fun_buf_count; i++)
-  // {
-  //   printf("addr = 0x%08x    name = %s\n", fun_buf[i].addr, fun_buf[i].name);
-  // }
-  #endif
+
+cleanup:
+  free(shdr);
+  free(shstrtab);
+  free(sym);
+  free(strtab);
+  fclose(fp);
+#endif
 }
 
 

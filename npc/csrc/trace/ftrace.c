@@ -68,6 +68,10 @@ void elf_get_func(const char *filename) {
   for (int j = 0; j < sym_count && fun_buf_count < FUN_BUF_MAX; j++) {
     if (ELF32_ST_TYPE(sym[j].st_info) == STT_FUNC && sym[j].st_size != 0) {
       if (sym[j].st_name >= strtab_hdr->sh_size) continue;   // 防字符串表越界
+#ifdef CONFIG_FTRACE_FILTER_INTERNAL
+      // 过滤 libgcc 内部函数(__ 开头的符号, 如 __udivsi3/__umodsi3/__hidden_*)
+      if (strncmp(&strtab[sym[j].st_name], "__", 2) == 0) continue;
+#endif
       fun_buf[fun_buf_count].addr = sym[j].st_value;
       fun_buf[fun_buf_count].size = sym[j].st_size;
       snprintf(fun_buf[fun_buf_count].name, sizeof(fun_buf[fun_buf_count].name), "%s", &strtab[sym[j].st_name]);

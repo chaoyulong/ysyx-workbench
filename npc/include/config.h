@@ -16,6 +16,11 @@
 
 // 函数 trace: 记录函数调用(需要 -f <elf> 参数, 见 monitor.c elf_get_func)
 #define CONFIG_FTRACE 1
+
+#ifdef CONFIG_FTRACE
+// 过滤 libgcc 内部函数(__ 开头的符号, 如 __udivsi3/__umodsi3), 只显示用户/klib 函数
+#define CONFIG_FTRACE_FILTER_INTERNAL 1
+#endif
 #endif
 // 监视点: 启用 sdb 的 w/d/info w 命令(见 watchpoint.c)
 // #define CONFIG_WATCHPOINT 1

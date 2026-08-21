@@ -66,11 +66,11 @@ static int parse_args(int argc, char *argv[])
     {"diff"     , required_argument, NULL, 'd'},
     {"port"     , required_argument, NULL, 'p'},
     {"help"     , no_argument      , NULL, 'h'},
-    {"ftrace"   , required_argument, NULL, 'e'},
+    {"ftrace"   , required_argument, NULL, 'f'},
     {0          , 0                , NULL,  0 },
   };
   int o;
-  while ( (o = getopt_long(argc, argv, "-bhl:p:d:e:", table, NULL)) != -1) 
+  while ( (o = getopt_long(argc, argv, "-bhl:p:d:f:", table, NULL)) != -1) 
   {
     switch (o) 
     {
@@ -78,7 +78,7 @@ static int parse_args(int argc, char *argv[])
       case 'p': sscanf(optarg, "%d", &difftest_port); break;
       case 'l': log_file = optarg; break;
       case 'd': diff_so_file = optarg; break;
-      case 'e': elf_get_func(optarg); break;
+      case 'f': elf_get_func(optarg); break;
       case 1: img_file = optarg; return 0;
       default:
         printf("Usage: %s [OPTION...] IMAGE [args]\n\n", argv[0]);

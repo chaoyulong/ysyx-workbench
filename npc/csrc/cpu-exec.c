@@ -6,6 +6,7 @@
 #include "pmem.h"
 #include "device.h"
 #include "trace.h"
+#include "sdb.h"
 
 #define DEVICE_UPDATE_CYCLE 20000   // 每多少个周期更新一次外设(SDL事件/屏幕刷新)    
 #define ITRACE_TIMEOUT_CYCLE 5000   // 单条指令周期上限(防卡死)

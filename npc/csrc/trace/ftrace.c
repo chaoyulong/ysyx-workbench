@@ -97,10 +97,19 @@ static elf_fun *trace_stack[TRACE_STACK_SIZE];
 static int trace_top = -1;
 static elf_fun *prev_func = NULL;
 
-// 调用顺序记录(按执行顺序的 call 序列, 供 print_func 打印)
-#define TRACE_SEQ_MAX 4096
-static elf_fun *trace_seq[TRACE_SEQ_MAX];
+// 调用/返回序列记录(按执行顺序, 供 print_func 打印); is_ret 标记返回
+typedef struct { elf_fun *func; bool is_ret; } trace_entry_t;
+#define TRACE_SEQ_MAX 8192
+static trace_entry_t trace_seq[TRACE_SEQ_MAX];
 static int trace_seq_cnt = 0;
+
+// 记录一条序列(复合字面量在 C++ 不可用, 用普通赋值)
+static void trace_seq_add(elf_fun *func, bool is_ret) {
+  if (trace_seq_cnt >= TRACE_SEQ_MAX) return;
+  trace_seq[trace_seq_cnt].func = func;
+  trace_seq[trace_seq_cnt].is_ret = is_ret;
+  trace_seq_cnt++;
+}
 
 static elf_fun *find_func(uint32_t pc) {
   for (int i = 0; i < fun_buf_count; i++)
@@ -122,11 +131,12 @@ void func_trace(void) {
       trace_stack[++trace_top] = cur;
       cur->call_count++;
       log_write("call  %s\n", cur->name);
-      if (trace_seq_cnt < TRACE_SEQ_MAX) trace_seq[trace_seq_cnt++] = cur;   // 记录调用顺序
+      trace_seq_add(cur, false);                              // 记录调用
     }
   } else if (pos >= 0) {                   // 在栈中 => 返回(弹出到 pos+1, 保留调用者)
     while (trace_top > pos) {
       log_write("ret   %s\n", trace_stack[trace_top]->name);
+      trace_seq_add(trace_stack[trace_top], true);            // 记录返回
       trace_top--;
     }
   }
@@ -138,17 +148,17 @@ void print_func(void) {
   for (int i = 0; i < fun_buf_count; i++)
     if (fun_buf[i].call_count > 0)
       printf("  %-30s %u calls\n", fun_buf[i].name, fun_buf[i].call_count);
-  // 调用顺序横向打印(按字符宽度 ~80 自动换行, 避免一行一个刷屏顶掉前面)
-  printf("CALL SEQUENCE (按执行顺序):\n  ");
+  // 调用/返回序列横向打印(-> 调用, <- 返回; 按字符宽度 ~80 自动换行)
+  printf("CALL/RET SEQUENCE (-> 调用, <- 返回):\n  ");
   int col = 2;
   for (int i = 0; i < trace_seq_cnt; i++) {
-    int len = (int)strlen(trace_seq[i]->name);
-    if (col > 2 && col + 3 + len > 80) {   // 超过一行宽度则换行
+    const char *arrow = trace_seq[i].is_ret ? "<- " : "-> ";   // " <- " / " -> " 的标记
+    int len = (int)strlen(trace_seq[i].func->name) + 3;
+    if (col > 2 && col + len > 80) {   // 超过一行宽度则换行
       printf("\n  ");
       col = 2;
     }
-    if (col > 2) { printf(" -> "); col += 3; }
-    printf("%s", trace_seq[i]->name);
+    printf("%s%s%s", (col > 2 ? " " : "  "), arrow, trace_seq[i].func->name);
     col += len;
   }
   printf("\n");

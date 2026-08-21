@@ -153,7 +153,7 @@ uint32_t keyboard_data_io_handler(void) {
   // 调试: 自动注入 TAB 按键序列 (模拟 SDL keydown+keyup), 绕过 SDL 直接测驱动
   static uint64_t dbg_read_cnt = 0;
   if (dbg_read_cnt == 100) {
-    printf("[kbd-inject] TAB down+up\n");
+    fprintf(stderr, "[kbd-inject] TAB down+up\n");
     fifo_push(0x0D);    // TAB make
     fifo_push(0xF0);    // break 前缀
     fifo_push(0x0D);    // TAB break
@@ -161,7 +161,7 @@ uint32_t keyboard_data_io_handler(void) {
   dbg_read_cnt++;
   uint8_t byte = fifo_pop();
   static uint64_t dbg_cnt = 0;
-  if (dbg_cnt++ < 40) printf("[kbd-read] pop=0x%02x (%u)\n", byte, byte);   // 调试
+  if (dbg_cnt++ < 60) fprintf(stderr, "[kbd-read] pop=0x%02x (%u)\n", byte, byte);   // 调试
   return byte;
 }
 

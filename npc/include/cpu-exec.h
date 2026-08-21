@@ -32,6 +32,10 @@ typedef struct cpu_state{
 }CPU_state;
 extern CPU_state cpu;
 
+extern bool g_print_step;        // 单步打印开关(单步执行时打印指令反汇编)
+extern uint64_t g_nr_guest_inst; // 已执行指令数
+extern uint64_t g_nr_guest_cycle;// 已执行周期数
+
 void cpu_state_init(void);
 int is_exit_status_bad(void);
 void cpu_reset(int n);

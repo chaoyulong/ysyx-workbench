@@ -5,13 +5,14 @@
 #include "log.h"
 #include "pmem.h"
 #include "device.h"
+#include "trace.h"
 
 #define MAX_INST_TO_PRINT 10        // 最大单步执行多少时打印反汇编
 #define DEVICE_UPDATE_CYCLE 20000   // 每多少个周期更新一次外设(SDL事件/屏幕刷新)    
 #define ITRACE_TIMEOUT_CYCLE 5000   // 单条指令周期上限(防卡死)
 
 uint64_t g_timer = 0;
-static bool g_print_step = false;
+bool g_print_step = false;
 uint64_t g_nr_guest_inst = 0;     // 运行了多少条指令
 uint64_t g_nr_guest_cycle = 0;    // 运行了多少周期
 
@@ -37,27 +38,8 @@ void cpu_reset(int n) {
 }
 
 static void trace_and_difftest() {
-#ifdef CONFIG_ITRACE
-  // 生成 trace 并存入 ringbuf
-  char *p = cpu.decode.log_buf;
-  p += snprintf(p, sizeof(cpu.decode.log_buf), "0x%08x:", cpu.pc);
-  uint8_t *inst = (uint8_t *)&cpu.instr;
-  for (int i = 3; i >= 0; i --) {
-    p += snprintf(p, 4, " %02x", inst[i]);
-  }
-  memset(p, ' ', 4);
-  p += 4;
-  void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
-  disassemble(p, cpu.decode.log_buf + sizeof(cpu.decode.log_buf) - p, cpu.pc, (uint8_t *)&cpu.instr, 4);
-
-  strcpy(cpu.decode.iringbuf[cpu.decode.iringbuf_end], cpu.decode.log_buf);
-  cpu.decode.iringbuf_end++;
-  if (cpu.decode.iringbuf_end >= 16) cpu.decode.iringbuf_end = 0;
-
-  if(g_print_step) puts(cpu.decode.log_buf);
-  log_write("%s\n", cpu.decode.log_buf);
-#endif
-  IFDEF(CONFIG_FTRACE, void func_trace(); func_trace());
+  IFDEF(CONFIG_ITRACE, itrace_trace());
+  IFDEF(CONFIG_FTRACE, func_trace());
   // IFDEF(CONFIG_DIFFTEST, void difftest_step(vaddr_t pc, vaddr_t npc); if(reg_updated && npc_state.state != NPC_END) {difftest_step(cpu.pc, cpu.pc_next); });
 
 #ifdef CONFIG_WATCHPOINT
@@ -145,8 +127,8 @@ void cpu_exec(uint64_t n)
     case NPC_RUNNING: npc_state.state = NPC_STOP; break;
 
     case NPC_END: case NPC_ABORT:
-      IFDEF(CONFIG_ITRACE, void iringbuf_printf(); iringbuf_printf());
-      IFDEF(CONFIG_FTRACE, void print_func(); print_func());
+      IFDEF(CONFIG_ITRACE, iringbuf_printf());
+      IFDEF(CONFIG_FTRACE, print_func());
       Log(MUXDEF(__ysyxsoc__, "ysyxsoc", "npc") ": %s at pc = 0x%08x", \
       (npc_state.state == NPC_ABORT ? ANSI_FMT("ABORT", ANSI_FG_RED) : \
       npc_state.halt_ret == 0 ? ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN) : ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED)), \
@@ -200,16 +182,3 @@ static void statistic() {
   // Log("Instructions per cycle = %1.4f inst/cycle", (float)g_nr_guest_inst/(float)g_nr_guest_cycle);
 }
 
-#ifdef CONFIG_ITRACE
-void iringbuf_printf(void) {
-  // 环形缓冲: 未满时从0开始; 已满时最旧条目在 end(下一个写入位置)
-  int total = g_nr_guest_inst < 16 ? (int)g_nr_guest_inst : 16;
-  int start = g_nr_guest_inst < 16 ? 0 : cpu.decode.iringbuf_end;
-  puts("-- ring buf:");
-  for (int i = 0; i < total; i++) {
-    int idx = (start + i) % 16;
-    const char *mark = (i == total - 1) ? "-->" : "   ";   // 最新标 -->
-    printf("%s%s\n", mark, cpu.decode.iringbuf[idx]);
-  }
-}
-#endif

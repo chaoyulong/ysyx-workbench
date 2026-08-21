@@ -104,7 +104,7 @@ void assert_fail_msg()
 /* Simulate how the CPU works. */
 void cpu_exec(uint64_t n) 
 {
-  itrace_set_print(n);   // 单步(<=MAX)时打印指令反汇编
+  IFDEF(CONFIG_ITRACE, itrace_set_print(n));  // 单步(<=MAX)时打印指令反汇编
   switch (npc_state.state) {
     case NPC_END: case NPC_ABORT:
       Log("Program execution has ended. To restart the program, exit NPC and run again.");
@@ -113,9 +113,7 @@ void cpu_exec(uint64_t n)
   }
 
   uint64_t start_time = get_time();
-
   execute(n);
-
   uint64_t end_time = get_time();
   g_timer += end_time - start_time;
 

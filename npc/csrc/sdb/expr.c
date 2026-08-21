@@ -21,6 +21,8 @@ enum {
   TK_REG,     // 寄存器
 };
 
+#define err_num 555555    // 自定义的一个错误值
+
 static struct rule {
   const char *regex;
   int token_type;
@@ -118,9 +120,10 @@ static bool make_token(char *e) {
             break;
           case TK_REG:       // 读取寄存器
             tokens[nr_token].type = rules[i].token_type;  // 寄存器形式变量
-            strncpy(tokens[nr_token].str, substr_start, substr_len);  // 把$符号去掉，只读取后面的字符串
-            tokens[nr_token].str[substr_len] = '\0';    // 用于数据更替时上一次数据比这次长导致字符串错误 
+            strncpy(tokens[nr_token].str, substr_start, substr_len);  // 保留 $ 前缀(isa_reg_str2val 依赖)
+            tokens[nr_token].str[substr_len] = '\0';
             nr_token++;
+            break;
           default: break;
         }
         break;    // 匹配成功, 跳出规则循环(否则 i==NR_REGEX 会误判为无匹配)
@@ -132,11 +135,11 @@ static bool make_token(char *e) {
     }
   }
   // 负数处理部分
-  for(i = 0; i < nr_token; i++) {   // 除去开头负号以外的负数识别，识别完token之后进行负数识别
+  for (i = 0; i < nr_token; i++) {   // 除去开头负号以外的负数识别，识别完token之后进行负数识别
     // -后面是十进制数字，并且是开头或者前面不是数字类型                                                                 // 
-    if(i + 1 < nr_token && tokens[i].type == '-' && tokens[i+1].type == TK_DEC && (i == 0 || (tokens[i-1].type != TK_DEC && tokens[i-1].type != TK_HEX && tokens[i-1].type != ')'))) {
+    if (i + 1 < nr_token && tokens[i].type == '-' && tokens[i+1].type == TK_DEC && (i == 0 || (tokens[i-1].type != TK_DEC && tokens[i-1].type != TK_HEX && tokens[i-1].type != ')'))) {
       tokens[i+1].type = TK_NEG;    // 变为负数类型，同时删除前面的-
-      for(int j = i; j < nr_token; j++) {
+      for (int j = i; j < nr_token; j++) {
         tokens[j].type = tokens[j+1].type;
         strcpy(tokens[j].str, tokens[j+1].str);
       }
@@ -144,12 +147,12 @@ static bool make_token(char *e) {
     }
   }
   // 指针解引用部分
-  for(i = 0; i < nr_token; i++) {   // 除去开头负号以外的负数识别，识别完token之后进行负数识别
+  for (i = 0; i < nr_token; i++) {   // 除去开头负号以外的负数识别，识别完token之后进行负数识别
     // *后面是十六进制，并且是开头或者前面不是数字类型
-    if(i + 1 < nr_token && tokens[i].type == '*' && tokens[i+1].type == TK_HEX && (i == 0 || (tokens[i-1].type != TK_DEC && tokens[i-1].type != TK_HEX && tokens[i-1].type != ')'))) 
+    if (i + 1 < nr_token && tokens[i].type == '*' && tokens[i+1].type == TK_HEX && (i == 0 || (tokens[i-1].type != TK_DEC && tokens[i-1].type != TK_HEX && tokens[i-1].type != ')'))) 
     {
       tokens[i+1].type = TK_POI;    // 变为解指针类型，同时删除前面的*
-      for(int j = i; j < nr_token; j++)
+      for (int j = i; j < nr_token; j++)
       {
         tokens[j].type = tokens[j+1].type;
         strcpy(tokens[j].str, tokens[j+1].str);
@@ -163,34 +166,32 @@ static bool make_token(char *e) {
 
 static bool check_parentheses(int p, int q)
 {
-  if(tokens[p].type != '(' || tokens[q].type != ')')  // 若整个表达式没有被括号包围
+  if (tokens[p].type != '(' || tokens[q].type != ')')  // 若整个表达式没有被括号包围
     return false;
 
   int start = p;    // 开始和结束的指针,p和q一定是括号，要求就是检测出这两个括号是否是匹配的
   int end = q;  
   int count = 0;  // 括号计数，左括号加，右括号减
 
-  while(start < end)
+  while (start < end)
   {
-    if(tokens[start].type == '(') // 如果识别到了左括号
+    if (tokens[start].type == '(') // 如果识别到了左括号
     {
       count++;
     }
-    else if(tokens[start].type == ')') 
+    else if (tokens[start].type == ')') 
     {
       count--;
-      if(count <= 0)
+      if (count <= 0)
         return false;
     }
     start++;
   }
-  if(count == 1)
+  if (count == 1)
     return true;
   else
     return false;
 }
-
-#define err_num 555555    //自定义的一个错误值
 
 /*    C语言运算符优先级
       1   []  ()  .  ->
@@ -230,18 +231,18 @@ static uint32_t eval(int p, int q)
      * Return the value of the number.
      */
 
-    switch(tokens[p].type)
+    switch (tokens[p].type)
     {
       case TK_HEX:  sscanf(tokens[p].str, "%x", &val1); break;  // 如果数字是十六进制
       case TK_DEC:  sscanf(tokens[p].str, "%u", &val1); break;  // 如果是普通十进制
       case TK_NEG:                                              // 如果是负数十进制
           sscanf(tokens[p].str, "%u", &val1); 
-          val1 = -val1;
+          val1 = 0 - val1;   // 无符号取负, 避免有符号溢出 UB
           break;  
       case TK_POI:                                              // 如果是需要解指针
           paddr_t addr;
           sscanf(tokens[p].str, "%x", &addr);
-          if(in_pmem(addr))
+          if (in_pmem(addr))
           {
             val1 = host_read(guest_to_host(addr));
           }
@@ -254,7 +255,7 @@ static uint32_t eval(int p, int q)
       case TK_REG:                                              // 如果是需要取寄存器
           bool success;
           val1 = isa_reg_str2val(tokens[p].str, &success);      // 获取寄存器的值
-          if(success == false)
+          if (success == false)
           {
             return err_num;
           }
@@ -273,50 +274,50 @@ static uint32_t eval(int p, int q)
   else 
   {
     op = -1;
-    for(int i = p; i <= q; i++)         // op = the position of 主运算符 in the token expression;
+    for (int i = p; i <= q; i++)         // op = the position of 主运算符 in the token expression;
     {
-      if(tokens[i].type == ')')         // 如果未找到左括号的时候就找到了右括号，说明表达式有问题，直接返回错误
+      if (tokens[i].type == ')')         // 如果未找到左括号的时候就找到了右括号，说明表达式有问题，直接返回错误
         return err_num;               
-      if(tokens[i].type == '(')
+      if (tokens[i].type == '(')
       {
         count++;
-        while(count > 0)
+        while (count > 0)
         {
           i++;
-          if(tokens[i].type == '(')
+          if (tokens[i].type == '(')
             count++;
-          else if(tokens[i].type == ')')
+          else if (tokens[i].type == ')')
           {
             count--;
           }
-          if(i > q)
+          if (i > q)
             return err_num;             // 如果到最后都没找到右括号，说明括号不匹配，直接返回错误
         }
       }
 
-      if(op_level <= 1 && (tokens[i].type == '*' || tokens[i].type == '/'))        // 等级小于2，说明目前未出现加减符号，暂时将乘除当作主运算符
+      if (op_level <= 1 && (tokens[i].type == '*' || tokens[i].type == '/'))        // 等级小于2，说明目前未出现加减符号，暂时将乘除当作主运算符
       {
         op_level = 1;
         op = i;
       }
-      else if(op_level <= 2 && (tokens[i].type == '+' || tokens[i].type == '-'))   // 出现加减号之后就把等级提高，不再判断更低级的符号
+      else if (op_level <= 2 && (tokens[i].type == '+' || tokens[i].type == '-'))   // 出现加减号之后就把等级提高，不再判断更低级的符号
       {
         op_level = 2;
         op = i;
       }
-      else if(op_level <= 3 && (tokens[i].type == TK_EQ || tokens[i].type == TK_NEQ ))        // 等于或不等于
+      else if (op_level <= 3 && (tokens[i].type == TK_EQ || tokens[i].type == TK_NEQ ))        // 等于或不等于
       {
         op_level = 3;
         op = i;
       }
-      else if(op_level <= 4 && (tokens[i].type == TK_AND))        // 等于或不等于
+      else if (op_level <= 4 && (tokens[i].type == TK_AND))        // 等于或不等于
       {
         op_level = 4;
         op = i;
       }
     }
 
-    if(op_level == 0)
+    if (op_level == 0)
       return err_num; 
     op_type = tokens[op].type;          // 确定主运算符符号
 
@@ -324,7 +325,7 @@ static uint32_t eval(int p, int q)
 
     val1 = eval(p, op - 1);             // 递归计算主运算符两边的表达式
     val2 = eval(op + 1, q);
-    if(val1 == err_num || val2 == err_num)  // 如果结果为错误值，则说明有不合法的表达式，在此层也直接返回err传递到上一层
+    if (val1 == err_num || val2 == err_num)  // 如果结果为错误值，则说明有不合法的表达式，在此层也直接返回err传递到上一层
       return err_num;
 
     switch (op_type) 
@@ -336,14 +337,13 @@ static uint32_t eval(int p, int q)
       case '-':     return val1 - val2;
       case '*':     return val1 * val2;
       case '/': 
-        if(val2 == 0)       // 除数不能为0
+        if (val2 == 0)       // 除数不能为0
           return err_num;
         else
           return (uint64_t)val1 / val2;
       default:      return err_num;          // 如果不是基本运算，直接返回错误
     }
   }
-  return err_num;       // 这里用不到，但还是加了
 }
 
 word_t expr(char *e, bool *success) 
@@ -354,8 +354,8 @@ word_t expr(char *e, bool *success)
     return 0;
   }
 
-  int outcome = eval(0,nr_token - 1);
-  if(outcome == err_num)  // 如果返回的是错误结果
+  uint32_t outcome = eval(0, nr_token - 1);
+  if (outcome == err_num)  // 如果返回的是错误结果
   {
     *success = false;
     return 0;
@@ -367,19 +367,19 @@ word_t expr(char *e, bool *success)
   }
 }
 
-void eapr_test()
+void expr_test()
 {
-  char result_buff[20],expr_buff[65535];
-  uint32_t resute_num, expr_num;
+  char result_buff[20], expr_buff[128];
+  uint32_t expect_num, got_num;
   bool success = false;
   FILE *fp = fopen("tools/gen-expr/input", "r");
   assert(fp != NULL);
 
-  while(fscanf(fp, "%[^ ]%*c%[^\n]%*c", result_buff, expr_buff) != EOF)
+  while (fscanf(fp, "%[^ ]%*c%[^\n]%*c", result_buff, expr_buff) != EOF)
   {
-    resute_num = atoi(result_buff);
-    expr_num = expr(expr_buff, &success);
-    printf("%u, %u, %d\n", resute_num, expr_num, success);
+    expect_num = atoi(result_buff);
+    got_num = expr(expr_buff, &success);
+    printf("%u, %u, %d\n", expect_num, got_num, success);
 
   }
 }

@@ -20,14 +20,13 @@ static uint64_t get_time() {
   return now - boot_time;
 }
 
-//uptime->us = ((uint64_t)inl(RTC_ADDR + 4) << 32) + (uint64_t)inl(RTC_ADDR);
+// 读取协议: 先读低位(RTC_ADDR), 硬件锁存完整64位; 再读高位(RTC_ADDR+4)返回锁存值
 uint32_t rtc_io_handler(uint32_t offset) {
   assert(offset == 0 || offset == 4);
-  if (offset == 4) {
+  if (offset == 0) {
     uint64_t us = get_time();
     rtc_port_base[0] = (uint32_t)us;
     rtc_port_base[1] = us >> 32;
-    return rtc_port_base[1];
   }
-  return rtc_port_base[0];
+  return (offset == 4) ? rtc_port_base[1] : rtc_port_base[0];
 }

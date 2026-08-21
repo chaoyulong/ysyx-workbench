@@ -22,6 +22,7 @@ void print_func(void);                    // 程序结束打印调用统计
 
 // ============================== mtrace ============================== //
 void mtrace_trace(void);                  // 记录访存踪迹(由 trace_and_difftest 调用)
+void mtrace_stat(void);                   // 程序结束时打印内存/设备访问统计
 
 // ============================== itrace ============================== //
 void itrace_set_print(uint64_t n);        // 设置单步打印开关(由 cpu_exec 入口调用)

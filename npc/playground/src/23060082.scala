@@ -96,7 +96,7 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig.ysyxSoc) extends Componen
   val ifu     = ysyx_23060082_IFU(config.resetPc)
   val idu     = ysyx_23060082_IDU()
   val exu     = ysyx_23060082_EXU()
-  val lsu     = ysyx_23060082_LSU(config)
+  val lsu     = ysyx_23060082_LSU()
   val wbu     = ysyx_23060082_WBU()
   
   pipelineConnect(ifu.io.output, idu.io.input, idu.io.output)
@@ -133,6 +133,20 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig.ysyxSoc) extends Componen
     itrace.io.valid := wbu.io.input.valid   // 指令到达WBU = 执行完毕
     itrace.io.pc    := wbu.io.input.pc
     itrace.io.instr := itraceInstrWbu.asUInt
+
+    // ==================== 仿真专用: mtrace 访存踪迹 (与 itrace 同一块) ====================
+    // 截取 lsuAxi4(仅数据访存, 不含取指), 按地址范围区分内存/设备
+    val mtrace = MtraceReg()
+    val lsuArFire = xbar.io.lsuAxi4.ar.fire                       // 读请求握手
+    val lsuWrFire = xbar.io.lsuAxi4.aw.fire && xbar.io.lsuAxi4.w.fire   // 写握手
+    // 内存范围 [0x80000000, 0x88000000), 之外视为设备(串口/键盘/RTC/VGA)
+    def isDevAddr(addr: UInt) = (addr < U("32'h80000000")) || (addr >= U("32'h88000000"))
+    mtrace.io.valid := lsuArFire || lsuWrFire
+    mtrace.io.wen   := lsuWrFire
+    mtrace.io.isDev := Mux(lsuArFire, isDevAddr(xbar.io.lsuAxi4.ar.addr),
+                                      isDevAddr(xbar.io.lsuAxi4.aw.addr))
+    mtrace.io.addr  := Mux(lsuArFire, xbar.io.lsuAxi4.ar.addr, xbar.io.lsuAxi4.aw.addr)
+    mtrace.io.wdata := xbar.io.lsuAxi4.w.data.asUInt
   }
 }
 

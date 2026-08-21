@@ -41,14 +41,15 @@ case class ItraceReg() extends BlackBox{
   addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/dpi-c.v")
 }
 
-// 仿真专用: mtrace 访存踪迹黑盒 (记录每次数据访存的 wen/pc/addr/wdata + 计数器)
+// 仿真专用: mtrace 访存踪迹黑盒 (记录每次数据访存的 wen/isDev/addr/wdata + 计数器)
+// isDev: 1=设备访问(串口/键盘/RTC/VGA), 0=内存访存
 case class MtraceReg() extends BlackBox{
   val io = new Bundle{
     val clock = in Bool()
     val reset = in Bool()
     val valid = in Bool()
     val wen   = in Bool()
-    val pc    = in UInt(32 bits)
+    val isDev = in Bool()
     val addr  = in UInt(32 bits)
     val wdata = in UInt(32 bits)
   }

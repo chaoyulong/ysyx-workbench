@@ -66,13 +66,13 @@ module MtraceReg(
   input             reset,
   input             valid,
   input             wen,
-  input      [31:0] pc,
+  input             isDev,
   input      [31:0] addr,
   input      [31:0] wdata
 );
   reg [63:0] mtraceCnt;
   reg        mtraceWen;
-  reg [31:0] mtracePc;
+  reg        mtraceIsDev;
   reg [31:0] mtraceAddr;
   reg [31:0] mtraceWdata;
 
@@ -80,14 +80,14 @@ module MtraceReg(
     if (reset) begin
       mtraceCnt    <= 64'h0;
       mtraceWen    <= 1'b0;
-      mtracePc     <= 32'h0;
+      mtraceIsDev  <= 1'b0;
       mtraceAddr   <= 32'h0;
       mtraceWdata  <= 32'h0;
     end
     else if (valid) begin
       mtraceCnt    <= mtraceCnt + 1;
       mtraceWen    <= wen;
-      mtracePc     <= pc;
+      mtraceIsDev  <= isDev;
       mtraceAddr   <= addr;
       mtraceWdata  <= wdata;
     end

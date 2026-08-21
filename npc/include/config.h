@@ -6,7 +6,7 @@
 // 注意: CONFIG_ISA_riscv 等由 Makefile 的 -D 定义, 不在此处
 
 // trace 总开关: 配合 log_enable() 按指令数范围写日志(见 csrc/sdb/log.c)
-// #define CONFIG_TRACE 1
+#define CONFIG_TRACE 1
 #define CONFIG_TRACE_START 0          // trace 起始指令数
 #define CONFIG_TRACE_END   1000000    // trace 结束指令数
 
@@ -15,7 +15,7 @@
 #define CONFIG_ITRACE 1
 
 // 函数 trace: 记录函数调用(需要 -f <elf> 参数, 见 monitor.c elf_get_func)
-#define CONFIG_FTRACE 1
+// #define CONFIG_FTRACE 1
 
 #ifdef CONFIG_FTRACE
 // 过滤 libgcc 内部函数(__ 开头的符号, 如 __udivsi3/__umodsi3), 只显示用户/klib 函数

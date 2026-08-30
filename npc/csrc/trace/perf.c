@@ -48,7 +48,7 @@ void perf_stat(void) {
   Log_nohead("  %-17s cnt=%-6lu total=%-6lu avg=%7.2f cyc/access", "IFU fetch:",
          (unsigned long)ifuDlyCnt, (unsigned long)ifuDlySum,
          ifuDlyCnt ? (double)ifuDlySum / ifuDlyCnt : 0);
-  const char *lsu_name[4] = {"mem rd", "mem wr", "dev rd", "dev wr"};
+  const char *lsu_name[4] = {"LSU mem rd:", "LSU mem wr:", "LSU dev rd:", "LSU dev wr:"};
   for (int i = 0; i < 4; i++)
     Log_nohead("  %-17s cnt=%-6lu total=%-6lu avg=%7.2f cyc/access", lsu_name[i],
            (unsigned long)lsu_cnt[i], (unsigned long)lsu_sum[i],

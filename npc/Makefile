@@ -109,12 +109,12 @@ define build_target
 	MAKEFLAGS=-s $(VERILATOR) $(VERILATOR_CFLAGS) \
 		$(addprefix -CFLAGS , $(CXXFLAGS) $2) $(addprefix -LDFLAGS , $(LDFLAGS)) \
 		--top-module $(TOPNAME) $1 \
-		--Mdir $(OBJ_DIR) --exe -o $(abspath $(BIN)); \
+		--Mdir $(OBJ_DIR) --exe -o $(abspath $(BIN)) && \
 	echo "[verilator] done ($$(printf "%.1f" $$(echo "$$(date +%s.%N) - $$_t" | bc))s)"
 	@echo verilator[]: completed
 	@echo [sim] $(BIN) running...; \
 	_t=$$(date +%s.%N); \
-	$(BIN) $(ARGS) $(IMG); \
+	$(BIN) $(ARGS) $(IMG) && \
 	echo "[sim] done ($$(printf "%.1f" $$(echo "$$(date +%s.%N) - $$_t" | bc))s)"
 endef
 

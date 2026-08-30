@@ -19,8 +19,7 @@ static uint64_t lsu_sum[4], lsu_cnt[4];
 
 // 程序结束时打印性能统计
 void perf_stat(void) {
-#ifdef __npc__
-  // 读各模块 PerfReg
+  // 读各模块 PerfReg(两平台, PERF_F 宏自动选路径)
   idu_evt[0] = PERF_F(idu, evtCnt0);
   idu_evt[1] = PERF_F(idu, evtCnt1);
   idu_evt[2] = PERF_F(idu, evtCnt2);
@@ -63,5 +62,4 @@ void perf_stat(void) {
     printf("  %-7s %6lu  %5.1f%%\n", cls_name[i],
            (unsigned long)idu_evt[i], 100.0 * idu_evt[i] / total);
   printf("==========================\n");
-#endif
 }

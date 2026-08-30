@@ -8,6 +8,8 @@
 // 黑盒字段: perfCyc/dlySum0-3/dlyCnt0-3/evtCnt0-7 (64位)
 #ifdef __npc__
 #include "VNPC_TOP___024root.h"
+static uint64_t idu_evt[8];
+static uint64_t lsu_sum[4], lsu_cnt[4];
 #endif
 
 // 程序结束时打印性能统计

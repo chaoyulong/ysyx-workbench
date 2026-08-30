@@ -43,7 +43,7 @@ void perf_stat(void) {
   lsu_cnt[3] = PERF_F(lsu, dlyCnt3);
 
   // 总周期/总指令已由 statistic() 打印, 此处只打细分统计; 所有行统一 cnt/total/avg 格式(等宽)
-  const char *perf_sep = "  ================================================================";  // 66 个 =
+  const char *perf_sep = "==================================================================";  // 66 个 =
   Log_nohead("%s", perf_sep);
   Log_nohead("  %-17s cnt=%-6lu total=%-6lu avg=%7.2f cyc/access", "IFU fetch:",
          (unsigned long)ifuDlyCnt, (unsigned long)ifuDlySum,

@@ -43,17 +43,17 @@ void perf_stat(void) {
   lsu_cnt[3] = PERF_F(lsu, dlyCnt3);
 
   // 总周期/总指令已由 statistic() 打印, 此处只打细分统计; 所有行统一 cnt/total/avg 格式(等宽)
-  const char *perf_sep = "==================================================================";  // 66 个 =
+  const char *perf_sep = "  ========================================================================";  // 74 宽(2空格+72个=, 与 cnt/total 10位数据行对齐)
   Log_nohead("%s", perf_sep);
-  Log_nohead("  %-17s cnt=%-6lu total=%-6lu avg=%7.2f cyc/access", "IFU fetch:",
+  Log_nohead("  %-17s cnt=%-10lu total=%-10lu avg=%7.2f cyc/access", "IFU fetch:",
          (unsigned long)ifuDlyCnt, (unsigned long)ifuDlySum,
          ifuDlyCnt ? (double)ifuDlySum / ifuDlyCnt : 0);
   const char *lsu_name[4] = {"LSU mem rd:", "LSU mem wr:", "LSU dev rd:", "LSU dev wr:"};
   for (int i = 0; i < 4; i++)
-    Log_nohead("  %-17s cnt=%-6lu total=%-6lu avg=%7.2f cyc/access", lsu_name[i],
+    Log_nohead("  %-17s cnt=%-10lu total=%-10lu avg=%7.2f cyc/access", lsu_name[i],
            (unsigned long)lsu_cnt[i], (unsigned long)lsu_sum[i],
            lsu_cnt[i] ? (double)lsu_sum[i] / lsu_cnt[i] : 0);
-  Log_nohead("  %-17s cnt=%-6lu total=%-6lu avg=%7.2f cyc/inst", "EXU calc:",
+  Log_nohead("  %-17s cnt=%-10lu total=%-10lu avg=%7.2f cyc/inst", "EXU calc:",
          (unsigned long)exuCyc, (unsigned long)exuCalcCnt,
          exuCalcCnt ? (double)exuCyc / exuCalcCnt : 0);
   const char *cls_name[7] = {"calc", "mem", "branch", "jump", "csr", "sys", "other"};

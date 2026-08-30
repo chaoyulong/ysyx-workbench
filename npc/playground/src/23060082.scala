@@ -26,7 +26,7 @@ object AxiConfig {
   )
 }
 
-case class ysyx_23060082(config: CpuConfig = CpuConfig.default) extends Component {
+case class ysyx_23060082(config: CpuConfig = CpuConfig()) extends Component {
   val io = new Bundle {
     val interrupt = in Bool()
     val io_master = master(Axi4(AxiConfig.axiConfig))

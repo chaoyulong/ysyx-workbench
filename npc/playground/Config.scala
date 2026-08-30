@@ -4,22 +4,15 @@ import spinal.core._
 import spinal.core.sim._
 import scala.reflect.runtime.universe
 
-// 配置 CPU 的参数
+// 配置 CPU 的参数(两平台统一, 直接 CpuConfig() 使用; 综合/STA 时显式 enableSimDebug = false)
 case class CpuConfig(
-  resetPc:          Long = 0x30000000L,  // 上电后的初始PC(两平台统一, 不再按平台区分)
+  resetPc:          Long = 0x30000000L,  // 上电后的初始PC(两平台统一)
   enableMul:        Boolean = false,  // 乘法器
   enableDiv:        Boolean = false,  // 触发器
   enableInterrupt:  Boolean = false,  // 中断
-  enableSimDebug:   Boolean = false   // 仿真专用调试信号(指令退休追踪/mtrace), 综合时关闭
+  enableSimDebug:   Boolean = true    // 仿真专用调试信号(指令退休追踪/mtrace), 综合时关闭
   // 以后继续加选项
 )
-
-object CpuConfig {
-  // 两平台统一配置: 复位地址 0x30000000(默认), 仿真调试(itrace/mtrace)开启
-  val default = CpuConfig(
-    enableSimDebug = true
-  )
-}
 
 
 object Config {
@@ -51,8 +44,8 @@ object SpinalToVerilog extends App {
 
   Config.spinal.generateVerilog{
     val top = topName match {
-      case "NPC_TOP" => NPC_TOP(CpuConfig.default)
-      case "ysyx_23060082" => ysyx_23060082(CpuConfig.default)
+      case "NPC_TOP" => NPC_TOP(CpuConfig())
+      case "ysyx_23060082" => ysyx_23060082(CpuConfig())
       case _ => throw new Exception(s"Unknown TOP_NAME: $topName")
     }
     top

@@ -132,6 +132,10 @@ wave: $(CSRCS) $(VSRCS)
 	@$(call build_target, $^, -D__GET_WAVE__)
 	@gtkwave $(SIM_WAVE)
 
+# 终端图形配置界面: 切换 include/config.h 的功能开关(需终端运行)
+menuconfig:
+	@python3 tools/menuconfig.py
+
 # sta: 自动用 ysyx_23060082 顶层 + 关闭仿真调试(SPINAL_SIM_DEBUG=0)生成综合用 verilog
 # 输出到 build/sta/ 独立目录, 避免覆盖仿真用的 debug=true 版本
 sta:

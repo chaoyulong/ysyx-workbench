@@ -6,7 +6,7 @@
 // 注意: CONFIG_ISA_riscv 等由 Makefile 的 -D 定义, 不在此处
 
 // trace 总开关: 配合 log_enable() 按指令数范围写日志(见 csrc/sdb/log.c)
-// #define CONFIG_TRACE 1
+#define CONFIG_TRACE 1
 #define CONFIG_TRACE_START 0          // trace 起始指令数
 #define CONFIG_TRACE_END   1000000    // trace 结束指令数
 

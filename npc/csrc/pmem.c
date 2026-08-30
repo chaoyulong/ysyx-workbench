@@ -89,3 +89,18 @@ void pmem_init(){
   *(word_t *)(flash + sizeof(word_t) * 3) = 0x00100073;  // ebreak (used as nemu_trap)
   *(word_t *)(flash + sizeof(word_t) * 4) = 0x00000297;  // some data
 }
+// ================================ sdram 存储(DPI-C, 供 ysyxsoc 的 sdram.v 调用) ================================ //
+// 4 片 sdram: [chip][bank][addr], 每片 4bank x 4M x 16位 = 32MB, 共 128MB
+static uint16_t sdram_mem[4][4][4194304];
+
+// 写: dqm 低有效(bit0=低字节, bit1=高字节), 部分写
+extern "C" void sdram_mem_write(int chip, int bank, int addr, int dqm, int data) {
+  uint16_t old = sdram_mem[chip][bank][addr];
+  if (!(dqm & 1)) old = (old & 0xFF00) | (data & 0x00FF);
+  if (!(dqm & 2)) old = (old & 0x00FF) | (data & 0xFF00);
+  sdram_mem[chip][bank][addr] = old;
+}
+
+extern "C" int sdram_mem_read(int chip, int bank, int addr) {
+  return sdram_mem[chip][bank][addr];
+}

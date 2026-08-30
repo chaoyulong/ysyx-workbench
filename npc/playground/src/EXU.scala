@@ -18,7 +18,7 @@ case class Exu2Lsu_data() extends Bundle {
 
 case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component {
   val io = new Bundle {
-    val input  = slave  Flow  (Idu2Exu_data())
+    val input  = slave  Flow  (Idu2Exu_data(config))
     val output = master Stream(Exu2Lsu_data()) 
   }
 

@@ -145,7 +145,7 @@ sta:
 	make -C /home/cyl/tools/yosys-sta sta \
 			DESIGN=$(STA_DESIGN) SDC_FILE=$(STA_SDC_FILE) \
 			CLK_FREQ_MHZ=$(STA_CLK_FREQ_MHZ) CLK_PORT_NAME=$(STA_CLK_PORT_NAME) O=$(STA_OUT) \
-			RTL_FILES="$(BUILD_DIR)/sta/$(STA_DESIGN).v"
+			RTL_FILES="$(abspath $(BUILD_DIR))/sta/$(STA_DESIGN).v"
 
 # help:
 # 	./mill -i $(SPINAL_PRJ).runMain Elborate --help

@@ -3,14 +3,15 @@ package playground
 import spinal.core._
 import spinal.lib._    // 使用spinal的模块库
 
-case class Idu2Exu_data() extends Bundle {
+case class Idu2Exu_data(config: CpuConfig = CpuConfig()) extends Bundle {
   val pc    = UInt(32 bits)
 
   val ctrl        = CtrlSignals()
   val imm         = UInt(32 bits)
   val rfReadData1 = UInt(32 bits)
   val rfReadData2 = UInt(32 bits)
-  val isCalc      = Bool()   // 计算类指令标志(供 EXU 性能统计)
+  // 计算类标志(供 EXU 性能统计): 仅仿真生成, STA 为 null(无端口)
+  val isCalc      = if (config.enableSimDebug) Bool() else null
 }
 
 case class RfCtrl() extends Bundle {  // WBU中消耗的控制信号
@@ -50,13 +51,13 @@ case class CtrlSignals() extends Bundle {   // 控制信号
 case class ysyx_23060082_IDU(config: CpuConfig = CpuConfig()) extends Component {
   val io = new Bundle {
     val input  = slave  Flow(Ifu2Idu_data())
-    val output = master Stream(Idu2Exu_data()) 
+    val output = master Stream(Idu2Exu_data(config)) 
 
     val rfRead = master(RegFileReadBus())
   }
 
   val instr   = io.input.instr
-  val decoder = ysyx_23060082_Decoder()
+  val decoder = ysyx_23060082_Decoder(config)
   decoder.instr := instr
 
   // 仿真专用: 指令类别性能计数(仅 enableSimDebug, 综合/STA 不生成)
@@ -66,14 +67,15 @@ case class ysyx_23060082_IDU(config: CpuConfig = CpuConfig()) extends Component 
     perf.io.req   := B"4'b0"
     perf.io.rsp   := B"4'b0"
     val instValid = io.input.valid
-    perf.io.evt(0) := instValid && decoder.io.isCalc
-    perf.io.evt(1) := instValid && decoder.io.isMem
-    perf.io.evt(2) := instValid && decoder.io.isBranch
-    perf.io.evt(3) := instValid && decoder.io.isJump
-    perf.io.evt(4) := instValid && decoder.io.isCsr
-    perf.io.evt(5) := instValid && decoder.io.isSys
-    perf.io.evt(6) := instValid && !(decoder.io.isCalc || decoder.io.isMem || decoder.io.isBranch ||
-                                     decoder.io.isJump || decoder.io.isCsr || decoder.io.isSys)  // 其他
+    val dc = decoder.io   // enableSimDebug 时类别端口存在
+    perf.io.evt(0) := instValid && dc.isCalc
+    perf.io.evt(1) := instValid && dc.isMem
+    perf.io.evt(2) := instValid && dc.isBranch
+    perf.io.evt(3) := instValid && dc.isJump
+    perf.io.evt(4) := instValid && dc.isCsr
+    perf.io.evt(5) := instValid && dc.isSys
+    perf.io.evt(6) := instValid && !(dc.isCalc || dc.isMem || dc.isBranch ||
+                                     dc.isJump || dc.isCsr || dc.isSys)  // 其他
     perf.io.evt(7) := instValid   // 指令总数
   }
         
@@ -91,6 +93,8 @@ case class ysyx_23060082_IDU(config: CpuConfig = CpuConfig()) extends Component 
   io.output.rfReadData2 := io.rfRead.data2
   io.output.ctrl        := decoder.io.ctrl
   io.output.imm         := decoder.io.imm
-  io.output.isCalc      := decoder.io.isCalc
+  if (config.enableSimDebug) {
+    io.output.isCalc    := decoder.io.isCalc
+  }
   // ====================================== ====================================== //
 }

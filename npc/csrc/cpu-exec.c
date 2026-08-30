@@ -152,27 +152,5 @@ static void statistic() {
   IFDEF(CONFIG_MTRACE, mtrace_stat());
   perf_stat();   // 性能计数器统计(读各模块 PerfReg)
   IFDEF(CONFIG_FTRACE, print_func());
-  // Log_nohead("    branch hit rate = %.4f%%", 100 - (float)g_ifu_branch_no_hit_cnt/(float)g_idu_i_branch * 100);
-  // Log_nohead("-----------------------------------------"); 
-  // Log("IDU:"); 
-  // Log_nohead("-----------------------------------------"); 
-  // Log_nohead("    total inst = %lu", g_idu_i_total  ); 
-  // Log_nohead("    nop inst   = %lu, %2.4f%%", g_idu_i_nop  , (float)g_idu_i_nop/(float)g_idu_i_total * 100);  
-  // Log_nohead("    mem inst   = %lu, %2.4f%%", g_idu_i_mem  , (float)g_idu_i_mem/(float)g_idu_i_total * 100);  
-  // Log_nohead("    math inst  = %lu, %2.4f%%", g_idu_i_math , (float)g_idu_i_math/(float)g_idu_i_total * 100);  
-  // Log_nohead("    csr inst   = %lu, %2.4f%%", g_idu_i_csr  , (float)g_idu_i_csr/(float)g_idu_i_total * 100);  
-  // Log_nohead("    branch inst  = %lu, %2.4f%%", g_idu_i_branch , (float)g_idu_i_branch/(float)g_idu_i_total * 100);  
-  // Log_nohead("    other inst = %lu, %2.4f%%", g_idu_i_other, (float)g_idu_i_other/(float)g_idu_i_total * 100);    
-  // Log_nohead("-----------------------------------------"); 
-  // Log("LSU:"); 
-  // Log_nohead("-----------------------------------------"); 
-  // Log_nohead("    total Rd/Wr mem     = %lu, %2.4f%%", g_lsu_rw_mem_cnt, (float)g_lsu_rw_mem_cnt/(float)(g_lsu_rw_mem_cnt + g_lsu_rw_device_cnt) * 100); 
-  // Log_nohead("    total Rd/Wr device  = %lu, %2.4f%%", g_lsu_rw_device_cnt, (float)g_lsu_rw_device_cnt/(float)(g_lsu_rw_mem_cnt + g_lsu_rw_device_cnt) * 100); 
-  // Log_nohead("    total Rd/Wr cycle = %lu", g_lsu_rw_total_time);
-  // Log_nohead("    average access cycle = %.4f cycle/mem_inst", (float)g_lsu_rw_total_time/(float)(g_lsu_rw_mem_cnt + g_lsu_rw_device_cnt));
-  // Log_nohead("-----------------------------------------"); 
-
-  // 性能计数器打印
-  // Log("Instructions per cycle = %1.4f inst/cycle", (float)g_nr_guest_inst/(float)g_nr_guest_cycle);
 }
 

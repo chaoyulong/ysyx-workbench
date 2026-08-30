@@ -139,8 +139,10 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig.ysyxSoc) extends Componen
     val mtrace = MtraceReg()
     val lsuArFire = xbar.io.lsuAxi4.ar.fire                       // 读请求握手
     val lsuWrFire = xbar.io.lsuAxi4.aw.fire && xbar.io.lsuAxi4.w.fire   // 写握手
-    // 内存范围 [0x80000000, 0x88000000), 之外视为设备(串口/键盘/RTC/VGA)
-    def isDevAddr(addr: UInt) = (addr < U("32'h80000000")) || (addr >= U("32'h88000000"))
+    // 内存范围 [resetPc, resetPc + 128MB), 之外视为设备(串口/键盘/RTC/VGA)
+    // 用 resetPc 派生: npc 与 ysyxSoc 统一布局(0x30000000)
+    def isDevAddr(addr: UInt) = (addr < U(config.resetPc, 32 bits)) ||
+                                (addr >= U(config.resetPc + 0x08000000L, 32 bits))
     mtrace.io.valid := lsuArFire || lsuWrFire
     mtrace.io.wen   := lsuWrFire
     mtrace.io.isDev := Mux(lsuArFire, isDevAddr(xbar.io.lsuAxi4.ar.addr),

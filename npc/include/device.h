@@ -5,7 +5,7 @@
 
 #define SERIAL_PORT     0x10000000
 #define KBD_ADDR        0x10011000
-#define RTC_ADDR        0xa0000048
+#define RTC_ADDR        0x02000000   // CLINT mtime
 
 // ---------------------------------------- VGA ---------------------------------------- //
 #define VGA_W           640

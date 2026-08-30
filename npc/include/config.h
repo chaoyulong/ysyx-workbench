@@ -36,6 +36,6 @@
 // #define CONFIG_DIFFTEST 1
 
 // 日志写文件: 配合 log_init 的 -l <file> 参数
-// #define CONFIG_LOG 1
+#define CONFIG_LOG 1
 
 #endif

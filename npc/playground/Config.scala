@@ -15,9 +15,9 @@ case class CpuConfig(
 )
 
 object CpuConfig {
-  // npc 平台: 仿真用, 开启 itrace 指令退休追踪
+  // npc 平台: 仿真用, 开启 itrace 指令退休追踪; 复位地址与外设布局与 ysyxsoc 统一
   val npc = CpuConfig(
-    resetPc = 0x80000000L,
+    resetPc = 0x30000000L,
     enableSimDebug = true
   )
 

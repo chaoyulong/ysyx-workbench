@@ -43,23 +43,23 @@ void perf_stat(void) {
   lsu_cnt[3] = PERF_F(lsu, dlyCnt3);
 
   uint64_t total = idu_evt[7] ? idu_evt[7] : 1;   // 指令总数
-  printf("\n========== PERF ==========\n");
-  printf("total cycles      = %lu\n", (unsigned long)lsuPerfCyc);
-  printf("total inst        = %lu\n", (unsigned long)total);
-  printf("IFU fetch:        cnt=%lu total=%lu cyc avg=%.2f cyc/access\n",
+  Log("========== PERF ==========");
+  Log_nohead("total cycles      = %lu", (unsigned long)lsuPerfCyc);
+  Log_nohead("total inst        = %lu", (unsigned long)total);
+  Log_nohead("IFU fetch:        cnt=%lu total=%lu cyc avg=%.2f cyc/access",
          (unsigned long)ifuDlyCnt, (unsigned long)ifuDlySum,
          ifuDlyCnt ? (double)ifuDlySum / ifuDlyCnt : 0);
   const char *lsu_name[4] = {"mem rd", "mem wr", "dev rd", "dev wr"};
   for (int i = 0; i < 4; i++)
-    printf("LSU %-6s:       cnt=%lu total=%lu cyc avg=%.2f cyc/access\n", lsu_name[i],
+    Log_nohead("LSU %-6s:       cnt=%lu total=%lu cyc avg=%.2f cyc/access", lsu_name[i],
            (unsigned long)lsu_cnt[i], (unsigned long)lsu_sum[i],
            lsu_cnt[i] ? (double)lsu_sum[i] / lsu_cnt[i] : 0);
-  printf("EXU calc:         cycles=%lu calc_inst=%lu (单周期 avg=1.00)\n",
+  Log_nohead("EXU calc:         cycles=%lu calc_inst=%lu (单周期 avg=1.00)",
          (unsigned long)exuCyc, (unsigned long)exuCalcCnt);
   const char *cls_name[7] = {"calc", "mem", "branch", "jump", "csr", "sys", "other"};
-  printf("inst category:\n");
+  Log_nohead("inst category:");
   for (int i = 0; i < 7; i++)
-    printf("  %-7s %6lu  %5.1f%%\n", cls_name[i],
+    Log_nohead("  %-7s %6lu  %5.1f%%", cls_name[i],
            (unsigned long)idu_evt[i], 100.0 * idu_evt[i] / total);
-  printf("==========================\n");
+  Log_nohead("==========================");
 }

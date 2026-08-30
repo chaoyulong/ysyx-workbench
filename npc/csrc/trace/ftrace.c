@@ -144,19 +144,19 @@ void func_trace(void) {
 }
 
 void print_func(void) {
-  printf("FUNC TRACE:\n");
+  Log("FUNC TRACE:");
   for (int i = 0; i < fun_buf_count; i++)
     if (fun_buf[i].call_count > 0)
-      printf("  %-30s %u calls\n", fun_buf[i].name, fun_buf[i].call_count);
+      Log_nohead("  %-30s %u calls", fun_buf[i].name, fun_buf[i].call_count);
   // 调用/返回序列: call 缩进加深打印函数名, ret 打印 "ret" 靠缩进看返回层级
-  printf("CALL/RET SEQUENCE (缩进 = 调用深度):\n");
+  Log_nohead("CALL/RET SEQUENCE (缩进 = 调用深度):");
   int depth = 0;
   for (int i = 0; i < trace_seq_cnt; i++) {
     if (trace_seq[i].is_ret) {
       if (depth > 0) depth--;
-      printf("%*sret\n", depth * 2, "");
+      Log_nohead("%*sret", depth * 2, "");
     } else {
-      printf("%*s%s\n", depth * 2, "", trace_seq[i].func->name);
+      Log_nohead("%*s%s", depth * 2, "", trace_seq[i].func->name);
       depth++;
     }
   }

@@ -74,6 +74,6 @@ void mtrace_trace(void) {
 
 // 程序结束时打印内存/设备访问统计
 void mtrace_stat(void) {
-  log_write("mtrace: mem accesses = %lu, dev accesses = %lu\n",
+  Log_nohead("mtrace: mem accesses = %lu, dev accesses = %lu",
             (unsigned long)mem_access_cnt, (unsigned long)dev_access_cnt);
 }

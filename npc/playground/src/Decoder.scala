@@ -8,6 +8,13 @@ case class ysyx_23060082_Decoder() extends Component {
     val instr       = in  UInt(32 bits)
     val ctrl        = out(CtrlSignals())
     val imm         = out UInt(32 bits)
+    // 指令类别标志(性能统计用)
+    val isCalc      = out Bool()   // 计算类(ALU/立即数)
+    val isMem       = out Bool()   // 访存(load/store)
+    val isBranch    = out Bool()   // 分支
+    val isJump      = out Bool()   // 跳转
+    val isCsr       = out Bool()   // CSR
+    val isSys       = out Bool()   // 系统(ecall/ebreak/mret/fence)
   }
 
   val instr = io.instr
@@ -94,6 +101,16 @@ case class ysyx_23060082_Decoder() extends Component {
   val typeS = op(6 downto 2) === U"01000"
   val typeB = op(6 downto 2) === U"11000"
   val typeR = op(6 downto 2) === U"01100"
+
+  // ================================ 指令类别(性能统计) ================================ //
+  io.isCalc   := i_add | i_sub | i_sll | i_slt | i_sltu | i_xor | i_srl | i_sra | i_or | i_and |
+                 i_addi | i_slli | i_slti | i_sltiu | i_xori | i_srli | i_srai | i_ori | i_andi |
+                 i_lui | i_auipc
+  io.isMem    := i_lb | i_lh | i_lw | i_lbu | i_lhu | i_sb | i_sh | i_sw
+  io.isBranch := i_beq | i_bne | i_blt | i_bge | i_bltu | i_bgeu
+  io.isJump   := i_jal | i_jalr
+  io.isCsr    := i_csrrw | i_csrrs
+  io.isSys    := i_ecall | i_ebreak | i_mret | i_fence_i
   // val typeN = (op(6 downto 2) === U"11100" && func3 === U"000") || op(6 downto 2) === U"00011"   // 系统指令
   // ================================ 立即数生成 ================================ //
   val immU = instr(31 downto 12) ## B"12'b0"

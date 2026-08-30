@@ -57,3 +57,18 @@ case class MtraceReg() extends BlackBox{
   mapClockDomain(clock = io.clock, reset = io.reset)
   addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/dpi-c.v")
 }
+
+// 仿真专用: PerfReg 性能计数器黑盒 (4组延迟 + 8事件计数, 各模块 enableSimDebug 时实例化)
+case class PerfReg() extends BlackBox{
+  val io = new Bundle{
+    val clock = in Bool()
+    val reset = in Bool()
+    val valid = in Bool()
+    val req   = in Bits(4 bits)
+    val rsp   = in Bits(4 bits)
+    val evt   = in Bits(8 bits)
+  }
+  noIoPrefix()
+  mapClockDomain(clock = io.clock, reset = io.reset)
+  addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/dpi-c.v")
+}

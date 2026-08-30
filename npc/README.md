@@ -57,3 +57,25 @@
   - `trace_and_difftest` 承担 trace 生成与输出，`exec_once` 保持纯执行（职责分离）。
 - **mcycle 测试程序**：`am-kernels/tests/cpu-tests/tests/mcycle.c`（验证递增、快照一致性、低 32 位回绕进位）。
 - **Makefile 清理**：移除无用的 `RESET_PC`（复位地址由 `CpuConfig.npc/ysyxSoc` 平台配置统一管理）。
+
+## 2026-08-30 平台统一与调试基础设施完善
+
+### 平台统一（npc / ysyxsoc）
+- **复位地址统一**：npc 与 ysyxsoc 复位地址统一为 `0x30000000`（flash 基址）；`CONFIG_MBASE` 同步统一。
+- **CpuConfig 合并**：不再区分 `CpuConfig.npc/ysyxSoc`，单一 `CpuConfig`（`resetPc` 默认 `0x30000000`、`enableSimDebug` 默认 true；综合/STA 显式关闭）。
+- **RTC 统一走 CLINT**：`RTC_ADDR` 改为 `0x02000000`（CLINT mtime），与 ysyxsoc 一致。
+
+### trace 模块化与完善（`csrc/trace/`）
+- **itrace**：指令退休追踪 + ringbuf，单步（`n <= MAX_INST_TO_PRINT`）打印反汇编；模块独立。
+- **ftrace**：`-f <elf>` 解析符号，函数调用统计 + CALL/RET 缩进序列（`-> 调用 / ret 返回`）；修复返回弹出 bug（调用者误弹导致 main 计数虚高）；`CONFIG_FTRACE_FILTER_INTERNAL` 过滤 `__` 内部函数。
+- **mtrace**：截取 `lsuAxi4`（只记数据访存，不含取指），按统一地址映射分类（flash/psram/sdram/sram + uart/spi/gpio/ps2/vga/clint 等）；`CONFIG_MTRACE_PC` 记录访存指令 pc；单步时灰色缩进显示；**支持 ysyxsoc**（读 `ysyxSoCFull` 的 mtraceReg）。
+
+### SDB / 表达式 / 监视点
+- **expr 修复**：`make_token` 缺 `break`（表达式一直不可用的根因）、负数/指针越界、TK_NEG 取负 UB、sscanf 返回值检查、tokens 数组缩小、风格统一。
+- **watchpoint 接线**：`w <expr>` / `d <no>` / `info w` 全可用（修复 cmd_d 的 strtok 崩溃、create 的 strcpy 越界）。
+- **menuconfig**：`make menuconfig` 终端图形配置界面（空格切换、依赖灰显、显示宽度对齐）。
+
+### 仿真 / 综合
+- **sdram DPI-C 化**（ysyxSoC 项目）：4 片 sdram（`chip` 端口区分 0-3）存储移入 C 侧（`sdram_mem_read/write`），sdram.v 保留命令时序逻辑。
+- **SPINAL_SIM_DEBUG**：`make sta` 自动以 `ysyx_23060082` + `SPINAL_SIM_DEBUG=0` 生成综合版（不含 itrace/mtrace 黑盒）到 `build/sta/`。
+- **EXU 输出改名**：`Exu2Lsu_data.imm` → `csrAddr`（仅用于 CSR 寻址，避免与真正立即数混淆）。

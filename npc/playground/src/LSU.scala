@@ -13,7 +13,7 @@ case class Lsu2Wbu_data() extends Bundle {
 }
 
 
-case class ysyx_23060082_LSU() extends Component {
+case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component {
   val io = new Bundle {
     val input     = slave  Flow(Exu2Lsu_data())
     val output    = master Stream(Lsu2Wbu_data()) 
@@ -70,7 +70,7 @@ case class ysyx_23060082_LSU() extends Component {
   }
   // ================================ CSR寄存器 ================================ //
   val csr = ysyx_23060082_CSR()
-  csr.io.csrAddr    := io.input.imm
+  csr.io.csrAddr    := io.input.csrAddr
   csr.io.csrWdata   := io.input.rfReadData1
   csr.io.csrCmd     := io.input.csrCtrl.csrCmd
   csr.io.trapEnter  := io.input.csrCtrl.trapEnter
@@ -96,6 +96,27 @@ case class ysyx_23060082_LSU() extends Component {
   io.output.mem_data_out:= Mux(io.input.csrCtrl.csrCmd =/= U"3'd0", csr.io.csrRdata, dataProcess.io.rdataReal)           // 借用mem_data_out来输出读出的值
   io.output.alu_data_out:= io.input.aluResult
   io.output.rfCtrl     := io.input.rfCtrl    
+
+  // ==================== 仿真专用: LSU 访存性能统计(仅仿真, 4 组: mem/dev × 读/写) ====================
+  // 内存范围(两平台统一): flash 0x30000000-0x3fffffff + psram 0x80000000-0x9fffffff + sdram 0xa0000000-0xbfffffff
+  if (config.enableSimDebug) {
+    def isDevAddr(addr: UInt) =
+      !((addr >= U("32'h30000000") && addr < U("32'h40000000")) ||
+        (addr >= U("32'h80000000") && addr < U("32'hc0000000")))
+    val arAddr = io.axi4.ar.addr
+    val awAddr = io.axi4.aw.addr
+    val perf = PerfReg()
+    perf.io.valid := True
+    perf.io.evt   := B"8'b0"
+    perf.io.req(0) := io.axi4.ar.fire && !isDevAddr(arAddr)   // mem 读请求
+    perf.io.req(1) := io.axi4.aw.fire && !isDevAddr(awAddr)   // mem 写请求
+    perf.io.req(2) := io.axi4.ar.fire &&  isDevAddr(arAddr)   // dev 读请求
+    perf.io.req(3) := io.axi4.aw.fire &&  isDevAddr(awAddr)   // dev 写请求
+    perf.io.rsp(0) := io.axi4.r.fire
+    perf.io.rsp(1) := io.axi4.b.fire
+    perf.io.rsp(2) := io.axi4.r.fire
+    perf.io.rsp(3) := io.axi4.b.fire
+  }
 }
 
 
@@ -292,4 +313,5 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
   when(io.axi4.b.fire && io.axi4.b.resp =/= Axi4.resp.OKAY) {
     report(Seq("[LSU] write resp error! resp =", io.axi4.b.resp, "addr =", io.axi4.aw.addr))
   }
+
 }

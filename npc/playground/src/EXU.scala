@@ -10,13 +10,13 @@ case class Exu2Lsu_data() extends Bundle {
   val memCtrl    = MemCtrl()       // 直通数据，在EXU中无作用
   val csrCtrl    = CsrCtrl()       // 直通数据，在EXU中无作用 
 
-  val imm         = UInt(12 bits)   // csr(位于LSU)模块中用于寄存器寻址
+  val csrAddr     = UInt(12 bits)   // 仅用于传给LSU的CSR寄存器寻址(与 EXU 的 imm 区分)
   val rfReadData1 = UInt(32 bits)   // 从寄存器中读取的数据1,在EXU及csr(位于LSU)模块中均有作用
   val rfReadData2 = UInt(32 bits)   // 从寄存器中读取的数据2,在EXU及后续模块中均有作用
   val aluResult   = UInt(32 bits)
 }
 
-case class ysyx_23060082_EXU() extends Component {
+case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component {
   val io = new Bundle {
     val input  = slave  Flow  (Idu2Exu_data())
     val output = master Stream(Exu2Lsu_data()) 
@@ -46,19 +46,30 @@ case class ysyx_23060082_EXU() extends Component {
   // ================================ 用于握手的部分 ================================ //
   val willValid = True
   io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
+
+  // 仿真专用: EXU 运算周期统计(isCalc && willValid; 当前单周期, 每条计算指令占1拍)
+  if (config.enableSimDebug) {
+    val perf = PerfReg()
+    perf.io.valid := True
+    perf.io.req   := B"4'b0"
+    perf.io.rsp   := B"4'b0"
+    perf.io.evt   := B"8'b0"
+    perf.io.evt(0) := io.input.valid && io.input.isCalc && willValid   // EXU 运算周期
+    perf.io.evt(1) := io.input.valid && io.input.isCalc                // 计算类指令数
+  }
   // ================================ 数据传输部分 ================================ //
-  io.output.pc          := io.input.pc
-  io.output.pcNext     := io.input.ctrl.aluCtrl.branch.mux(
+  io.output.pc    := io.input.pc
+  io.output.pcNext:= io.input.ctrl.aluCtrl.branch.mux(
     U"010"  -> (pcDataTmp(31 downto 1) ## B"1'b0").asUInt,
     default -> pcDataTmp
   )
   io.output.aluResult   := alu.io.aluResult
-  io.output.imm         := io.input.imm(11 downto 0)
+  io.output.csrAddr     := io.input.imm(11 downto 0)
   io.output.rfReadData1 := io.input.rfReadData1
   io.output.rfReadData2 := io.input.rfReadData2
-  io.output.rfCtrl     := io.input.ctrl.rfCtrl      // 直通数据，在EXU中无作用
-  io.output.memCtrl    := io.input.ctrl.memCtrl     // 直通数据，在EXU中无作用
-  io.output.csrCtrl    := io.input.ctrl.csrCtrl     // 直通数据，在EXU中无作用
+  io.output.rfCtrl      := io.input.ctrl.rfCtrl      // 直通数据，在EXU中无作用
+  io.output.memCtrl     := io.input.ctrl.memCtrl     // 直通数据，在EXU中无作用
+  io.output.csrCtrl     := io.input.ctrl.csrCtrl     // 直通数据，在EXU中无作用
 }
 
 /*    Branch      跳转类型

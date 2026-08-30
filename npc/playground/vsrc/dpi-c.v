@@ -95,3 +95,52 @@ module MtraceReg(
 endmodule
 
 
+
+// ------------------- 仿真专用: PerfReg 性能计数器 (仅仿真, 综合不实例化) ------------------- //
+// 通用计数器: 4 组延迟测量(req拍记时间 -> rsp拍累加延迟/次数) + 8 个事件计数(每拍+1) + 全局周期
+// 各模块(IFU/LSU/EXU/IDU)按需实例化, C 侧读字段打印统计
+module PerfReg(
+  input        clock,
+  input        reset,
+  input        valid,      // 周期计数使能(恒1)
+  input  [3:0] req,        // 4 组延迟请求拍
+  input  [3:0] rsp,        // 4 组延迟响应拍
+  input  [7:0] evt         // 8 个事件计数(每拍+1)
+);
+  reg [63:0] perfCyc;
+  reg [63:0] dlyReqTime0, dlyReqTime1, dlyReqTime2, dlyReqTime3;
+  reg [63:0] dlySum0, dlySum1, dlySum2, dlySum3;
+  reg [63:0] dlyCnt0, dlyCnt1, dlyCnt2, dlyCnt3;
+  reg [63:0] evtCnt0, evtCnt1, evtCnt2, evtCnt3;
+  reg [63:0] evtCnt4, evtCnt5, evtCnt6, evtCnt7;
+
+  always @(posedge clock or posedge reset) begin
+    if (reset) begin
+      perfCyc <= 64'h0;
+      dlyReqTime0 <= 64'h0; dlyReqTime1 <= 64'h0; dlyReqTime2 <= 64'h0; dlyReqTime3 <= 64'h0;
+      dlySum0 <= 64'h0; dlySum1 <= 64'h0; dlySum2 <= 64'h0; dlySum3 <= 64'h0;
+      dlyCnt0 <= 64'h0; dlyCnt1 <= 64'h0; dlyCnt2 <= 64'h0; dlyCnt3 <= 64'h0;
+      evtCnt0 <= 64'h0; evtCnt1 <= 64'h0; evtCnt2 <= 64'h0; evtCnt3 <= 64'h0;
+      evtCnt4 <= 64'h0; evtCnt5 <= 64'h0; evtCnt6 <= 64'h0; evtCnt7 <= 64'h0;
+    end
+    else if (valid) begin
+      perfCyc <= perfCyc + 1;
+      if (req[0]) dlyReqTime0 <= perfCyc;
+      if (req[1]) dlyReqTime1 <= perfCyc;
+      if (req[2]) dlyReqTime2 <= perfCyc;
+      if (req[3]) dlyReqTime3 <= perfCyc;
+      if (rsp[0]) begin dlySum0 <= dlySum0 + (perfCyc - dlyReqTime0); dlyCnt0 <= dlyCnt0 + 1; end
+      if (rsp[1]) begin dlySum1 <= dlySum1 + (perfCyc - dlyReqTime1); dlyCnt1 <= dlyCnt1 + 1; end
+      if (rsp[2]) begin dlySum2 <= dlySum2 + (perfCyc - dlyReqTime2); dlyCnt2 <= dlyCnt2 + 1; end
+      if (rsp[3]) begin dlySum3 <= dlySum3 + (perfCyc - dlyReqTime3); dlyCnt3 <= dlyCnt3 + 1; end
+      if (evt[0]) evtCnt0 <= evtCnt0 + 1;
+      if (evt[1]) evtCnt1 <= evtCnt1 + 1;
+      if (evt[2]) evtCnt2 <= evtCnt2 + 1;
+      if (evt[3]) evtCnt3 <= evtCnt3 + 1;
+      if (evt[4]) evtCnt4 <= evtCnt4 + 1;
+      if (evt[5]) evtCnt5 <= evtCnt5 + 1;
+      if (evt[6]) evtCnt6 <= evtCnt6 + 1;
+      if (evt[7]) evtCnt7 <= evtCnt7 + 1;
+    end
+  end
+endmodule

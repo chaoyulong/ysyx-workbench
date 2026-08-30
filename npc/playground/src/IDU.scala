@@ -10,6 +10,7 @@ case class Idu2Exu_data() extends Bundle {
   val imm         = UInt(32 bits)
   val rfReadData1 = UInt(32 bits)
   val rfReadData2 = UInt(32 bits)
+  val isCalc      = Bool()   // 计算类指令标志(供 EXU 性能统计)
 }
 
 case class RfCtrl() extends Bundle {  // WBU中消耗的控制信号
@@ -46,7 +47,7 @@ case class CtrlSignals() extends Bundle {   // 控制信号
   val csrCtrl = out(CsrCtrl())
 }
 
-case class ysyx_23060082_IDU() extends Component {
+case class ysyx_23060082_IDU(config: CpuConfig = CpuConfig()) extends Component {
   val io = new Bundle {
     val input  = slave  Flow(Ifu2Idu_data())
     val output = master Stream(Idu2Exu_data()) 
@@ -56,7 +57,26 @@ case class ysyx_23060082_IDU() extends Component {
 
   val instr   = io.input.instr
   val decoder = ysyx_23060082_Decoder()
-  decoder.instr := instr         
+  decoder.instr := instr
+
+  // 仿真专用: 指令类别性能计数(仅 enableSimDebug, 综合/STA 不生成)
+  if (config.enableSimDebug) {
+    val perf = PerfReg()
+    perf.io.valid := True
+    perf.io.req   := B"4'b0"
+    perf.io.rsp   := B"4'b0"
+    val instValid = io.input.valid
+    perf.io.evt(0) := instValid && decoder.io.isCalc
+    perf.io.evt(1) := instValid && decoder.io.isMem
+    perf.io.evt(2) := instValid && decoder.io.isBranch
+    perf.io.evt(3) := instValid && decoder.io.isJump
+    perf.io.evt(4) := instValid && decoder.io.isCsr
+    perf.io.evt(5) := instValid && decoder.io.isSys
+    perf.io.evt(6) := instValid && !(decoder.io.isCalc || decoder.io.isMem || decoder.io.isBranch ||
+                                     decoder.io.isJump || decoder.io.isCsr || decoder.io.isSys)  // 其他
+    perf.io.evt(7) := instValid   // 指令总数
+  }
+        
   // ================================ 用于握手的部分 ================================ //
   val willValid = True
   io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
@@ -71,5 +91,6 @@ case class ysyx_23060082_IDU() extends Component {
   io.output.rfReadData2 := io.rfRead.data2
   io.output.ctrl        := decoder.io.ctrl
   io.output.imm         := decoder.io.imm
+  io.output.isCalc      := decoder.io.isCalc
   // ====================================== ====================================== //
 }

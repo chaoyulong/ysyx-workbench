@@ -10,7 +10,7 @@ case class Ifu2Idu_data() extends Bundle {
 }
 
 // ================================ ================================ //
-case class ysyx_23060082_IFU(resetPc: BigInt) extends Component {
+case class ysyx_23060082_IFU(resetPc: BigInt, config: CpuConfig = CpuConfig()) extends Component {
   val io = new Bundle {
     val input  = slave  Stream(Wbu2Ifu_data())
     val output = master Stream(Ifu2Idu_data())  
@@ -39,6 +39,19 @@ case class ysyx_23060082_IFU(resetPc: BigInt) extends Component {
   // ================================ 读内存 ================================ //
   val axi4Ctrler = ysyx_23060082_Axi4_Ctrler_ReadOnly()
   io.axi4 <> axi4Ctrler.io.axi4
+
+  // 仿真专用: 取指访存性能统计(ar请求 -> r响应 延迟)
+  if (config.enableSimDebug) {
+    val perf = PerfReg()
+    perf.io.valid := True
+    perf.io.req   := B"4'b0"
+    perf.io.rsp   := B"4'b0"
+    perf.io.evt   := B"8'b0"
+    perf.io.req(0) := io.axi4.ar.fire   // 取指请求拍(记时间)
+    perf.io.rsp(0) := io.axi4.r.fire    // 取指响应拍(算延迟)
+    perf.io.evt(0) := io.axi4.ar.fire   // 取指次数
+    perf.io.evt(1) := io.axi4.r.fire    // 响应次数
+  }
   axi4Ctrler.io.readReq := (state === IfuState.Idle) && dataValid   // 数据开始有效并且处于等待状态，触发一次读取
   axi4Ctrler.io.readAddr:= pc
 

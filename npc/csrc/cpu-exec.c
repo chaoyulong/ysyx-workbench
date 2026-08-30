@@ -127,6 +127,7 @@ void cpu_exec(uint64_t n)
     case NPC_END: case NPC_ABORT:
       IFDEF(CONFIG_ITRACE, iringbuf_printf());
       IFDEF(CONFIG_MTRACE, mtrace_stat());
+      perf_stat();   // 性能计数器统计(读各模块 PerfReg)
       IFDEF(CONFIG_FTRACE, print_func());
       Log(MUXDEF(__ysyxsoc__, "ysyxsoc", "npc") ": %s at pc = 0x%08x", \
       (npc_state.state == NPC_ABORT ? ANSI_FMT("ABORT", ANSI_FG_RED) : \

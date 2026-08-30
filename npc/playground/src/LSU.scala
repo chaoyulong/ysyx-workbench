@@ -114,8 +114,8 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
     perf.io.req(3) := io.axi4.aw.fire &&  isDevAddr(awAddr)   // dev 写请求
     // 请求拍锁存类别, 响应拍按类别配对(否则 r/b.fire 无法区分是哪个请求的响应)
     val pendingIsDev = Reg(Bool()) init(False)
-    when(io.axi4.ar.fire)     { pendingIsDev := isDevAddr(arAddr) }
-    elsewhen(io.axi4.aw.fire) { pendingIsDev := isDevAddr(awAddr) }
+    pendingIsDev := Mux(io.axi4.ar.fire, isDevAddr(arAddr),
+                    Mux(io.axi4.aw.fire, isDevAddr(awAddr), pendingIsDev))
     perf.io.rsp(0) := io.axi4.r.fire && !pendingIsDev   // mem 读响应
     perf.io.rsp(1) := io.axi4.b.fire && !pendingIsDev   // mem 写响应
     perf.io.rsp(2) := io.axi4.r.fire &&  pendingIsDev   // dev 读响应

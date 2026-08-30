@@ -32,7 +32,7 @@ STA_SDC_FILE=$(abspath npc.sdc)
 STA_CLK_FREQ_MHZ=100
 STA_CLK_PORT_NAME=clock
 STA_OUT=$(abspath $(BUILD_DIR)/sta)
-STA_RTL_FILES=$(abspath $(BUILD_DIR)/ysyx_23060082.v)
+# sta 目标内自行生成到 $(BUILD_DIR)/sta/ysyx_23060082.v (SPINAL_SIM_DEBUG=0)
 
 ifneq ($(words $(CURDIR)),1)
   $(error Unsupported: GNU Make cannot build in directories containing spaces, build elsewhere: '$(CURDIR)')
@@ -132,11 +132,16 @@ wave: $(CSRCS) $(VSRCS)
 	@$(call build_target, $^, -D__GET_WAVE__)
 	@gtkwave $(SIM_WAVE)
 
+# sta: 自动用 ysyx_23060082 顶层 + 关闭仿真调试(SPINAL_SIM_DEBUG=0)生成综合用 verilog
+# 输出到 build/sta/ 独立目录, 避免覆盖仿真用的 debug=true 版本
 sta:
+	@mkdir -p $(BUILD_DIR)/sta
+	@SPINAL_TOPNAME=$(STA_DESIGN) BUILD_DIR=$(BUILD_DIR)/sta SPINAL_SIM_DEBUG=0 \
+		./mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog
 	make -C /home/cyl/tools/yosys-sta sta \
 			DESIGN=$(STA_DESIGN) SDC_FILE=$(STA_SDC_FILE) \
 			CLK_FREQ_MHZ=$(STA_CLK_FREQ_MHZ) CLK_PORT_NAME=$(STA_CLK_PORT_NAME) O=$(STA_OUT) \
-			RTL_FILES="$(STA_RTL_FILES)"
+			RTL_FILES="$(BUILD_DIR)/sta/$(STA_DESIGN).v"
 
 # help:
 # 	./mill -i $(SPINAL_PRJ).runMain Elborate --help

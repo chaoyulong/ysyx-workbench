@@ -41,11 +41,13 @@ object Config {
 object SpinalToVerilog extends App {
   // 读取环境变量
   val topName   = sys.env.getOrElse("SPINAL_TOPNAME", "NPC_TOP")
+  // 仿真调试开关: 默认开; make sta(综合)时 SPINAL_SIM_DEBUG=0 关闭(不生成 itrace/mtrace 黑盒)
+  val enableSimDebug = sys.env.getOrElse("SPINAL_SIM_DEBUG", "1") != "0"
 
   Config.spinal.generateVerilog{
     val top = topName match {
-      case "NPC_TOP" => NPC_TOP(CpuConfig())
-      case "ysyx_23060082" => ysyx_23060082(CpuConfig())
+      case "NPC_TOP" => NPC_TOP(CpuConfig(enableSimDebug = enableSimDebug))
+      case "ysyx_23060082" => ysyx_23060082(CpuConfig(enableSimDebug = enableSimDebug))
       case _ => throw new Exception(s"Unknown TOP_NAME: $topName")
     }
     top

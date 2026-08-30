@@ -62,7 +62,7 @@ extern "C" void pmem_write(uint32_t waddr, uint32_t wdata, uint8_t wmask) {
   }
 }
 
-extern "C" void flash_read(int32_t addr, int32_t *data) {
+extern "C" void flash_read(uint32_t addr, uint32_t *data) {
   uint32_t real_addr = ((uint32_t)addr & (uint32_t)(~0x3u));
   *data = *(uint32_t *)(flash + real_addr);
 }
@@ -94,13 +94,13 @@ void pmem_init(){
 static uint16_t sdram_mem[4][4][4194304];
 
 // 写: dqm 低有效(bit0=低字节, bit1=高字节), 部分写
-extern "C" void sdram_mem_write(int chip, int bank, int addr, int dqm, int data) {
+extern "C" void sdram_mem_write(uint32_t chip, uint32_t bank, uint32_t addr, uint32_t dqm, uint32_t data) {
   uint16_t old = sdram_mem[chip][bank][addr];
   if (!(dqm & 1)) old = (old & 0xFF00) | (data & 0x00FF);
   if (!(dqm & 2)) old = (old & 0x00FF) | (data & 0xFF00);
   sdram_mem[chip][bank][addr] = old;
 }
 
-extern "C" int sdram_mem_read(int chip, int bank, int addr) {
+extern "C" uint32_t sdram_mem_read(uint32_t chip, uint32_t bank, uint32_t addr) {
   return sdram_mem[chip][bank][addr];
 }

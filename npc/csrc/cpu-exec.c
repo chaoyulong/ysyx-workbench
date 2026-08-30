@@ -125,10 +125,6 @@ void cpu_exec(uint64_t n)
     case NPC_RUNNING: npc_state.state = NPC_STOP; break;
 
     case NPC_END: case NPC_ABORT:
-      IFDEF(CONFIG_ITRACE, iringbuf_printf());
-      IFDEF(CONFIG_MTRACE, mtrace_stat());
-      perf_stat();   // 性能计数器统计(读各模块 PerfReg)
-      IFDEF(CONFIG_FTRACE, print_func());
       Log(MUXDEF(__ysyxsoc__, "ysyxsoc", "npc") ": %s at pc = 0x%08x", \
       (npc_state.state == NPC_ABORT ? ANSI_FMT("ABORT", ANSI_FG_RED) : \
       npc_state.halt_ret == 0 ? ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN) : ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED)), \
@@ -149,15 +145,13 @@ static void statistic() {
   Log("total execution inst  = %lu", g_nr_guest_inst);
   if (g_nr_guest_inst > 0) Log("instructions per cycle = %1.4f inst/cycle", (float)g_nr_guest_inst / (float)g_nr_guest_cycle);
   if (g_timer > 0) Log("simulation frequency = %lu cycle/s", g_nr_guest_cycle * 1000000 / g_timer); // 仿真频率
-  else Log("Finish running in less than 1 us and can not calculate the simulation frequency");  
-  
-  // Log_nohead("-----------------------------------------");   
-  // Log("IFU:"); 
-  // Log_nohead("-----------------------------------------"); 
-  // Log_nohead("    total get inst  = %lu", g_ifu_get_inst_cnt);  
-  // Log_nohead("    get inst time   = %lu", g_ifu_get_inst_time_cnt);
-  // Log_nohead("    average if cycle= %.4f cycle/mem_inst", (float)g_ifu_get_inst_time_cnt/(float)g_ifu_get_inst_cnt);
-  // Log_nohead("    branch no hit   = %lu", g_ifu_branch_no_hit_cnt);
+  else Log("Finish running in less than 1 us and can not calculate the simulation frequency");
+
+  // 各 trace/性能统计(统一入口, assert_fail 也会走这里)
+  IFDEF(CONFIG_ITRACE, iringbuf_printf());
+  IFDEF(CONFIG_MTRACE, mtrace_stat());
+  perf_stat();   // 性能计数器统计(读各模块 PerfReg)
+  IFDEF(CONFIG_FTRACE, print_func());
   // Log_nohead("    branch hit rate = %.4f%%", 100 - (float)g_ifu_branch_no_hit_cnt/(float)g_idu_i_branch * 100);
   // Log_nohead("-----------------------------------------"); 
   // Log("IDU:"); 

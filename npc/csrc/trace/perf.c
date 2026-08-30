@@ -43,7 +43,7 @@ void perf_stat(void) {
   lsu_cnt[3] = PERF_F(lsu, dlyCnt3);
 
   uint64_t total = idu_evt[7] ? idu_evt[7] : 1;   // 指令总数
-  Log("========== PERF ==========");
+  Log_nohead("============ PERF ============");   // 无前缀(表格), 避免深层路径前缀截断
   Log_nohead("total cycles      = %lu", (unsigned long)lsuPerfCyc);
   Log_nohead("total inst        = %lu", (unsigned long)total);
   Log_nohead("IFU fetch:        cnt=%lu total=%lu cyc avg=%.2f cyc/access",

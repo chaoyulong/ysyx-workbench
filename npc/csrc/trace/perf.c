@@ -6,37 +6,42 @@
 
 // perf: 性能计数器统计(读各模块的 PerfReg 黑盒, 程序结束时打印)
 // 黑盒字段: perfCyc/dlySum0-3/dlyCnt0-3/evtCnt0-7 (64位)
+// 平台路径前缀: npc 与 ysyxsoc 的 CPU 内模块路径不同
 #ifdef __npc__
 #include "VNPC_TOP___024root.h"
+#define PERF_F(module, field)  top->rootp->NPC_TOP__DOT__cpu__DOT__##module##__DOT__perfReg_1__DOT__##field
+#elif defined(__ysyxsoc__)
+#include "VysyxSoCFull___024root.h"
+#define PERF_F(module, field)  top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__##module##__DOT__perfReg_1__DOT__##field
+#endif
 static uint64_t idu_evt[8];
 static uint64_t lsu_sum[4], lsu_cnt[4];
-#endif
 
 // 程序结束时打印性能统计
 void perf_stat(void) {
 #ifdef __npc__
   // 读各模块 PerfReg
-  idu_evt[0] = top->rootp->NPC_TOP__DOT__cpu__DOT__idu__DOT__perfReg_1__DOT__evtCnt0;
-  idu_evt[1] = top->rootp->NPC_TOP__DOT__cpu__DOT__idu__DOT__perfReg_1__DOT__evtCnt1;
-  idu_evt[2] = top->rootp->NPC_TOP__DOT__cpu__DOT__idu__DOT__perfReg_1__DOT__evtCnt2;
-  idu_evt[3] = top->rootp->NPC_TOP__DOT__cpu__DOT__idu__DOT__perfReg_1__DOT__evtCnt3;
-  idu_evt[4] = top->rootp->NPC_TOP__DOT__cpu__DOT__idu__DOT__perfReg_1__DOT__evtCnt4;
-  idu_evt[5] = top->rootp->NPC_TOP__DOT__cpu__DOT__idu__DOT__perfReg_1__DOT__evtCnt5;
-  idu_evt[6] = top->rootp->NPC_TOP__DOT__cpu__DOT__idu__DOT__perfReg_1__DOT__evtCnt6;
-  idu_evt[7] = top->rootp->NPC_TOP__DOT__cpu__DOT__idu__DOT__perfReg_1__DOT__evtCnt7;
-  uint64_t ifuDlySum  = top->rootp->NPC_TOP__DOT__cpu__DOT__ifu__DOT__perfReg_1__DOT__dlySum0;
-  uint64_t ifuDlyCnt  = top->rootp->NPC_TOP__DOT__cpu__DOT__ifu__DOT__perfReg_1__DOT__dlyCnt0;
-  uint64_t exuCyc     = top->rootp->NPC_TOP__DOT__cpu__DOT__exu__DOT__perfReg_1__DOT__evtCnt0;
-  uint64_t exuCalcCnt = top->rootp->NPC_TOP__DOT__cpu__DOT__exu__DOT__perfReg_1__DOT__evtCnt1;
-  uint64_t lsuPerfCyc = top->rootp->NPC_TOP__DOT__cpu__DOT__lsu__DOT__perfReg_1__DOT__perfCyc;
-  lsu_sum[0] = top->rootp->NPC_TOP__DOT__cpu__DOT__lsu__DOT__perfReg_1__DOT__dlySum0;
-  lsu_sum[1] = top->rootp->NPC_TOP__DOT__cpu__DOT__lsu__DOT__perfReg_1__DOT__dlySum1;
-  lsu_sum[2] = top->rootp->NPC_TOP__DOT__cpu__DOT__lsu__DOT__perfReg_1__DOT__dlySum2;
-  lsu_sum[3] = top->rootp->NPC_TOP__DOT__cpu__DOT__lsu__DOT__perfReg_1__DOT__dlySum3;
-  lsu_cnt[0] = top->rootp->NPC_TOP__DOT__cpu__DOT__lsu__DOT__perfReg_1__DOT__dlyCnt0;
-  lsu_cnt[1] = top->rootp->NPC_TOP__DOT__cpu__DOT__lsu__DOT__perfReg_1__DOT__dlyCnt1;
-  lsu_cnt[2] = top->rootp->NPC_TOP__DOT__cpu__DOT__lsu__DOT__perfReg_1__DOT__dlyCnt2;
-  lsu_cnt[3] = top->rootp->NPC_TOP__DOT__cpu__DOT__lsu__DOT__perfReg_1__DOT__dlyCnt3;
+  idu_evt[0] = PERF_F(idu, evtCnt0);
+  idu_evt[1] = PERF_F(idu, evtCnt1);
+  idu_evt[2] = PERF_F(idu, evtCnt2);
+  idu_evt[3] = PERF_F(idu, evtCnt3);
+  idu_evt[4] = PERF_F(idu, evtCnt4);
+  idu_evt[5] = PERF_F(idu, evtCnt5);
+  idu_evt[6] = PERF_F(idu, evtCnt6);
+  idu_evt[7] = PERF_F(idu, evtCnt7);
+  uint64_t ifuDlySum  = PERF_F(ifu, dlySum0);
+  uint64_t ifuDlyCnt  = PERF_F(ifu, dlyCnt0);
+  uint64_t exuCyc     = PERF_F(exu, evtCnt0);
+  uint64_t exuCalcCnt = PERF_F(exu, evtCnt1);
+  uint64_t lsuPerfCyc = PERF_F(lsu, perfCyc);
+  lsu_sum[0] = PERF_F(lsu, dlySum0);
+  lsu_sum[1] = PERF_F(lsu, dlySum1);
+  lsu_sum[2] = PERF_F(lsu, dlySum2);
+  lsu_sum[3] = PERF_F(lsu, dlySum3);
+  lsu_cnt[0] = PERF_F(lsu, dlyCnt0);
+  lsu_cnt[1] = PERF_F(lsu, dlyCnt1);
+  lsu_cnt[2] = PERF_F(lsu, dlyCnt2);
+  lsu_cnt[3] = PERF_F(lsu, dlyCnt3);
 
   uint64_t total = idu_evt[7] ? idu_evt[7] : 1;   // 指令总数
   printf("\n========== PERF ==========\n");

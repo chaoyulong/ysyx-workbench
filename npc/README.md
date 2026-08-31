@@ -93,3 +93,22 @@
 ### Makefile 修复
 - **build_target 编译/运行改 `&&`**：verilator 编译失败或 VNPC_TOP 运行失败立即退出，不再执行后续（修复 `;` 分隔不检查退出码、echo 成功误判的问题）。
 - **make sta 的 RTL_FILES 改绝对路径**：`make -C yosys-sta` 切换目录后相对路径失效的 bug。
+
+## 2026-08-31 性能评估体系与 icache
+
+### 性能评估
+- **`make perf`**：运行 microbench（test 规模），输出仿真周期/指令数/IPC + PERF 计数器表格——配合 `git checkout <commit>` 可复现历史性能；注意用 `sim` 而非 `run`（run 会触发 nvboard 永不退出）。
+- **`PERF.md`**：性能记录表（commit/说明/周期/指令/IPC/综合频率/面积/各计数器），首次记录 `ce442d4`（IPC 0.0186、最高频率 428.8MHz @500MHz目标违例、面积 19949µm²）。
+- **校准访存延迟分析**（文档 B3）：`r = CPU频率/设备频率`（如 yzh 例 1.2GHz/100MHz → r=12），延迟模块计算 `c = k*r`（k 为设备侧周期）；`apb_delayer.v` 的 `R×S` 定点实现（`MUL=3.76×128`、`>>7` 还原）与文档方案一致。
+
+### SDRAM 走 AXI（支持突发）
+- `ysyxSoC/src/Top.scala` 的 `sdramUseAXI = true`——SDRAM 改用 AXI 接口（支持突发），为 icache 突发读取做准备。
+- `axi4_delayer.v` 数据宽度 64→32 修正（与 32 位 xbar 匹配，消除 WIDTHEXPAND）。
+- **突发支持检查**：`sdram.v`（芯片模型）支持突发（BURST_LENGTH 可配、连续读写）；`sdram_axi_core`（控制器）**不支持**（MODE_REG 配 `burst=1`、`inport_len` 未实现、读状态机单次）——真正突发需改 core。
+- 模块分层：`sdram_axi`（AXI4 顶层）→ `sdram_axi_pmem`（AXI 事务引擎/突发地址计算/FIFO）→ `sdram_axi_core`（SDRAM 命令时序）。
+
+### icache（简易指令缓存，`playground/src/icache.scala`）
+- **直接映射、寄存器实现、参数化**（`IcacheParams`：块大小/块数）。
+- **接口**：`reqIn`（Stream 取指请求 pc）+ `rspOut`（Flow 指令返回 rdata/valid 完成信号）+ `axi4`（Axi4ReadOnly，缺失访存）。
+- **1 拍命中**（组合判断 valid+tag）；缺失进入 Miss 状态，**复用 ReadOnly AXI 控制器**读回并写回（valid/tag/data）；请求锁存防 Miss 期间变化。
+- 编译通过（未接线——IFU 适配与顶层连接后续进行）。

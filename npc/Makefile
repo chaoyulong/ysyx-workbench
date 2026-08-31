@@ -29,7 +29,7 @@ SPINAL_SIM_DIR = $(BUILD_DIR)/simulations
 # yosys综合相关
 STA_DESIGN=ysyx_23060082
 STA_SDC_FILE=$(abspath npc.sdc)
-STA_CLK_FREQ_MHZ=100
+STA_CLK_FREQ_MHZ=500
 STA_CLK_PORT_NAME=clock
 STA_OUT=$(abspath $(BUILD_DIR)/sta)
 # sta 目标内自行生成到 $(BUILD_DIR)/sta/ysyx_23060082.v (SPINAL_SIM_DEBUG=0)
@@ -131,6 +131,13 @@ sim: $(CSRCS) $(VSRCS)
 wave: $(CSRCS) $(VSRCS)
 	@$(call build_target, $^, -D__GET_WAVE__)
 	@gtkwave $(SIM_WAVE)
+
+# 性能测试: 运行 microbench(test规模)并输出统计(周期/指令/IPC + PERF计数器)
+# 配合 git checkout 历史 commit, 可复现当时代码的性能数据(记录见 PERF.md)
+perf:
+	$(MAKE) -C $(abspath ../am-kernels/benchmarks/microbench) \
+		ARCH=riscv32e-ysyxsoc run mainargs=test sdb=n \
+		AM_HOME=$(abspath ../abstract-machine) NPC_HOME=$(abspath .)
 
 # 终端图形配置界面: 切换 include/config.h 的功能开关(需终端运行)
 menuconfig:

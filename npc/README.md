@@ -79,3 +79,17 @@
 - **sdram DPI-C 化**（ysyxSoC 项目）：4 片 sdram（`chip` 端口区分 0-3）存储移入 C 侧（`sdram_mem_read/write`），sdram.v 保留命令时序逻辑。
 - **SPINAL_SIM_DEBUG**：`make sta` 自动以 `ysyx_23060082` + `SPINAL_SIM_DEBUG=0` 生成综合版（不含 itrace/mtrace 黑盒）到 `build/sta/`。
 - **EXU 输出改名**：`Exu2Lsu_data.imm` → `csrAddr`（仅用于 CSR 寻址，避免与真正立即数混淆）。
+
+### 性能计数器（PerfReg，统一 enableSimDebug 控制）
+- **分散到各模块**（信号就近，STA 零成本排除）：
+  - **IDU/decoder**：指令类别统计（calc/mem/branch/jump/csr/sys/other + 总数）——decoder 类别端口**条件生成**（`val isCalc = if (enableSimDebug) out Bool() else null`，STA 时 null 无端口）；
+  - **EXU**：运算周期（`isCalc && willValid`，单周期 1:1，isCalc 由 IDU 经 `Idu2Exu_data` 条件字段传入）；
+  - **IFU**：取指延迟（ar→r 配对）；
+  - **LSU**：访存延迟 4 组（mem/dev × rd/wr），`pendingIsDev` 寄存器在请求拍锁存类别，响应拍正确配对（修复 r/b 无法区分请求来源的 bug）。
+- **PerfReg 黑盒**（dpi-c.v）：4 组延迟测量 + 8 个事件计数 + 全局周期，各模块 `enableSimDebug` 条件实例化。
+- **C 侧 `csrc/trace/perf.c`**：双平台（PERF_F 宏）读取，输出 IFU/LSU 延迟与平均、EXU 计算周期、指令类别占比（npc：flash 快速 1 cyc；ysyxsoc：SDRAM 延迟真实可见）。
+- **statistic() 统一统计**：CPI/仿真频率（Log）+ PERF 表格（Log_nohead，名称 17 列、cnt/total 10 位、avg 7 位、边框等宽对齐）；mtrace/ftrace 统计也并入。
+
+### Makefile 修复
+- **build_target 编译/运行改 `&&`**：verilator 编译失败或 VNPC_TOP 运行失败立即退出，不再执行后续（修复 `;` 分隔不检查退出码、echo 成功误判的问题）。
+- **make sta 的 RTL_FILES 改绝对路径**：`make -C yosys-sta` 切换目录后相对路径失效的 bug。

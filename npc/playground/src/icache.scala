@@ -94,9 +94,11 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
     .otherwise { state := IcacheState.Miss }
   }
 
-  // 访存控制(用锁存的请求)
-  axi4Ctrler.io.readReq  := (state === IcacheState.Miss)
-  axi4Ctrler.io.readAddr := (pcReg(31 downto 2) ## U"2'b00").asUInt   // 4B 块对齐地址
+  // 访存控制: readReq 仅一拍脉冲(进入 Miss 拍)——ReadOnly 控制器的 readReq 持续高会重复发请求
+  // 地址用当前请求 pc(Miss 期间 reqIn 保持稳定); 4B 块对齐
+  val enterMiss = (state === IcacheState.Idle) && io.reqIn.valid && !hit
+  axi4Ctrler.io.readReq  := enterMiss
+  axi4Ctrler.io.readAddr := (io.reqIn.pc(31 downto 2) ## U"2'b00").asUInt
 
   // 缺失完成: 写回 cache(valid/tag/data)
   when(missDone) {

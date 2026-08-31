@@ -38,19 +38,6 @@ ifneq ($(words $(CURDIR)),1)
   $(error Unsupported: GNU Make cannot build in directories containing spaces, build elsewhere: '$(CURDIR)')
 endif
 
-ifeq ($(VERILATOR_ROOT),)
-  VERILATOR = verilator
-else
-  export VERILATOR_ROOT
-  VERILATOR = $(VERILATOR_ROOT)/bin/verilator
-endif
-
-VERILATOR_CFLAGS += -MMD --build -cc  \
-				-O3 --x-assign fast --x-initial fast --noassert \
-				--trace-fst --relative-includes	\
-				--no-timing --timescale "1ns/1ns"	\
-				--autoflush
-
 default: $(BIN)
 
 $(shell mkdir -p $(BUILD_DIR))
@@ -65,6 +52,14 @@ $(SRC_AUTO_BIND): $(NXDC_FILES)
 include $(NVBOARD_HOME)/scripts/nvboard.mk
 
 # verilator相关
+VERILATOR = verilator
+
+VERILATOR_CFLAGS += -MMD --build -cc  \
+				-O3 --x-assign fast --x-initial fast --noassert \
+				--trace-fst --relative-includes	\
+				--no-timing --timescale "1ns/1ns"	\
+				--autoflush
+
 VSRCS += $(SPINAL_VFILE)
 VSRCS += $(shell find $(abspath playground/vsrc) -name "*.v")
 CSRCS = $(shell find $(abspath csrc) -name "*.c" -or -name "*.cc" -or -name "*.cpp")

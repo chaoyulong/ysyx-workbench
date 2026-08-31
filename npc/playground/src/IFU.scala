@@ -62,18 +62,18 @@ case class ysyx_23060082_IFU(resetPc: BigInt, config: CpuConfig = CpuConfig()) e
   switch(state) {
     is(IfuState.Idle) {
       when(dataValid && !icache.io.rspOut.valid) {state := IfuState.WaitMem}  // 请求未完成(缺失/等待), 进入等待
-      .otherwise{state := state}
+      .otherwise{state := IfuState.Idle}
     }
     is(IfuState.WaitMem) {
-      when(icache.io.rspOut.valid) {
-        when(io.output.fire){state := IfuState.Idle}     // 若已经握手成功，则返回到Idle状态
-        .otherwise{state := IfuState.Done}
+      when(icache.io.rspOut.valid) {                    // icache取出并且数据传到ifu中
+        when(io.output.fire){ state := IfuState.Idle }  // 若已经握手成功，则返回到Idle状态
+        .otherwise{ state := IfuState.Done }
       }
-      .otherwise{state := state}
+      .otherwise{ state := IfuState.WaitMem }
     }
     is(IfuState.Done) {
       when(io.output.fire) {state := IfuState.Idle}    
-      .otherwise{state := state}    
+      .otherwise{state := IfuState.Done}    
     }
   }
 

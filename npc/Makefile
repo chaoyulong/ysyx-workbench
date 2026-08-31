@@ -134,9 +134,10 @@ wave: $(CSRCS) $(VSRCS)
 
 # 性能测试: 运行 microbench(test规模)并输出统计(周期/指令/IPC + PERF计数器)
 # 配合 git checkout 历史 commit, 可复现当时代码的性能数据(记录见 PERF.md)
+# 注意: 用 sim 而非 run(run 会调用 nvboard, 永不退出)
 perf:
 	$(MAKE) -C $(abspath ../am-kernels/benchmarks/microbench) \
-		ARCH=riscv32e-ysyxsoc run mainargs=test sdb=n \
+		ARCH=riscv32e-ysyxsoc sim mainargs=test sdb=n \
 		AM_HOME=$(abspath ../abstract-machine) NPC_HOME=$(abspath .)
 
 # 终端图形配置界面: 切换 include/config.h 的功能开关(需终端运行)

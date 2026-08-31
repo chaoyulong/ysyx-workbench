@@ -317,7 +317,7 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
 
   // 写响应错误检查: 从机返回非 OKAY 时仿真报错
   when(io.axi4.b.fire && io.axi4.b.resp =/= Axi4.resp.OKAY) {
-    report(Seq("[LSU] write resp error! resp =", io.axi4.b.resp, ",addr =", io.axi4.aw.addr))
+    report(Seq("[LSU] write resp error! resp =", io.axi4.b.resp, ", addr =", io.axi4.aw.addr))
   }
 
 }

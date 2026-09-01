@@ -28,8 +28,7 @@ static void welcome()
       "If it is not necessary, you can disable it in csrc/config.h");
 #endif
   Log("Build time: %s, %s", __TIME__, __DATE__);
-  // Log("Welcome to %s!", ANSI_FMT(ISA_NAME "-" MUXDEF(__ysyxsoc__, "ysyxsoc", "npc"), ANSI_FG_YELLOW ANSI_BG_RED));
-  Log("Welcome to %s!", ANSI_FMT("ISA_NAME" "-" MUXDEF(__ysyxsoc__, "ysyxsoc", "npc"), ANSI_FG_YELLOW ANSI_BG_RED));
+  Log("Welcome to %s!", ANSI_FMT(str(riscv32e) "-npc", ANSI_FG_YELLOW ANSI_BG_RED));
   Log("For help, type \"help\"");
 }
 

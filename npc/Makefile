@@ -64,7 +64,7 @@ VSRCS += $(SPINAL_VFILE)
 VSRCS += $(shell find $(abspath playground/vsrc) -name "*.v")
 CSRCS = $(shell find $(abspath csrc) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
 INCFLAGS = $(addprefix -I, $(INC_PATH))
-CXXFLAGS += $(INCFLAGS) -DTOP_NAME="\"V$(TOPNAME)\"" -D__$(ISA)__ -D__$(PARTFORM)__ -DISA_NAME="\"$(ISA)\""
+CXXFLAGS += $(INCFLAGS) -DTOP_NAME="\"V$(TOPNAME)\"" -D__$(ISA)__ -D__$(PARTFORM)__
 CXXFLAGS += $(shell pkg-config --cflags sdl2)
 LDFLAGS += -lreadline $(shell pkg-config --libs sdl2)
 override ARGS ?=
@@ -131,7 +131,7 @@ wave: $(CSRCS) $(VSRCS)
 # 配合 git checkout 历史 commit, 可复现当时代码的性能数据(记录见 PERF.md)
 # 注意: 用 sim 而非 run(run 会调用 nvboard, 永不退出)
 perf:
-	$(MAKE) -C $(abspath ../am-kernels/benchmarks/microbench) \
+	@$(MAKE) -C $(abspath ../am-kernels/benchmarks/microbench) \
 		ARCH=riscv32e-ysyxsoc sim mainargs=test sdb=n \
 		AM_HOME=$(abspath ../abstract-machine) NPC_HOME=$(abspath .)
 

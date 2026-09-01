@@ -111,4 +111,4 @@
 - **直接映射、寄存器实现、参数化**（`IcacheParams`：块大小/块数）。
 - **接口**：`reqIn`（Stream 取指请求 pc）+ `rspOut`（Flow 指令返回 rdata/valid 完成信号）+ `axi4`（Axi4ReadOnly，缺失访存）。
 - **1 拍命中**（组合判断 valid+tag）；缺失进入 Miss 状态，**复用 ReadOnly AXI 控制器**读回并写回（valid/tag/data）；请求锁存防 Miss 期间变化。
-- **已接入 IFU**：IFU 发取指请求（`reqIn` Stream）、等指令返回（`rspOut` Flow）；只读 AXI 控制器内嵌 icache；`fenceI` 链路（decoder→WBU→IFU→icache 清有效位）完成。
+- 编译通过（未接线——IFU 适配与顶层连接后续进行）。

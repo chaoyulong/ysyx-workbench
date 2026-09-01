@@ -46,7 +46,6 @@ case class CtrlSignals() extends Bundle {   // 控制信号
   val aluCtrl = out(AluCtrl())
   val memCtrl = out(MemCtrl())
   val csrCtrl = out(CsrCtrl())
-  val fenceI  = out Bool()     // fence.i 指令(指令内存屏障, 需失效 icache)
 }
 
 case class ysyx_23060082_IDU(config: CpuConfig = CpuConfig()) extends Component {

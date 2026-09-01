@@ -165,6 +165,7 @@ case class ysyx_23060082_Decoder(config: CpuConfig = CpuConfig()) extends Compon
   io.ctrl.rfCtrl.mem2reg := op(6 downto 2) === U"00000"       // i_lb | i_lh | i_lw | i_lbu | i_lhu
   io.ctrl.rfCtrl.csr2reg := csrWb
   io.ctrl.memCtrl.memWr  := typeS                            // i_sb | i_sh | i_sw
+  io.ctrl.fenceI        := i_fence_i                         // fence.i: 指令内存屏障
   io.ctrl.memCtrl.memOp  := func3  
   // ================================ csr寄存器 ================================ //
   // 操作：

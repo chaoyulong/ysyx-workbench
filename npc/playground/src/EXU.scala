@@ -14,6 +14,7 @@ case class Exu2Lsu_data() extends Bundle {
   val rfReadData1 = UInt(32 bits)   // 从寄存器中读取的数据1,在EXU及csr(位于LSU)模块中均有作用
   val rfReadData2 = UInt(32 bits)   // 从寄存器中读取的数据2,在EXU及后续模块中均有作用
   val aluResult   = UInt(32 bits)
+  val fenceI      = Bool()          // fence.i(直通, 通知 icache 失效)
 }
 
 case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component {
@@ -65,6 +66,7 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
   )
   io.output.aluResult   := alu.io.aluResult
   io.output.csrAddr     := io.input.imm(11 downto 0)
+  io.output.fenceI      := io.input.ctrl.fenceI
   io.output.rfReadData1 := io.input.rfReadData1
   io.output.rfReadData2 := io.input.rfReadData2
   io.output.rfCtrl      := io.input.ctrl.rfCtrl      // 直通数据，在EXU中无作用

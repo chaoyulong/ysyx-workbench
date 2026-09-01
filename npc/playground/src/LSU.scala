@@ -10,7 +10,6 @@ case class Lsu2Wbu_data() extends Bundle {
   val mem_data_out  = UInt(32 bits)
   val alu_data_out  = UInt(32 bits) 
   val rfCtrl       = RfCtrl()      // 其中的mem2reg信号会作为读内存信号被用到
-  val fenceI       = Bool()        // fence.i(直通, WBU 据此通知 IFU 失效 icache)
 }
 
 
@@ -97,7 +96,6 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   io.output.mem_data_out:= Mux(io.input.csrCtrl.csrCmd =/= U"3'd0", csr.io.csrRdata, dataProcess.io.rdataReal)           // 借用mem_data_out来输出读出的值
   io.output.alu_data_out:= io.input.aluResult
   io.output.rfCtrl     := io.input.rfCtrl    
-  io.output.fenceI     := io.input.fenceI
 
   // ==================== 仿真专用: LSU 访存性能统计(仅仿真, 4 组: mem/dev × 读/写) ====================
   // 内存范围(两平台统一): flash 0x30000000-0x3fffffff + psram 0x80000000-0x9fffffff + sdram 0xa0000000-0xbfffffff
@@ -317,7 +315,7 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
 
   // 写响应错误检查: 从机返回非 OKAY 时仿真报错
   when(io.axi4.b.fire && io.axi4.b.resp =/= Axi4.resp.OKAY) {
-    report(Seq("[LSU] write resp error! resp =", io.axi4.b.resp, ", addr =", io.axi4.aw.addr))
+    report(Seq("[LSU] write resp error! resp =", io.axi4.b.resp, "addr =", io.axi4.aw.addr))
   }
 
 }

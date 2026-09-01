@@ -36,36 +36,34 @@ case class ysyx_23060082_IFU(resetPc: BigInt, config: CpuConfig = CpuConfig()) e
   }
   // ================================ PC寄存器 ================================ //
   val pc = RegNextWhen(io.input.pcNext, io.input.fire) init(U(resetPc, 32 bits))
-  // ================================ 指令缓存 (icache) ================================ //
-  // icache 内嵌: 持有只读 AXI 控制器(缺失访存); IFU 只发取指请求、等指令返回
-  val icache = ysyx_23060082_Icache()
-  io.axi4 <> icache.io.axi4
-  icache.io.fenceI := io.input.fenceI    // fence.i: 清空 icache 有效位
-  icache.io.reqIn.valid := (state === IfuState.Idle) && dataValid   // Idle 且数据有效: 发取指请求
-  icache.io.reqIn.pc    := pc
+  // ================================ 读内存 ================================ //
+  val axi4Ctrler = ysyx_23060082_Axi4_Ctrler_ReadOnly()
+  io.axi4 <> axi4Ctrler.io.axi4
 
-  // 仿真专用: 取指性能统计(请求 -> 响应 延迟, 含命中/缺失)
+  // 仿真专用: 取指访存性能统计(ar请求 -> r响应 延迟)
   if (config.enableSimDebug) {
     val perf = PerfReg()
     perf.io.valid := True
     perf.io.req   := B"4'b0"
     perf.io.rsp   := B"4'b0"
     perf.io.evt   := B"8'b0"
-    perf.io.req(0) := icache.io.reqIn.fire   // 取指请求拍(记时间)
-    perf.io.rsp(0) := icache.io.rspOut.valid // 取指响应拍(算延迟)
-    perf.io.evt(0) := icache.io.reqIn.fire   // 取指次数
-    perf.io.evt(1) := icache.io.rspOut.valid // 响应次数
+    perf.io.req(0) := io.axi4.ar.fire   // 取指请求拍(记时间)
+    perf.io.rsp(0) := io.axi4.r.fire    // 取指响应拍(算延迟)
+    perf.io.evt(0) := io.axi4.ar.fire   // 取指次数
+    perf.io.evt(1) := io.axi4.r.fire    // 响应次数
   }
+  axi4Ctrler.io.readReq := (state === IfuState.Idle) && dataValid   // 数据开始有效并且处于等待状态，触发一次读取
+  axi4Ctrler.io.readAddr:= pc
 
-  val rdataReg = RegNextWhen(icache.io.rspOut.rdata, icache.io.rspOut.valid) init(0)  // 响应时更新数据
+  val rdataReg = RegNextWhen(axi4Ctrler.io.readData, state === IfuState.WaitMem && axi4Ctrler.io.readEnd) init(0)  // 读完时更新数据
   // ================================ 状态机 ================================ //
   switch(state) {
     is(IfuState.Idle) {
-      when(dataValid && !icache.io.rspOut.valid) {state := IfuState.WaitMem}  // 请求未完成(缺失/等待), 进入等待
+      when(dataValid) {state := IfuState.WaitMem}     // 握手成功或者复位结束，都会触发读取 
       .otherwise{state := state}
     }
     is(IfuState.WaitMem) {
-      when(icache.io.rspOut.valid) {
+      when(axi4Ctrler.io.readEnd) {
         when(io.output.fire){state := IfuState.Idle}     // 若已经握手成功，则返回到Idle状态
         .otherwise{state := IfuState.Done}
       }
@@ -79,13 +77,13 @@ case class ysyx_23060082_IFU(resetPc: BigInt, config: CpuConfig = CpuConfig()) e
 
   // ================================ 用于握手的部分 ================================ //
   // willValid的意义就是当前周期就可以完成任务
-  val willValid = ((state === IfuState.Idle || state === IfuState.WaitMem) && icache.io.rspOut.valid) ||  // 命中同拍/缺失完成
+  val willValid = (state === IfuState.WaitMem && axi4Ctrler.io.readEnd) ||       // 访存完成
                   (state === IfuState.Done)
   io.output.valid := dataValid && willValid  
   io.input.ready := !dataValid || io.output.fire
   // ================================ 数据传输部分 ================================ //
   io.output.pc    := pc
-  io.output.instr := Mux(icache.io.rspOut.valid, icache.io.rspOut.rdata, rdataReg)
+  io.output.instr := Mux(state === IfuState.WaitMem && axi4Ctrler.io.readEnd, axi4Ctrler.io.readData, rdataReg)
 }
 
 /* ****************************************************************

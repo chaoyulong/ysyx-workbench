@@ -64,7 +64,7 @@ VSRCS += $(SPINAL_VFILE)
 VSRCS += $(shell find $(abspath playground/vsrc) -name "*.v")
 CSRCS = $(shell find $(abspath csrc) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
 INCFLAGS = $(addprefix -I, $(INC_PATH))
-CXXFLAGS += $(INCFLAGS) -DTOP_NAME="\"V$(TOPNAME)\"" -D__$(ISA)__ -D__$(PARTFORM)__
+CXXFLAGS += $(INCFLAGS) -DTOP_NAME="\"V$(TOPNAME)\"" -D__$(ISA)__ -D__$(PARTFORM)__ -DISA_NAME=$(ISA) -DPARTFORM_NAME=$(PARTFORM)
 CXXFLAGS += $(shell pkg-config --cflags sdl2)
 LDFLAGS += -lreadline $(shell pkg-config --libs sdl2)
 override ARGS ?=

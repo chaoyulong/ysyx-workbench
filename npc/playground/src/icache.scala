@@ -55,8 +55,10 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
 
   // ================================ 握手成功锁存数据 ================================ //
   val pcReg    = RegNextWhen(io.reqIn.pc, io.reqIn.fire) init(0)
-  val indexReg = RegNextWhen(index      , io.reqIn.fire) init(0)
-  val tagReg   = RegNextWhen(tag        , io.reqIn.fire) init(0)
+  // val indexReg = RegNextWhen(index      , io.reqIn.fire) init(0)
+  // val tagReg   = RegNextWhen(tag        , io.reqIn.fire) init(0)
+  val tagPcReg    = io.reqIn.pcReg(31 downto indexBits + lineBits)          
+  val indexPcReg  = io.reqIn.pcReg(indexBits + lineBits - 1 downto lineBits)
   val reqFire  = io.reqIn.fire
 
   // ================================ 状态机 ================================ //
@@ -88,9 +90,9 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
 
   // 缺失完成: 写回cache(valid/tag/data)
   when(missDone) {
-    dataMem(indexReg)  := axi4Ctrler.io.readData
-    tagMem(indexReg)   := tagReg
-    validReg(indexReg) := True
+    dataMem (indexPcReg) := axi4Ctrler.io.readData
+    tagMem  (indexPcReg) := tagRegPcReg
+    validReg(indexPcReg) := True
   }
   // fence.i: 清空全部有效位(后续取指缺失重读新指令)
   when(io.fenceI) {

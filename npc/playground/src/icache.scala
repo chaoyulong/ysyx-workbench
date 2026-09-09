@@ -40,9 +40,6 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
   val indexBits = log2Up(param.lines)       // 索引位数(index)
   val tagBits   = 32 - lineBits - indexBits // tag 位数
 
-  val tag    = io.reqIn.pc(31 downto indexBits + lineBits)            // 按照每块4字节，16块来计算的话，tag = io.reqIn.pc(31 downto 6)
-  val index  = io.reqIn.pc(indexBits + lineBits - 1 downto lineBits)  // 按照每块4字节，16块来计算的话，index = io.reqIn.pc(5 downto 2)
-
   // ================================ 存储阵列 (寄存器) ================================ //
   val dataMem  = Reg(Vec(UInt(32 bits), param.lines))       // 数据
   val tagMem   = Reg(Vec(UInt(tagBits bits), param.lines))  // 标签
@@ -57,42 +54,40 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
   val tagReg   = RegNextWhen(tag        , io.reqIn.fire) init(0)
   val reqFire  = io.reqIn.fire
 
+  val tag    = io.reqIn.pc(31 downto indexBits + lineBits)            // 按照每块4字节，16块来计算的话，tag = io.reqIn.pc(31 downto 6)
+  val index  = io.reqIn.pc(indexBits + lineBits - 1 downto lineBits)  // 按照每块4字节，16块来计算的话，index = io.reqIn.pc(5 downto 2)
   // ================================ 状态机 ================================ //
   object IcacheState extends SpinalEnum {
     val Idle, Miss = newElement()
   }
   val state = Reg(IcacheState()) init(IcacheState.Idle)
 
-  // 只读 AXI 控制器(缺失访存)
-  val axi4Ctrler = ysyx_23060082_Axi4_Ctrler_ReadOnly()
-  io.axi4 <> axi4Ctrler.io.axi4
-
-  // 请求握手: Idle 时接受(命中同拍组合返回rspOut, 缺失进入Miss)
-  io.reqIn.ready := (state === IcacheState.Idle)
-
-  // 响应: 命中(请求拍组合) 或 缺失完成拍
-  val missDone = (state === IcacheState.Miss) && axi4Ctrler.io.readEnd
-  io.rspOut.valid := (reqFire && hit) || missDone
-  io.rspOut.rdata := Mux(reqFire && hit,
-                          dataMem(index),
-                          axi4Ctrler.io.readData)
-
-  // 状态转移
   when(state === IcacheState.Idle) {
     when(io.reqIn.valid && !hit) { state := IcacheState.Miss }  // 有请求但是没有命中
     .otherwise { state := IcacheState.Idle }
   } elsewhen(state === IcacheState.Miss) {
     when(axi4Ctrler.io.readEnd) { state := IcacheState.Idle }   // 访存完成, 返回
     .otherwise { state := IcacheState.Miss }
-  }
+  } 
+  // ================================  ================================ //
+  // ifu的axi交给icache控制
+  val axi4Ctrler = ysyx_23060082_Axi4_Ctrler_ReadOnly()
+  io.axi4 <> axi4Ctrler.io.axi4
 
-  // 访存控制: readReq 仅一拍脉冲(进入 Miss 拍)——ReadOnly 控制器的 readReq 持续高会重复发请求
-  // 地址用当前请求 pc(Miss 期间 reqIn 保持稳定); 4B 块对齐
+  // 请求握手: Idle时接受(命中同拍组合返回rspOut, 缺失进入Miss)
+  io.reqIn.ready := (state === IcacheState.Idle)
+
+  // 命中 或 缺失但是读取完成
+  val missDone = (state === IcacheState.Miss) && axi4Ctrler.io.readEnd
+  io.rspOut.valid := (io.reqIn.fire && hit) || missDone
+  io.rspOut.rdata := Mux(io.reqIn.fire && hit, dataMem(index), axi4Ctrler.io.readData)
+                          
+  // readReq要求只持续一个周期
   val enterMiss = (state === IcacheState.Idle) && io.reqIn.valid && !hit
   axi4Ctrler.io.readReq  := enterMiss
-  axi4Ctrler.io.readAddr := (io.reqIn.pc(31 downto 2) ## U"2'b00").asUInt
+  axi4Ctrler.io.readAddr := (io.reqIn.pc(31 downto 2) ## U"2'b00").asUInt // 地址对齐
 
-  // 缺失完成: 写回 cache(valid/tag/data)
+  // 缺失完成: 写回cache(valid/tag/data)
   when(missDone) {
     dataMem(indexReg)  := axi4Ctrler.io.readData
     tagMem(indexReg)   := tagReg

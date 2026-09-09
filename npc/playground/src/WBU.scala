@@ -8,9 +8,9 @@ case class Wbu2Ifu_data() extends Bundle {
   val fenceI       = Bool()      // fence.i: 通知 IFU 失效 icache
 }
 
-case class ysyx_23060082_WBU() extends Component {
+case class ysyx_23060082_WBU(config: CpuConfig = CpuConfig()) extends Component {
   val io = new Bundle {
-    val input   = slave Flow(Lsu2Wbu_data())
+    val input   = slave Flow(Lsu2Wbu_data(config))
     val output  = master Stream(Wbu2Ifu_data()) 
 
     val rfWrite = master(RegFileWriteBus())

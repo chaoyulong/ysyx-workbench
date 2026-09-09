@@ -35,7 +35,7 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   val axi4Ctrler  = ysyx_23060082_Axi4_Ctrler()   // AXI总线控制
   // ---- 数据处理连接 ----
   dataProcess.io.addrOp := memAddr(1 downto 0) ## io.input.memCtrl.memOp    // 合并 addr + MemOp 生成 5 位索引
-  dataProcess.io.wdata  := io.input.rfReadData2                               // 写数据为寄存器2的数据
+  dataProcess.io.wdata  := io.input.rfReadData                              // 写数据为rs2的数据
   // ---- AXI控制器连接 ----
   io.axi4 <> axi4Ctrler.io.axi4
   axi4Ctrler.io.readReq  := needRead  && (state === LsuState.Idle)
@@ -72,13 +72,13 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   // ================================ CSR寄存器 ================================ //
   val csr = ysyx_23060082_CSR()
   csr.io.csrAddr    := io.input.csrAddr
-  csr.io.csrWdata   := io.input.rfReadData1
+  csr.io.csrWdata   := io.input.rfReadData
   csr.io.csrCmd     := io.input.csrCtrl.csrCmd
   csr.io.trapEnter  := io.input.csrCtrl.trapEnter
   csr.io.trapExit   := io.input.csrCtrl.trapExit
   csr.io.pcIn       := io.input.pcOrNext
   csr.io.causeIn    := Mux(io.input.csrCtrl.illegal, U(2),
-                       Mux(io.input.csrCtrl.ebreak , U(3), io.input.rfReadData1))
+                       Mux(io.input.csrCtrl.ebreak , U(3), io.input.rfReadData))
   csr.io.instrRetire := io.output.fire    // 指令传出LSU即计数(比写回提前1拍, 总数正确)
 
   // ================================ 用于握手的部分 ================================ //

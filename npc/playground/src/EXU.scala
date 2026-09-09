@@ -12,8 +12,7 @@ case class Exu2Lsu_data(config: CpuConfig = CpuConfig()) extends Bundle {
   val csrCtrl     = CsrCtrl()       // 直通数据，在EXU中无作用 
 
   val csrAddr     = UInt(12 bits)   // 仅用于传给LSU的CSR寄存器寻址(与 EXU 的 imm 区分)
-  val rfReadData1 = UInt(32 bits)   // 从寄存器中读取的数据1,在EXU及csr(位于LSU)模块中均有作用
-  val rfReadData2 = UInt(32 bits)   // 从寄存器中读取的数据2,在EXU及后续模块中均有作用
+  val rfReadData  = UInt(32 bits)   // rs1只用于CSR类指令，rs2只用于store，一条指令不可能同时是两者
   val aluResult   = UInt(32 bits)
   val fenceI      = Bool()          // fence.i(直通, 通知 icache 失效)
 }
@@ -65,15 +64,16 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
   }
   // ================================ 数据传输部分 ================================ //
   if (config.enableSimDebug) { io.output.pc := io.input.pc }          // 仿真专用
-  io.output.pcOrNext := Mux(io.input.ctrl.csrCtrl.trapEnter, io.input.pc, pcNext)
-  io.output.aluResult   := alu.io.aluResult
-  io.output.csrAddr     := io.input.imm(11 downto 0)
-  io.output.fenceI      := io.input.ctrl.fenceI
-  io.output.rfReadData1 := io.input.rfReadData1
-  io.output.rfReadData2 := io.input.rfReadData2
-  io.output.rfCtrl      := io.input.ctrl.rfCtrl      // 直通数据，在EXU中无作用
-  io.output.memCtrl     := io.input.ctrl.memCtrl     // 直通数据，在EXU中无作用
-  io.output.csrCtrl     := io.input.ctrl.csrCtrl     // 直通数据，在EXU中无作用
+
+  val useRs1 = io.input.ctrl.csrCtrl.trapEnter || (io.input.ctrl.csrCtrl.csrCmd =/= 0)  // rs1: CSR，rs2: store
+  io.output.rfData    := Mux(useRs1, io.input.rfReadData1, io.input.rfReadData2)
+  io.output.pcOrNext  := Mux(io.input.ctrl.csrCtrl.trapEnter, io.input.pc, pcNext)
+  io.output.aluResult := alu.io.aluResult
+  io.output.csrAddr   := io.input.imm(11 downto 0)
+  io.output.fenceI    := io.input.ctrl.fenceI
+  io.output.rfCtrl    := io.input.ctrl.rfCtrl      // 直通数据，在EXU中无作用
+  io.output.memCtrl   := io.input.ctrl.memCtrl     // 直通数据，在EXU中无作用
+  io.output.csrCtrl   := io.input.ctrl.csrCtrl     // 直通数据，在EXU中无作用
 }
 
 /*    Branch      跳转类型

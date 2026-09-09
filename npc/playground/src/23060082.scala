@@ -93,11 +93,11 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig()) extends Component {
   }
   // ================================================================ //
   val regFile = ysyx_23060082_RegFile()
-  val ifu     = ysyx_23060082_IFU(config.resetPc, config)
+  val ifu     = ysyx_23060082_IFU(config)
   val idu     = ysyx_23060082_IDU(config)
   val exu     = ysyx_23060082_EXU(config)
   val lsu     = ysyx_23060082_LSU(config)
-  val wbu     = ysyx_23060082_WBU()
+  val wbu     = ysyx_23060082_WBU(config)
   
   pipelineConnect(ifu.io.output, idu.io.input, idu.io.output)
   pipelineConnect(idu.io.output, exu.io.input, exu.io.output)

@@ -10,7 +10,7 @@ case class Ifu2Idu_data() extends Bundle {
 }
 
 // ================================ ================================ //
-case class ysyx_23060082_IFU(resetPc: BigInt, config: CpuConfig = CpuConfig()) extends Component {
+case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component {
   val io = new Bundle {
     val input  = slave  Stream(Wbu2Ifu_data())
     val output = master Stream(Ifu2Idu_data())  
@@ -35,7 +35,7 @@ case class ysyx_23060082_IFU(resetPc: BigInt, config: CpuConfig = CpuConfig()) e
     dataValid := dataValid
   }
   // ================================ PC寄存器 ================================ //
-  val pc = RegNextWhen(io.input.pcNext, io.input.fire) init(U(resetPc, 32 bits))
+  val pc = RegNextWhen(io.input.pcNext, io.input.fire) init(U(config.resetPc, 32 bits))
   // ================================ 指令缓存 (icache) ================================ //
   // icache 内嵌: 持有只读 AXI 控制器(缺失访存); IFU 只发取指请求、等指令返回
   val icache = ysyx_23060082_Icache()

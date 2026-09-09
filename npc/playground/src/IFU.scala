@@ -102,10 +102,16 @@ case class ysyx_23060082_Axi4_Ctrler_ReadOnly() extends Component {
 
   io.axi4.ar.valid.setAsReg() init(False)
   io.axi4.ar.addr .setAsReg()
-  io.axi4.ar.id   .setAsReg()
-  io.axi4.ar.len  .setAsReg()
-  io.axi4.ar.size .setAsReg()
-  io.axi4.ar.burst.setAsReg()
+  // io.axi4.ar.id   .setAsReg()
+  // io.axi4.ar.len  .setAsReg()
+  // io.axi4.ar.size .setAsReg()
+  // io.axi4.ar.burst.setAsReg()
+
+  // 加不加突发，这些数值都会是常量，不需要寄存器锁存
+  io.axi4.ar.id   := U"4'b0"
+  io.axi4.ar.len  := U"8'b0"          // 突发长度1  
+  io.axi4.ar.size := U"3'b010"        // 突发大小4字节
+  io.axi4.ar.burst:= B"2'b01"         // 突发类型INCR
 
   when(io.readReq) {
     io.axi4.ar.valid := True
@@ -117,16 +123,8 @@ case class ysyx_23060082_Axi4_Ctrler_ReadOnly() extends Component {
 
   when(io.readReq) {
     io.axi4.ar.addr := io.readAddr
-    io.axi4.ar.id   := U"4'b0"
-    io.axi4.ar.len  := U"8'b0"          // 突发长度1  
-    io.axi4.ar.size := U"3'b010"        // 突发大小4字节
-    io.axi4.ar.burst:= B"2'b01"         // 突发类型INCR
   } otherwise {
     io.axi4.ar.addr := io.axi4.ar.addr 
-    io.axi4.ar.id   := io.axi4.ar.id 
-    io.axi4.ar.len  := io.axi4.ar.len   // 突发长度1  
-    io.axi4.ar.size := io.axi4.ar.size  // 突发大小4字节
-    io.axi4.ar.burst:= io.axi4.ar.burst // 突发类型INCR
   }
 
   io.axi4.r.ready := io.axi4.r.valid

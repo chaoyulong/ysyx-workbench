@@ -66,7 +66,7 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
   if (config.enableSimDebug) { io.output.pc := io.input.pc }          // 仿真专用
 
   val useRs1 = io.input.ctrl.csrCtrl.trapEnter || (io.input.ctrl.csrCtrl.csrCmd =/= 0)  // rs1: CSR，rs2: store
-  io.output.rfData    := Mux(useRs1, io.input.rfReadData1, io.input.rfReadData2)
+  io.output.rfReadData:= Mux(useRs1, io.input.rfReadData1, io.input.rfReadData2)
   io.output.pcOrNext  := Mux(io.input.ctrl.csrCtrl.trapEnter, io.input.pc, pcNext)
   io.output.aluResult := alu.io.aluResult
   io.output.csrAddr   := io.input.imm(11 downto 0)

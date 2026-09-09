@@ -215,10 +215,12 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
   // ================================ 读操作 ================================ //
   io.axi4.ar.valid.setAsReg() init(False)
   io.axi4.ar.addr .setAsReg()
-  io.axi4.ar.id   .setAsReg()
-  io.axi4.ar.len  .setAsReg()
-  io.axi4.ar.size .setAsReg()
-  io.axi4.ar.burst.setAsReg()
+
+  // 加不加突发，这些数值都会是常量，不需要寄存器锁存
+  io.axi4.ar.id   := U"4'b0"
+  io.axi4.ar.len  := U"8'b0"          // 突发长度1  
+  io.axi4.ar.size := io.size  
+  io.axi4.ar.burst:= B"2'b01"         // 突发类型INCR
   // ================================ 读地址 ================================ //
   when(io.readReq) {
     io.axi4.ar.valid := True
@@ -230,24 +232,9 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
 
   when(io.readReq) {
     io.axi4.ar.addr := io.readAddr
-    io.axi4.ar.id   := U"4'b0"
-    io.axi4.ar.len  := U"8'b0"          // 突发长度1  
-    io.axi4.ar.size := io.size  
-    io.axi4.ar.burst:= B"2'b01"         // 突发类型INCR
   } otherwise {
     io.axi4.ar.addr := io.axi4.ar.addr 
-    io.axi4.ar.id   := io.axi4.ar.id 
-    io.axi4.ar.len  := io.axi4.ar.len   // 突发长度1  
-    io.axi4.ar.size := io.axi4.ar.size  
-    io.axi4.ar.burst:= io.axi4.ar.burst // 突发类型INCR
   }
-
-  // when(io.axi4.ar.valid && io.axi4.ar.ready) {
-  //   report(Seq("read addr =", io.axi4.ar.addr))
-  // }
-  // when(io.axi4.aw.valid && io.axi4.aw.ready) {
-  //   report(Seq("write addr =", io.axi4.aw.addr))
-  // }
 
   // ================================ 读数据 ================================ //
   io.axi4.r.ready := io.axi4.r.valid
@@ -262,15 +249,17 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
   // ================================ 写操作 ================================ //
   io.axi4.aw.valid.setAsReg() init(False)
   io.axi4.aw.addr .setAsReg()
-  io.axi4.aw.id   .setAsReg()
-  io.axi4.aw.len  .setAsReg()
-  io.axi4.aw.size .setAsReg()
-  io.axi4.aw.burst.setAsReg()
 
   io.axi4.w.valid .setAsReg() init(False)
   io.axi4.w.data  .setAsReg()
   io.axi4.w.strb  .setAsReg()
-  io.axi4.w.last  .setAsReg()
+  // io.axi4.w.last  .setAsReg()
+  io.axi4.w.last := True  
+
+  io.axi4.aw.id   := U"4'b0"
+  io.axi4.aw.len  := U"8'b0"          // 突发长度1  
+  io.axi4.aw.size := io.size       
+  io.axi4.aw.burst:= B"2'b01"         // 突发类型INCR
   // ================================ 写地址 ================================ //
   when(io.writeReq) {
     io.axi4.aw.valid := True
@@ -282,16 +271,8 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
 
   when(io.writeReq) {
     io.axi4.aw.addr := io.writeAddr
-    io.axi4.aw.id   := U"4'b0"
-    io.axi4.aw.len  := U"8'b0"          // 突发长度1  
-    io.axi4.aw.size := io.size       
-    io.axi4.aw.burst:= B"2'b01"         // 突发类型INCR
   } otherwise {
     io.axi4.aw.addr := io.axi4.aw.addr 
-    io.axi4.aw.id   := io.axi4.aw.id 
-    io.axi4.aw.len  := io.axi4.aw.len   // 突发长度1  
-    io.axi4.aw.size := io.axi4.aw.size  
-    io.axi4.aw.burst:= io.axi4.aw.burst // 突发类型INCR
   }
   // ================================ 写数据 ================================ //
   when(io.writeReq) {
@@ -305,11 +286,9 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
   when(io.writeReq) {
     io.axi4.w.data := io.writeData.asBits
     io.axi4.w.strb := io.writeMask.asBits
-    io.axi4.w.last := True  
   } otherwise {
     io.axi4.w.data := io.axi4.w.data
     io.axi4.w.strb := io.axi4.w.strb
-    io.axi4.w.last := io.axi4.w.last
   }
   // ================================ 写响应 ================================ //
   io.axi4.b.ready := io.axi4.b.valid

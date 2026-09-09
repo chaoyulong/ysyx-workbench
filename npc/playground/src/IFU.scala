@@ -101,7 +101,7 @@ case class ysyx_23060082_Axi4_Ctrler_ReadOnly() extends Component {
   }
 
   io.axi4.ar.valid.setAsReg() init(False)
-  io.axi4.ar.addr .setAsReg()
+  io.axi4.ar.addr .setAsReg()         // 地址要锁存
   // io.axi4.ar.id   .setAsReg()
   // io.axi4.ar.len  .setAsReg()
   // io.axi4.ar.size .setAsReg()

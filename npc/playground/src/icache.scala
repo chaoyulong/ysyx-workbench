@@ -40,6 +40,8 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
   val indexBits = log2Up(param.lines)       // 索引位数(index)
   val tagBits   = 32 - lineBits - indexBits // tag 位数
 
+  val tag    = io.reqIn.pc(31 downto indexBits + lineBits)            // 按照每块4字节，16块来计算的话，tag = io.reqIn.pc(31 downto 6)
+  val index  = io.reqIn.pc(indexBits + lineBits - 1 downto lineBits)  // 按照每块4字节，16块来计算的话，index = io.reqIn.pc(5 downto 2)
   // ================================ 存储阵列 (寄存器) ================================ //
   val dataMem  = Reg(Vec(UInt(32 bits), param.lines))       // 数据
   val tagMem   = Reg(Vec(UInt(tagBits bits), param.lines))  // 标签
@@ -54,8 +56,6 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
   val tagReg   = RegNextWhen(tag        , io.reqIn.fire) init(0)
   val reqFire  = io.reqIn.fire
 
-  val tag    = io.reqIn.pc(31 downto indexBits + lineBits)            // 按照每块4字节，16块来计算的话，tag = io.reqIn.pc(31 downto 6)
-  val index  = io.reqIn.pc(indexBits + lineBits - 1 downto lineBits)  // 按照每块4字节，16块来计算的话，index = io.reqIn.pc(5 downto 2)
   // ================================ 状态机 ================================ //
   object IcacheState extends SpinalEnum {
     val Idle, Miss = newElement()

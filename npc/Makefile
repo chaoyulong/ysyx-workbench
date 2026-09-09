@@ -132,8 +132,7 @@ wave: $(CSRCS) $(VSRCS)
 # 注意: 用 sim 而非 run(run 会调用 nvboard, 永不退出)
 perf:
 	@$(MAKE) -C $(abspath ../am-kernels/benchmarks/microbench) \
-		ARCH=riscv32e-ysyxsoc sim mainargs=test sdb=n \
-		AM_HOME=$(abspath ../abstract-machine) NPC_HOME=$(abspath .)
+		ARCH=riscv32e-ysyxsoc sim mainargs=test sdb=n
 
 # 终端图形配置界面: 切换 include/config.h 的功能开关(需终端运行)
 menuconfig:

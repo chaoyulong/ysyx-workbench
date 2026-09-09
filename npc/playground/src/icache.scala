@@ -57,8 +57,8 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
   val pcReg    = RegNextWhen(io.reqIn.pc, io.reqIn.fire) init(0)
   // val indexReg = RegNextWhen(index      , io.reqIn.fire) init(0)
   // val tagReg   = RegNextWhen(tag        , io.reqIn.fire) init(0)
-  val tagPcReg    = io.reqIn.pcReg(31 downto indexBits + lineBits)          
-  val indexPcReg  = io.reqIn.pcReg(indexBits + lineBits - 1 downto lineBits)
+  val tagPcReg    = pcReg(31 downto indexBits + lineBits)          
+  val indexPcReg  = pcReg(indexBits + lineBits - 1 downto lineBits)
   val reqFire  = io.reqIn.fire
 
   // ================================ 状态机 ================================ //

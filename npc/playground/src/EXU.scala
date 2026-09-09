@@ -187,20 +187,19 @@ case class ysyx_23060082_BarrelShifter() extends Component {
     val result = out UInt(32 bits)
   }
 
-  val isArith = io.bsCtr === U"2'b11"    // 算术右移
-  val isRight = io.bsCtr(0)              // 01/11 右移；00/10 左移
+  val isRight = io.bsCtr(0)               // 01/11: 右移; 00/10: 左移
+  val isArith = io.bsCtr === U"2'b11"     // 11: 算术右移
 
-  // 左移 = 输入反转 -> 右移 -> 输出反转（反转只是连线）
-  val dinRev = Mux(isRight, io.din, io.din.asBits.reversed.asUInt)
+  // 左移 = 反转 -> 右移 -> 反转, 这样三种移位共用一套右移器
+  val xb   = Mux(isRight, io.din, io.din.reversed).asBits
+  val fill = Mux(isArith, xb(31), False)  // 算术右移填符号位, 逻辑右移填 0
 
-  // 手工 5 级桶形移位器；每级填充宽度是常数，算术/逻辑只差填充值
-  var v = dinRev
-  for (i <- 0 until 5) {
-    val n       = 1 << i                                              // 1,2,4,8,16
-    val fill    = Mux(isArith, U((BigInt(1) << n) - 1, n bits), U(0, n bits))
-    val shifted = (fill ## v(31 downto n)).asUInt                     // 右移 n 位
-    v = Mux(io.shamt(i), shifted, v)
-  }
+  // 5 级右移: 分别移 1/2/4/8/16 位
+  val s0 = Mux(io.shamt(0), (fill #* 1)  ## xb(31 downto 1 ), xb)
+  val s1 = Mux(io.shamt(1), (fill #* 2)  ## s0(31 downto 2 ), s0)
+  val s2 = Mux(io.shamt(2), (fill #* 4)  ## s1(31 downto 4 ), s1)
+  val s3 = Mux(io.shamt(3), (fill #* 8)  ## s2(31 downto 8 ), s2)
+  val s4 = Mux(io.shamt(4), (fill #* 16) ## s3(31 downto 16), s3)
 
-  io.result := Mux(isRight, v, v.asBits.reversed.asUInt)
+  io.result := Mux(isRight, s4, s4.reversed).asUInt
 }

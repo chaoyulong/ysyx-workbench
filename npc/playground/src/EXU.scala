@@ -182,45 +182,25 @@ case class ysyx_23060082_ALU() extends Component {
 case class ysyx_23060082_BarrelShifter() extends Component {
   val io = new Bundle {
     val din    = in UInt(32 bits)
-    val shamt  = in UInt(5 bits)  
-    val bsCtr  = in UInt(2 bits)  
-    val result = out UInt(32 bits) 
+    val shamt  = in UInt(5 bits)
+    val bsCtr  = in UInt(2 bits)   // 01=逻辑右移, 11=算术右移, 00/10=左移
+    val result = out UInt(32 bits)
   }
 
-  val result = io.aluCtr(3 downto 2).mux(
-    U"01"   -> (io.aluIn1 |>> io.aluIn2(4 downto 0)),     // 逻辑右移
-    U"11"   -> U(S(io.aluIn1) >> io.aluIn2(4 downto 0)),  // 算数右移
-    default -> (io.aluIn1 |<< io.aluIn2(4 downto 0))      // 左移,使用的逻辑左移
-  )
+  val isArith = io.bsCtr === U"2'b11"    // 算术右移
+  val isRight = io.bsCtr(0)              // 01/11 右移；00/10 左移
 
-  val temp = UInt(32 bits)
+  // 左移 = 输入反转 -> 右移 -> 输出反转（反转只是连线）
+  val dinRev = Mux(isRight, io.din, io.din.asBits.reversed.asUInt)
 
-  temp := io.din
-
-  switch(io.bsCtr) {
-    is(U"01") {   // 逻辑右移
-      temp := Mux(shamt(0), U"1'b0"  ## temp(31 downto 1 ), temp)
-      temp := Mux(shamt(1), U"2'b0"  ## temp(31 downto 2 ), temp)
-      temp := Mux(shamt(2), U"4'b0"  ## temp(31 downto 4 ), temp)
-      temp := Mux(shamt(3), U"8'b0"  ## temp(31 downto 8 ), temp)
-      temp := Mux(shamt(4), U"16'b0" ## temp(31 downto 16), temp)
-    }
-    is(U"11") {   // 算数右移
-      temp := Mux(shamt(0), (temp(31) #*  1) ## temp(31 downto 1 ), temp)
-      temp := Mux(shamt(1), (temp(31) #*  2) ## temp(31 downto 2 ), temp)
-      temp := Mux(shamt(2), (temp(31) #*  4) ## temp(31 downto 4 ), temp)
-      temp := Mux(shamt(3), (temp(31) #*  8) ## temp(31 downto 8 ), temp)
-      temp := Mux(shamt(4), (temp(31) #* 16) ## temp(31 downto 16), temp)
-    }
-    .otherwise {  // 左移
-      temp := Mux(shamt(0), temp(31 downto 1 ) ## U"1'b0" , temp)
-      temp := Mux(shamt(1), temp(31 downto 2 ) ## U"2'b0" , temp)
-      temp := Mux(shamt(2), temp(31 downto 4 ) ## U"4'b0" , temp)
-      temp := Mux(shamt(3), temp(31 downto 8 ) ## U"8'b0" , temp)
-      temp := Mux(shamt(4), temp(31 downto 16) ## U"16'b0", temp)
-    }  
+  // 手工 5 级桶形移位器；每级填充宽度是常数，算术/逻辑只差填充值
+  var v = dinRev
+  for (i <- 0 until 5) {
+    val n       = 1 << i                                              // 1,2,4,8,16
+    val fill    = Mux(isArith, U((BigInt(1) << n) - 1, n bits), U(0, n bits))
+    val shifted = (fill ## v(31 downto n)).asUInt                     // 右移 n 位
+    v = Mux(io.shamt(i), shifted, v)
   }
 
-  io.result := temp
+  io.result := Mux(isRight, v, v.asBits.reversed.asUInt)
 }
-

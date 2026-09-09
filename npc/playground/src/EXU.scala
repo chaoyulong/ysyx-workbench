@@ -144,11 +144,16 @@ case class ysyx_23060082_ALU() extends Component {
   val zeroFlag         = (resultAdder === U"32'h0")       // 判0
   val overflowFlag     = (adderDataA(31) === adderDataB(31)) && (resultAdder(31) =/= adderDataA(31))  // 溢出
   // ================================ 移位寄存器 ================================ //
-  val resultShift = io.aluCtr(3 downto 2).mux(
-    U"01"   -> (io.aluIn1 |>> io.aluIn2(4 downto 0)),     // 逻辑右移
-    U"11"   -> U(S(io.aluIn1) >> io.aluIn2(4 downto 0)),  // 算数右移
-    default -> (io.aluIn1 |<< io.aluIn2(4 downto 0))      // 左移,使用的逻辑左移
-  )
+  // val resultShift = io.aluCtr(3 downto 2).mux(
+  //   U"01"   -> (io.aluIn1 |>> io.aluIn2(4 downto 0)),     // 逻辑右移
+  //   U"11"   -> U(S(io.aluIn1) >> io.aluIn2(4 downto 0)),  // 算数右移
+  //   default -> (io.aluIn1 |<< io.aluIn2(4 downto 0))      // 左移,使用的逻辑左移
+  // )
+  val shifter = ysyx_23060082_BarrelShifter()
+  shifter.io.din := io.aluIn1
+  shifter.io.shamt := io.aluIn2(4 downto 0)
+  shifter.io.bsCtr := io.aluCtr(3 downto 2)
+  val resultShift = shifter.io.result
   // ================================ 小于比较判断 ================================ //
   val lessFlag0 = overflowFlag ^ resultAdder(31)          // 有符号小于
   val lessFlag1 = carryFlag ^ subORadd                    // 无符号小于
@@ -173,3 +178,49 @@ case class ysyx_23060082_ALU() extends Component {
     U"3'b111" -> resultAnd  
   )
 }
+
+case class ysyx_23060082_BarrelShifter() extends Component {
+  val io = new Bundle {
+    val din    = in UInt(32 bits)
+    val shamt  = in UInt(5 bits)  
+    val bsCtr  = in UInt(2 bits)  
+    val result = out UInt(32 bits) 
+  }
+
+  val result = io.aluCtr(3 downto 2).mux(
+    U"01"   -> (io.aluIn1 |>> io.aluIn2(4 downto 0)),     // 逻辑右移
+    U"11"   -> U(S(io.aluIn1) >> io.aluIn2(4 downto 0)),  // 算数右移
+    default -> (io.aluIn1 |<< io.aluIn2(4 downto 0))      // 左移,使用的逻辑左移
+  )
+
+  val temp = UInt(32 bits)
+
+  temp := io.din
+
+  switch(io.bsCtr) {
+    is(U"01") {   // 逻辑右移
+      temp := Mux(shamt(0), U"1'b0"  ## temp(31 downto 1 ), temp)
+      temp := Mux(shamt(1), U"2'b0"  ## temp(31 downto 2 ), temp)
+      temp := Mux(shamt(2), U"4'b0"  ## temp(31 downto 4 ), temp)
+      temp := Mux(shamt(3), U"8'b0"  ## temp(31 downto 8 ), temp)
+      temp := Mux(shamt(4), U"16'b0" ## temp(31 downto 16), temp)
+    }
+    is(U"11") {   // 算数右移
+      temp := Mux(shamt(0), (temp(31) #*  1) ## temp(31 downto 1 ), temp)
+      temp := Mux(shamt(1), (temp(31) #*  2) ## temp(31 downto 2 ), temp)
+      temp := Mux(shamt(2), (temp(31) #*  4) ## temp(31 downto 4 ), temp)
+      temp := Mux(shamt(3), (temp(31) #*  8) ## temp(31 downto 8 ), temp)
+      temp := Mux(shamt(4), (temp(31) #* 16) ## temp(31 downto 16), temp)
+    }
+    .otherwise {  // 左移
+      temp := Mux(shamt(0), temp(31 downto 1 ) ## U"1'b0" , temp)
+      temp := Mux(shamt(1), temp(31 downto 2 ) ## U"2'b0" , temp)
+      temp := Mux(shamt(2), temp(31 downto 4 ) ## U"4'b0" , temp)
+      temp := Mux(shamt(3), temp(31 downto 8 ) ## U"8'b0" , temp)
+      temp := Mux(shamt(4), temp(31 downto 16) ## U"16'b0", temp)
+    }  
+  }
+
+  io.result := temp
+}
+

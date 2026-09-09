@@ -51,16 +51,11 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
   // 命中判断，当前索引位有效并且tag相等
   val hit = validReg(index) && (tagMem(index) === tag)
 
-  // ================================ 请求锁存(Miss 期间 reqIn 可能变化) ================================ //
-  val pcReg    = Reg(UInt(32 bits)) init(0)
-  val indexReg = Reg(UInt(indexBits bits)) init(0)
-  val tagReg   = Reg(UInt(tagBits bits)) init(0)
+  // ================================ 握手成功锁存数据 ================================ //
+  val pcReg    = RegNextWhen(io.reqIn.pc, io.reqIn.fire) init(0)
+  val indexReg = RegNextWhen(index      , io.reqIn.fire) init(0)
+  val tagReg   = RegNextWhen(tag        , io.reqIn.fire) init(0)
   val reqFire  = io.reqIn.fire
-  when(reqFire) {
-    pcReg   := io.reqIn.pc
-    indexReg := index
-    tagReg   := tag
-  }
 
   // ================================ 状态机 ================================ //
   object IcacheState extends SpinalEnum {

@@ -14,7 +14,7 @@ import spinal.lib.bus.amba4.axi._
 // 缺失: 进入 Miss 状态, 经 AXI 读回并写回 cache(valid/tag/data), 完成后返回
 case class IcacheParams(
   lineBytes: Int = 4,     // 块大小(字节), 4B 起步(后续可加大配合突发)
-  lines:     Int = 16     // 块数(直接映射组数)
+  lines:     Int = 8     // 块数(直接映射组数)
 )
 
 // valid ready pc 三个信号
@@ -55,10 +55,10 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
 
   // ================================ 握手成功锁存数据 ================================ //
   val pcReg    = RegNextWhen(io.reqIn.pc, io.reqIn.fire) init(0)
-  // val indexReg = RegNextWhen(index      , io.reqIn.fire) init(0)
-  // val tagReg   = RegNextWhen(tag        , io.reqIn.fire) init(0)
-  val tagReg   = pcReg(31 downto indexBits + lineBits)          
-  val indexReg = pcReg(indexBits + lineBits - 1 downto lineBits)
+  val indexReg = RegNextWhen(index      , io.reqIn.fire) init(0)
+  val tagReg   = RegNextWhen(tag        , io.reqIn.fire) init(0)
+  // val tagReg   = pcReg(31 downto indexBits + lineBits)          
+  // val indexReg = pcReg(indexBits + lineBits - 1 downto lineBits)
   val reqFire  = io.reqIn.fire
 
   // ================================ 状态机 ================================ //

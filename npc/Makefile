@@ -32,6 +32,7 @@ STA_SDC_FILE=$(abspath npc.sdc)
 STA_CLK_FREQ_MHZ=500
 STA_CLK_PORT_NAME=clock
 STA_OUT=$(abspath $(BUILD_DIR)/sta)
+STA_PDK= nangate45
 # sta 目标内自行生成到 $(BUILD_DIR)/sta/ysyx_23060082.v (SPINAL_SIM_DEBUG=0)
 
 ifneq ($(words $(CURDIR)),1)
@@ -146,7 +147,7 @@ sta:
 		./mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog
 	make -C /home/cyl/tools/yosys-sta sta \
 			DESIGN=$(STA_DESIGN) SDC_FILE=$(STA_SDC_FILE) \
-			CLK_FREQ_MHZ=$(STA_CLK_FREQ_MHZ) CLK_PORT_NAME=$(STA_CLK_PORT_NAME) O=$(STA_OUT) \
+			PDK=$(STA_PDK) CLK_FREQ_MHZ=$(STA_CLK_FREQ_MHZ) CLK_PORT_NAME=$(STA_CLK_PORT_NAME) O=$(STA_OUT) \
 			RTL_FILES="$(abspath $(BUILD_DIR))/sta/$(STA_DESIGN).v"
 
 # help:

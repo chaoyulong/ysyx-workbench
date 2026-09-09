@@ -14,7 +14,7 @@ import spinal.lib.bus.amba4.axi._
 // 缺失: 进入 Miss 状态, 经 AXI 读回并写回 cache(valid/tag/data), 完成后返回
 case class IcacheParams(
   lineBytes: Int = 4,     // 块大小(字节), 4B 起步(后续可加大配合突发)
-  lines:     Int = 8     // 块数(直接映射组数)
+  lines:     Int = 16     // 块数(直接映射组数)
 )
 
 // valid ready pc 三个信号

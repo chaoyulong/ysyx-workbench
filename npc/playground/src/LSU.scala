@@ -4,11 +4,11 @@ import spinal.core._
 import spinal.lib._    // 使用spinal的模块库
 import spinal.lib.bus.amba4.axi._
 
-case class Lsu2Wbu_data() extends Bundle {
-  val pc            = UInt(32 bits)
+case class Lsu2Wbu_data(config: CpuConfig = CpuConfig()) extends Bundle {
+  val pc = if (config.enableSimDebug) UInt(32 bits) else null   // 仅仿真可见
   val pcNext       = UInt(32 bits)
-  val mem_data_out  = UInt(32 bits)
-  val alu_data_out  = UInt(32 bits) 
+  val mem_data_out = UInt(32 bits)
+  val alu_data_out = UInt(32 bits) 
   val rfCtrl       = RfCtrl()      // 其中的mem2reg信号会作为读内存信号被用到
   val fenceI       = Bool()        // fence.i(直通, WBU 据此通知 IFU 失效 icache)
 }
@@ -16,9 +16,9 @@ case class Lsu2Wbu_data() extends Bundle {
 
 case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component {
   val io = new Bundle {
-    val input     = slave  Flow(Exu2Lsu_data())
-    val output    = master Stream(Lsu2Wbu_data()) 
-    val axi4 = master(Axi4(AxiConfig.axiConfig))
+    val input   = slave  Flow(Exu2Lsu_data(config))
+    val output  = master Stream(Lsu2Wbu_data(config)) 
+    val axi4    = master(Axi4(AxiConfig.axiConfig))
   }
   // ================================ 输入信号整理 ================================ //
   object LsuState extends SpinalEnum {
@@ -76,9 +76,9 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   csr.io.csrCmd     := io.input.csrCtrl.csrCmd
   csr.io.trapEnter  := io.input.csrCtrl.trapEnter
   csr.io.trapExit   := io.input.csrCtrl.trapExit
-  csr.io.pcIn       := io.input.pc
+  csr.io.pcIn       := io.input.pcOrNext
   csr.io.causeIn    := Mux(io.input.csrCtrl.illegal, U(2),
-                        Mux(io.input.csrCtrl.ebreak,  U(3), io.input.rfReadData1))
+                       Mux(io.input.csrCtrl.ebreak , U(3), io.input.rfReadData1))
   csr.io.instrRetire := io.output.fire    // 指令传出LSU即计数(比写回提前1拍, 总数正确)
 
   // ================================ 用于握手的部分 ================================ //
@@ -89,10 +89,10 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   io.output.valid := io.input.valid && willValid  
 
   // ================================ 数据传输部分 ================================ //
-  io.output.pc          := io.input.pc
+  if (config.enableSimDebug) { io.output.pc := io.input.pc }          // 仿真专用
   io.output.pcNext     := Mux(io.input.csrCtrl.trapEnter, csr.io.mtvec,
-                           Mux(io.input.csrCtrl.trapExit, csr.io.mepc,
-                               io.input.pcNext))
+                          Mux(io.input.csrCtrl.trapExit , csr.io.mepc,
+                              io.input.pcOrNext))
 
   io.output.mem_data_out:= Mux(io.input.csrCtrl.csrCmd =/= U"3'd0", csr.io.csrRdata, dataProcess.io.rdataReal)           // 借用mem_data_out来输出读出的值
   io.output.alu_data_out:= io.input.aluResult

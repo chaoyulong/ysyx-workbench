@@ -3,12 +3,13 @@ package playground
 import spinal.core._
 import spinal.lib._    // 使用spinal的模块库
 
-case class Exu2Lsu_data() extends Bundle {
-  val pc          = UInt(32 bits)
-  val pcNext     = UInt(32 bits)
-  val rfCtrl     = RfCtrl()        // 直通数据，在EXU中无作用
-  val memCtrl    = MemCtrl()       // 直通数据，在EXU中无作用
-  val csrCtrl    = CsrCtrl()       // 直通数据，在EXU中无作用 
+case class Exu2Lsu_data(config: CpuConfig = CpuConfig()) extends Bundle {
+  val pc = if (config.enableSimDebug) UInt(32 bits) else null   // 仅仿真可见
+  val pcOrNext    = UInt(32 bits)   // 执行trapEnter指令(i_ecall，i_ebreak，i_illegal)时，pcNext数据一定是无用的，此时用来传递pc供给csr使用
+                                    // 就可以省掉一个32位的寄存器，但是为了仿真好看，会在config.enableSimDebug时，保留pc寄存器
+  val rfCtrl      = RfCtrl()        // 直通数据，在EXU中无作用
+  val memCtrl     = MemCtrl()       // 直通数据，在EXU中无作用
+  val csrCtrl     = CsrCtrl()       // 直通数据，在EXU中无作用 
 
   val csrAddr     = UInt(12 bits)   // 仅用于传给LSU的CSR寄存器寻址(与 EXU 的 imm 区分)
   val rfReadData1 = UInt(32 bits)   // 从寄存器中读取的数据1,在EXU及csr(位于LSU)模块中均有作用
@@ -20,7 +21,7 @@ case class Exu2Lsu_data() extends Bundle {
 case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component {
   val io = new Bundle {
     val input  = slave  Flow  (Idu2Exu_data(config))
-    val output = master Stream(Exu2Lsu_data()) 
+    val output = master Stream(Exu2Lsu_data(config)) 
   }
 
   val alu = ysyx_23060082_ALU()
@@ -44,6 +45,10 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
   val pcDataA = Mux(banchCond.io.pcAsrc, io.input.imm, U"32'd4")
   val pcDataB = Mux(banchCond.io.pcBsrc, io.input.rfReadData1, io.input.pc)
   val pcDataTmp = pcDataA + pcDataB
+  val pcNext = io.input.ctrl.aluCtrl.branch.mux(
+    U"010"  -> (pcDataTmp(31 downto 1) ## B"1'b0").asUInt,
+    default -> pcDataTmp
+  )
   // ================================ 用于握手的部分 ================================ //
   val willValid = True
   io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
@@ -55,15 +60,12 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
     perf.io.req   := B"4'b0"
     perf.io.rsp   := B"4'b0"
     perf.io.evt   := B"8'b0"
-    perf.io.evt(0) := io.input.valid && io.input.isCalc && willValid   // EXU 运算周期
-    perf.io.evt(1) := io.input.valid && io.input.isCalc                // 计算类指令数
+    perf.io.evt(0) := io.input.valid && io.input.isCalc && willValid  // EXU 运算周期
+    perf.io.evt(1) := io.input.valid && io.input.isCalc               // 计算类指令数
   }
   // ================================ 数据传输部分 ================================ //
-  io.output.pc    := io.input.pc
-  io.output.pcNext:= io.input.ctrl.aluCtrl.branch.mux(
-    U"010"  -> (pcDataTmp(31 downto 1) ## B"1'b0").asUInt,
-    default -> pcDataTmp
-  )
+  if (config.enableSimDebug) { io.output.pc := io.input.pc }          // 仿真专用
+  io.output.pcOrNext := Mux(io.input.ctrl.csrCtrl.trapEnter, io.input.pc, pcNext)
   io.output.aluResult   := alu.io.aluResult
   io.output.csrAddr     := io.input.imm(11 downto 0)
   io.output.fenceI      := io.input.ctrl.fenceI
@@ -144,16 +146,11 @@ case class ysyx_23060082_ALU() extends Component {
   val zeroFlag         = (resultAdder === U"32'h0")       // 判0
   val overflowFlag     = (adderDataA(31) === adderDataB(31)) && (resultAdder(31) =/= adderDataA(31))  // 溢出
   // ================================ 移位寄存器 ================================ //
-  // val resultShift = io.aluCtr(3 downto 2).mux(
-  //   U"01"   -> (io.aluIn1 |>> io.aluIn2(4 downto 0)),     // 逻辑右移
-  //   U"11"   -> U(S(io.aluIn1) >> io.aluIn2(4 downto 0)),  // 算数右移
-  //   default -> (io.aluIn1 |<< io.aluIn2(4 downto 0))      // 左移,使用的逻辑左移
-  // )
-  val shifter = ysyx_23060082_BarrelShifter()
-  shifter.io.din := io.aluIn1
-  shifter.io.shamt := io.aluIn2(4 downto 0)
-  shifter.io.bsCtr := io.aluCtr(3 downto 2)
-  val resultShift = shifter.io.result
+  val resultShift = io.aluCtr(3 downto 2).mux(            // 直接移位操作与自己写桶形移位器没有区别
+    U"01"   -> (io.aluIn1 |>> io.aluIn2(4 downto 0)),     // 逻辑右移
+    U"11"   -> U(S(io.aluIn1) >> io.aluIn2(4 downto 0)),  // 算数右移
+    default -> (io.aluIn1 |<< io.aluIn2(4 downto 0))      // 左移,使用的逻辑左移
+  )
   // ================================ 小于比较判断 ================================ //
   val lessFlag0 = overflowFlag ^ resultAdder(31)          // 有符号小于
   val lessFlag1 = carryFlag ^ subORadd                    // 无符号小于
@@ -179,27 +176,27 @@ case class ysyx_23060082_ALU() extends Component {
   )
 }
 
-case class ysyx_23060082_BarrelShifter() extends Component {
-  val io = new Bundle {
-    val din    = in UInt(32 bits)
-    val shamt  = in UInt(5 bits)
-    val bsCtr  = in UInt(2 bits)   // 01=逻辑右移, 11=算术右移, 00/10=左移
-    val result = out UInt(32 bits)
-  }
+// case class ysyx_23060082_BarrelShifter() extends Component {
+//   val io = new Bundle {
+//     val din    = in UInt(32 bits)
+//     val shamt  = in UInt(5 bits)
+//     val bsCtr  = in UInt(2 bits)   // 01=逻辑右移, 11=算术右移, 00/10=左移
+//     val result = out UInt(32 bits)
+//   }
 
-  val isRight = io.bsCtr(0)               // 01/11: 右移; 00/10: 左移
-  val isArith = io.bsCtr === U"2'b11"     // 11: 算术右移
+//   val isRight = io.bsCtr(0)               // 01/11: 右移; 00/10: 左移
+//   val isArith = io.bsCtr === U"2'b11"     // 11: 算术右移
 
-  // 左移 = 反转 -> 右移 -> 反转, 这样三种移位共用一套右移器
-  val xb   = Mux(isRight, io.din, io.din.reversed).asBits
-  val fill = Mux(isArith, xb(31), False)  // 算术右移填符号位, 逻辑右移填 0
+//   // 左移 = 反转 -> 右移 -> 反转, 这样三种移位共用一套右移器
+//   val xb   = Mux(isRight, io.din, io.din.reversed).asBits
+//   val fill = Mux(isArith, xb(31), False)  // 算术右移填符号位, 逻辑右移填 0
 
-  // 5 级右移: 分别移 1/2/4/8/16 位
-  val s0 = Mux(io.shamt(0), (fill #* 1)  ## xb(31 downto 1 ), xb)
-  val s1 = Mux(io.shamt(1), (fill #* 2)  ## s0(31 downto 2 ), s0)
-  val s2 = Mux(io.shamt(2), (fill #* 4)  ## s1(31 downto 4 ), s1)
-  val s3 = Mux(io.shamt(3), (fill #* 8)  ## s2(31 downto 8 ), s2)
-  val s4 = Mux(io.shamt(4), (fill #* 16) ## s3(31 downto 16), s3)
+//   // 5 级右移: 分别移 1/2/4/8/16 位
+//   val s0 = Mux(io.shamt(0), (fill #* 1)  ## xb(31 downto 1 ), xb)
+//   val s1 = Mux(io.shamt(1), (fill #* 2)  ## s0(31 downto 2 ), s0)
+//   val s2 = Mux(io.shamt(2), (fill #* 4)  ## s1(31 downto 4 ), s1)
+//   val s3 = Mux(io.shamt(3), (fill #* 8)  ## s2(31 downto 8 ), s2)
+//   val s4 = Mux(io.shamt(4), (fill #* 16) ## s3(31 downto 16), s3)
 
-  io.result := Mux(isRight, s4, s4.reversed).asUInt
-}
+//   io.result := Mux(isRight, s4, s4.reversed).asUInt
+// }

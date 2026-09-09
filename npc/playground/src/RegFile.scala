@@ -37,11 +37,11 @@ case class ysyx_23060082_RegFile() extends Component {
 
   val rf = Vec(Reg(UInt(32 bits)),16)    // riscv32e,有16个通用寄存器
 
-  rf(0) := U"32'h0" 
   when(io.writeBus.en && (io.writeBus.addr(3 downto 0) =/= U(0))){
     rf(io.writeBus.addr(3 downto 0)) := io.writeBus.data
   }
-
+  rf(0) := U"32'h0" 
+  
   io.readBus.data1 := rf(io.readBus.addr1(3 downto 0))
   io.readBus.data2 := rf(io.readBus.addr2(3 downto 0))
 }

@@ -43,11 +43,11 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig()) extends Component {
   io.io_slave.w.ready  := False
   io.io_slave.b.valid  := False
   io.io_slave.b.id     := U(0)
-  io.io_slave.b.resp   := B(0)
+  io.io_slave.b.resp   := Axi4.resp.OKAY
   io.io_slave.ar.ready := False
   io.io_slave.r.valid  := False
   io.io_slave.r.data   := B(0)
-  io.io_slave.r.resp   := B(0)
+  io.io_slave.r.resp   := Axi4.resp.OKAY
   io.io_slave.r.last   := False
   io.io_slave.r.id     := U(0)
   // ================================ 定义级间寄存器函数 ================================ //
@@ -108,7 +108,7 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig()) extends Component {
   regFile.io.readBus  <> idu.io.rfRead
   regFile.io.writeBus <> wbu.io.rfWrite
   // ================================ xbar ================================ //
-  val xbar = ysyx_23060082_AXI4Xbar()
+  val xbar  = ysyx_23060082_AXI4Xbar()
   val clint = ysyx_23060082_Clint()       
   xbar.io.externalAxi4 <> io.io_master    // 引到外部
   xbar.io.clintAxi4    <> clint.io.clintAxi4

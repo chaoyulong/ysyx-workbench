@@ -35,6 +35,9 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
     val fenceI = in Bool()   // fence.i: 清空有效位(后续取指缺失重读)
   }
 
+  // ================================ ifu的axi交给icache控制 ================================ //
+  val axi4Ctrler = ysyx_23060082_Axi4_Ctrler_ReadOnly()
+  io.axi4 <> axi4Ctrler.io.axi4
   // ================================ 参数与地址划分 ================================ //
   val lineBits  = log2Up(param.lineBytes)   // 块内偏移位数(offset)
   val indexBits = log2Up(param.lines)       // 索引位数(index)
@@ -70,10 +73,6 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
     .otherwise { state := IcacheState.Miss }
   } 
   // ================================  ================================ //
-  // ifu的axi交给icache控制
-  val axi4Ctrler = ysyx_23060082_Axi4_Ctrler_ReadOnly()
-  io.axi4 <> axi4Ctrler.io.axi4
-
   // 请求握手: Idle时接受(命中同拍组合返回rspOut, 缺失进入Miss)
   io.reqIn.ready := (state === IcacheState.Idle)
 

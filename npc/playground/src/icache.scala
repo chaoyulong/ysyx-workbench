@@ -40,25 +40,22 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
   val indexBits = log2Up(param.lines)       // 索引位数(index)
   val tagBits   = 32 - lineBits - indexBits // tag 位数
 
-  val tag    = io.reqIn.pc(tagBits + indexBits + lineBits - 1 downto indexBits + lineBits)
-  val index  = io.reqIn.pc(indexBits + lineBits - 1 downto lineBits)
+  val tag    = io.reqIn.pc(31 downto indexBits + lineBits)            // 按照每块4字节，16块来计算的话，tag = io.reqIn.pc(31 downto 6)
+  val index  = io.reqIn.pc(indexBits + lineBits - 1 downto lineBits)  // 按照每块4字节，16块来计算的话，index = io.reqIn.pc(5 downto 2)
 
   // ================================ 存储阵列 (寄存器) ================================ //
-  // data/tag 用寄存器(Vec)——必定触发器, 不依赖工具 SRAM 推断
-  // (将来如需大容量存储, 通过 AXI 访问外部 SRAM 而非内部推断)
-  // 不 init(读由 valid 保护——未命中不读, 无 x 传播)
-  val dataMem = Reg(Vec(UInt(32 bits), param.lines))
-  val tagMem  = Reg(Vec(UInt(tagBits bits), param.lines))
-  val validReg = Reg(Bits(param.lines bits)) init(0)   // 每块 1 位有效位
+  val dataMem  = Reg(Vec(UInt(32 bits), param.lines))       // 数据
+  val tagMem   = Reg(Vec(UInt(tagBits bits), param.lines))  // 标签
+  val validReg = Reg(Bits(param.lines bits)) init(0)        // 每块1位有效位
 
   // 命中判断，当前索引位有效并且tag相等
   val hit = validReg(index) && (tagMem(index) === tag)
 
   // ================================ 请求锁存(Miss 期间 reqIn 可能变化) ================================ //
-  val pcReg   = Reg(UInt(32 bits)) init(0)
+  val pcReg    = Reg(UInt(32 bits)) init(0)
   val indexReg = Reg(UInt(indexBits bits)) init(0)
   val tagReg   = Reg(UInt(tagBits bits)) init(0)
-  val reqFire  = io.reqIn.valid && io.reqIn.ready
+  val reqFire  = io.reqIn.fire
   when(reqFire) {
     pcReg   := io.reqIn.pc
     indexReg := index
@@ -75,7 +72,7 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
   val axi4Ctrler = ysyx_23060082_Axi4_Ctrler_ReadOnly()
   io.axi4 <> axi4Ctrler.io.axi4
 
-  // 请求握手: Idle 时接受(命中同拍组合返回 rspOut, 缺失进入 Miss)
+  // 请求握手: Idle 时接受(命中同拍组合返回rspOut, 缺失进入Miss)
   io.reqIn.ready := (state === IcacheState.Idle)
 
   // 响应: 命中(请求拍组合) 或 缺失完成拍

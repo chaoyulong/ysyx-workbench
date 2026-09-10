@@ -53,8 +53,14 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
     perf.io.evt   := B"8'b0"
     perf.io.req(0) := icache.io.reqIn.fire   // 取指请求拍(记时间)
     perf.io.rsp(0) := icache.io.rspOut.valid // 取指响应拍(算延迟)
-    perf.io.evt(0) := icache.io.reqIn.fire   // 取指次数
+    perf.io.evt(0) := icache.io.reqIn.fire   // 取指次数(命中率的分母)
     perf.io.evt(1) := icache.io.rspOut.valid // 响应次数
+    // ==================== icache 命中率 / 缺失代价 ==================== //
+    // evtCnt0 = 访问次数, evtCnt2 = 缺失次数  -> 命中率 = 1 - evt2/evt0
+    // dlyCnt1/dlySum1 = 缺失次数/缺失总周期 -> 平均缺失代价 (即 TMT 里的那一项)
+    perf.io.evt(2) := icache.io.miss         // 缺失次数
+    perf.io.req(1) := icache.io.miss         // 缺失开始拍(记时间)
+    perf.io.rsp(1) := icache.io.missDone     // 缺失完成拍(算延迟)
   }
 
   val rdataReg = RegNextWhen(icache.io.rspOut.rdata, icache.io.rspOut.valid) init(0)  // 响应时更新数据

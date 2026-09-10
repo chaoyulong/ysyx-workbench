@@ -33,6 +33,8 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
     val rspOut = master Flow(IcacheRspData())
     val axi4   = master(Axi4ReadOnly(AxiConfig.axiConfig))
     val fenceI = in Bool()   // fence.i: 清空有效位(后续取指缺失重读)
+    val miss   = out Bool()  // 缺失拍脉冲(每次缺失一次), 供 IFU 的性能计数器统计命中率; STA 时无人使用会被剪掉
+    val missDone = out Bool() // 缺失完成拍脉冲, 与 miss 配对可测出平均缺失代价(即 TMT 里的那一项)
   }
 
   // ================================ ifu的axi交给icache控制 ================================ //
@@ -81,12 +83,17 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
   // 命中 或 缺失但是读取完成
   val missDone = (state === IcacheState.Miss) && axi4Ctrler.io.readEnd
   io.rspOut.valid := (io.reqIn.fire && hit) || missDone
+  io.missDone := missDone
   io.rspOut.rdata := Mux(io.reqIn.fire && hit, dataMem(index), axi4Ctrler.io.readData)
                           
   // readReq要求只持续一个周期
   val enterMiss = (state === IcacheState.Idle) && io.reqIn.valid && !hit
   axi4Ctrler.io.readReq  := enterMiss
   axi4Ctrler.io.readAddr := (io.reqIn.pc(31 downto 2) ## U"2'b00").asUInt // 地址对齐
+
+  // 缺失脉冲: 每一次缺失拉高一拍(交给 IFU 的 PerfReg 计数, 用于统计命中率)
+  // 等价于 io.reqIn.fire && !hit —— 因为 reqIn.ready 只在 Idle 时拉高
+  io.miss := enterMiss
 
   // 缺失完成: 写回cache(valid/tag/data)
   when(missDone) {

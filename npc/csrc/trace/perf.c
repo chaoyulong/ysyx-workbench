@@ -30,6 +30,10 @@ void perf_stat(void) {
   idu_evt[7] = PERF_F(idu, evtCnt7);
   uint64_t ifuDlySum  = PERF_F(ifu, dlySum0);
   uint64_t ifuDlyCnt  = PERF_F(ifu, dlyCnt0);
+  uint64_t ifuAcc     = PERF_F(ifu, evtCnt0);   // 取指访问次数(命中率分母)
+  uint64_t ifuMiss    = PERF_F(ifu, evtCnt2);   // icache 缺失次数(命中率分子)
+  uint64_t ifuMissSum = PERF_F(ifu, dlySum1);   // 缺失总周期
+  uint64_t ifuMissCnt = PERF_F(ifu, dlyCnt1);   // 缺失次数(与 ifuMiss 一致, 两份独立计数可互校)
   uint64_t exuCyc     = PERF_F(exu, evtCnt0);
   uint64_t exuCalcCnt = PERF_F(exu, evtCnt1);
   uint64_t lsuPerfCyc = PERF_F(lsu, perfCyc);
@@ -48,6 +52,13 @@ void perf_stat(void) {
   Log_nohead("  %-17s cnt=%-10lu total=%-10lu avg=%7.2f cyc/access", "IFU fetch:",
          (unsigned long)ifuDlyCnt, (unsigned long)ifuDlySum,
          ifuDlyCnt ? (double)ifuDlySum / ifuDlyCnt : 0);
+  // icache 命中率 + 缺失代价(缺失代价就是 TMT 里"每次缺失要等多少周期"那一项)
+  Log_nohead("  %-17s cnt=%-10lu miss=%-10lu hit=%7.2f%%", "Icache access:",
+         (unsigned long)ifuAcc, (unsigned long)ifuMiss,
+         ifuAcc ? 100.0 * (ifuAcc - ifuMiss) / ifuAcc : 0);
+  Log_nohead("  %-17s cnt=%-10lu total=%-10lu avg=%7.2f cyc/miss", "Icache miss:",
+         (unsigned long)ifuMissCnt, (unsigned long)ifuMissSum,
+         ifuMissCnt ? (double)ifuMissSum / ifuMissCnt : 0);
   const char *lsu_name[4] = {"LSU mem rd:", "LSU mem wr:", "LSU dev rd:", "LSU dev wr:"};
   for (int i = 0; i < 4; i++)
     Log_nohead("  %-17s cnt=%-10lu total=%-10lu avg=%7.2f cyc/access", lsu_name[i],

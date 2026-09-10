@@ -142,26 +142,46 @@ int main(int argc, char **argv) {
   if (cfg_from) printf("          只统计 pc >= 0x%08x\n", cfg_from);
 
   // ------------------------------ 回放 PC 序列 ------------------------------ //
+  // 支持两种输入格式, 自动识别:
+  //   (a) NPC itrace: 行首必须是 "0x<hex>:"。要求"行首", 是为了排除普通日志行,
+  //       以及程序结束时回显的 ringbuf(它以空格或 "-->" 开头, 内容是重复指令)。
+  //   (b) 纯 PC 文本: 整行只有一个数字(十六进制或十进制)。
+  // 其余行一律跳过。
   char line[512];
   while (fgets(line, sizeof(line), fp)) {
-    // 找 "0x" 并解析十六进制 PC(兼容 NPC itrace 与纯 PC 文本)
-    char *p = strstr(line, "0x");
-    if (!p) p = strstr(line, "0X");
-    if (!p) {
-      // 兼容纯十进制
-      char *q = line; while (*q == ' ' || *q == '\t') q++;
-      if (*q < '0' || *q > '9') continue;
-      p = q;
+    uint32_t pc = 0;
+    int is_itrace = 0;
+
+    if (line[0] == '0' && (line[1] == 'x' || line[1] == 'X')) {
+      // (a) itrace: "0x00000000: <bytes> <disasm>"
+      char *end;
+      unsigned long v = strtoul(line, &end, 16);
+      if (end <= line + 2) continue;
+      char *t = end;
+      while (*t == ' ' || *t == '\t') t++;
+      pc = (uint32_t)v;
+      is_itrace = (*t == ':');
+    } else {
+      // (b) 纯 PC 文本: 允许前导空白, 但数字之后不能有别的内容
+      char *s = line;
+      while (*s == ' ' || *s == '\t') s++;
+      if (*s < '0' || *s > '9') continue;              // 日志行/空行 -> 跳过
+      char *end;
+      unsigned long v = strtoul(s, &end, 0);
+      if (end == s) continue;
+      char *t = end;
+      while (*t == ' ' || *t == '\t' || *t == '\n' || *t == '\r') t++;
+      if (*t != '\0') continue;                        // ringbuf 行(数字后还有内容) -> 跳过
+      pc = (uint32_t)v;
     }
-    uint32_t pc = (uint32_t)strtoul(p, NULL, 16);
     n_line++;
 
     if (n_line <= cfg_skip) continue;
     if (n_access >= cfg_max) break;
 
     // fence.i: 清空全部有效位(与 RTL 的 when(io.fenceI){ validReg := 0 } 一致)
-    // 注意: 只在 itrace 文本(含反汇编)里能识别到, 纯 PC 文本无此信息
-    if (strstr(line, "fence.i")) {
+    // 只有 itrace 行带反汇编才能识别; 纯 PC 文本无此信息
+    if (is_itrace && strstr(line, "fence.i")) {
       memset(valid, 0, cfg_lines);
       n_fence++;
     }

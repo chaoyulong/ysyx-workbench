@@ -12,13 +12,14 @@
 //  #define CONFIG_DIFFTEST 1
 
 // trace 总开关: 配合 log_enable() 按指令数范围写日志(见 csrc/sdb/log.c)
-// #define CONFIG_TRACE 1
+#define CONFIG_TRACE 1
 #define CONFIG_TRACE_START 0          // trace 起始指令数
-#define CONFIG_TRACE_END   1000000    // trace 结束指令数
+#define CONFIG_TRACE_END   0          // trace 结束指令数(0 = 不限制, 一直记到程序结束)
 
 #ifdef CONFIG_TRACE
 // 指令 trace: 每条指令打印到 log + ringbuf(程序结束时显示最后16条)
-// #define CONFIG_ITRACE 1
+// 也是 cachesim 的 PC 序列来源(见 cachesim/README.md)
+#define CONFIG_ITRACE 1
 
 // 访存 trace: 记录每次数据访存(load/store)的 pc/地址/数据
 // #define CONFIG_MTRACE 1

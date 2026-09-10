@@ -16,6 +16,7 @@ void log_init(const char *log_file) {
 }
 
 bool log_enable() {
+  // CONFIG_TRACE_END == 0 表示不限制上限(一直记到程序结束)
   return MUXDEF(CONFIG_TRACE, (g_nr_guest_inst >= CONFIG_TRACE_START) &&
-         (g_nr_guest_inst <= CONFIG_TRACE_END), false);
+         (CONFIG_TRACE_END == 0 || g_nr_guest_inst <= CONFIG_TRACE_END), false);
 }

@@ -32,7 +32,10 @@ STA_SDC_FILE=$(abspath npc.sdc)
 STA_CLK_FREQ_MHZ=500
 STA_CLK_PORT_NAME=clock
 STA_OUT=$(abspath $(BUILD_DIR)/sta)
-STA_PDK= nangate45
+# 综合工艺: nangate45(教程基准, 面积限制按此工艺) / icsprout55(流片工艺)
+# 用法: make sta                      -> 用下面的默认值
+#       make sta STA_PDK=icsprout55   -> 临时换工艺
+STA_PDK=nangate45
 # sta 目标内自行生成到 $(BUILD_DIR)/sta/ysyx_23060082.v (SPINAL_SIM_DEBUG=0)
 
 ifneq ($(words $(CURDIR)),1)

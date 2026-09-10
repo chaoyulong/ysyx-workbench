@@ -53,7 +53,8 @@ void perf_stat(void) {
          (unsigned long)ifuDlyCnt, (unsigned long)ifuDlySum,
          ifuDlyCnt ? (double)ifuDlySum / ifuDlyCnt : 0);
   // icache 命中率 + 缺失代价(缺失代价就是 TMT 里"每次缺失要等多少周期"那一项)
-  Log_nohead("  %-17s cnt=%-10lu miss=%-10lu hit=%7.2f%%", "Icache access:",
+  // 注意: "miss=" 是5字符而 "total=" 是6字符, 故用 %-11lu 补足, 使第三列与其他行对齐
+  Log_nohead("  %-17s cnt=%-10lu miss=%-11lu hit=%7.2f%%", "Icache access:",
          (unsigned long)ifuAcc, (unsigned long)ifuMiss,
          ifuAcc ? 100.0 * (ifuAcc - ifuMiss) / ifuAcc : 0);
   Log_nohead("  %-17s cnt=%-10lu total=%-10lu avg=%7.2f cyc/miss", "Icache miss:",

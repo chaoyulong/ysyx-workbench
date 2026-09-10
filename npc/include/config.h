@@ -6,7 +6,8 @@
 // 注意: CONFIG_ISA_riscv 等由 Makefile 的 -D 定义, 不在此处
 
 // 日志写文件: 配合 log_init 的 -l <file> 参数
-// #define CONFIG_LOG 1
+// 注意: 不打开这个宏时, Log() 只输出到 stdout, -l 指定的文件会一直为空
+#define CONFIG_LOG 1
 
 // 差分测试: 与参考实现对比(需要 -d <ref.so> / -p <port> 参数)
 //  #define CONFIG_DIFFTEST 1

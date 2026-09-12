@@ -204,7 +204,9 @@ case class ysyx_23060082_Axi4_Ctrler_ReadOnly_Burst(param: IcacheParams = Icache
     for (i <- 1 until param.words - 1) {          // i = 1, .. ,  words-2
       chain.elsewhen(wordCnt === i) { lineReg(i*32 + 31 downto i*32) := io.axi4.r.data }
     }
-    chain.otherwise { lineReg := lineReg }
+    // 注意: 这里【不能】写 chain.otherwise { lineReg := lineReg }
+    //   lineReg 是 Reg, 分支不赋值即保持; 而整体赋值会和上面的分片赋值冲突,
+    //   触发 SpinalHDL 的 ASSIGNMENT OVERLAP (words=2 时循环为空才侥幸没报)
   }
 
   when(io.readReq) {      // 请求开始时清零，所以不需要reset信号

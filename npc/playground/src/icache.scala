@@ -40,8 +40,8 @@ object Axi4Define {
 // 命中: 请求拍组合判断(tag匹配 && valid), 同拍返回 rdata
 // 缺失: 进入 Miss 状态, 经 AXI 读回并写回 cache(valid/tag/data), 完成后返回
 case class IcacheParams(
-  lineBytes: Int = 8,       // 块大小(字节), 4B 起步(后续可加大配合突发)
-  lines:     Int = 16       // 块数(直接映射组数)
+  lineBytes: Int = 16,      // 块大小(字节), 4B 起步(后续可加大配合突发)
+  lines:     Int = 8        // 块数(直接映射组数)
 ) {
   // ---- 派生常量  ----
   val lineBits  = log2Up(lineBytes)              // 块内偏移位宽
@@ -67,8 +67,8 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
     val reqIn  = slave  Stream(IcacheReqData())
     val rspOut = master Flow(IcacheRspData())
     val axi4   = master(Axi4ReadOnly(AxiConfig.axiConfig))
-    val fenceI = in Bool()   // fence.i: 清空有效位(后续取指缺失重读)
-    val miss   = out Bool()  // 缺失拍脉冲(每次缺失一次), 供 IFU 的性能计数器统计命中率; STA 时无人使用会被剪掉
+    val fenceI = in Bool()    // fence.i: 清空有效位(后续取指缺失重读)
+    val miss   = out Bool()   // 缺失拍脉冲(每次缺失一次), 供 IFU 的性能计数器统计命中率; STA 时无人使用会被剪掉
     val missDone = out Bool() // 缺失完成拍脉冲, 与 miss 配对可测出平均缺失代价(即 TMT 里的那一项)
   }
 

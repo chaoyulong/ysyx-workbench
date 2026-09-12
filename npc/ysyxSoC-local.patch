@@ -3,7 +3,7 @@
 #
 #   基线 commit    : df38a4d93d1d71e621fe91b106d088bd33af984a  (origin/ysyx6)
 #   生成时的 HEAD  : 50026e05
-#   生成时间       : 2026-09-12 16:54:19
+#   生成时间       : 2026-09-12 17:00:03
 #   生成脚本       : npc/tools/make-ysyxsoc-patch.sh
 #
 #   应用方法(在纯净的 ysyxSoC 克隆里):
@@ -1306,7 +1306,7 @@ index cedbf77b..b28a72f4 100644
 +endmodule
 \ No newline at end of file
 diff --git a/perip/sdram/sdram.v b/perip/sdram/sdram.v
-index 3613b231..652ca6ae 100644
+index 3613b231..9311dd95 100644
 --- a/perip/sdram/sdram.v
 +++ b/perip/sdram/sdram.v
 @@ -1,3 +1,18 @@
@@ -1328,7 +1328,7 @@ index 3613b231..652ca6ae 100644
  module sdram(
    input        clk,
    input        cke,
-@@ -8,9 +23,234 @@ module sdram(
+@@ -8,9 +23,253 @@ module sdram(
    input [12:0] a,
    input [ 1:0] ba,
    input [ 1:0] dqm,
@@ -1563,6 +1563,25 @@ index 3613b231..652ca6ae 100644
 +
 +  // assign dq = 16'bz;
 +  assign dq = (!cs && rw_state == read_t) ? read_data : 16'bz;
++
++  // ============================================================
++  // 【不变式】每个 READ 命令最终都应产生 BURST_LENGTH 拍 dq 输出
++  //   不等就说明数据丢了 —— 比"命令间隔 >= CAS"这种猜阈值可靠
++  // ============================================================
++  reg [31:0] n_read_cmd = 32'd0;    // 发过多少个读命令
++  reg [31:0] n_data_out = 32'd0;    // dq 被驱动过多少拍
++  always @(posedge sdram_clk) begin
++    if(!cs && cmd == CMD_READ)    n_read_cmd <= n_read_cmd + 32'd1;
++    if(!cs && rw_state == read_t) n_data_out <= n_data_out + 32'd1;
++  end
++
++  final begin
++    if(n_data_out != n_read_cmd * BURST_LENGTH)
++      $display("[sdram] ERROR: 读命令 %0d 个, 数据只输出 %0d 拍(应为 %0d) —— 数据丢失!",
++               n_read_cmd, n_data_out, n_read_cmd * BURST_LENGTH);
++    // else
++    //   $display("[sdram] OK: 读命令 %0d 个, 输出 %0d 拍, 无丢失", n_read_cmd, n_data_out);
++  end
  
  endmodule
 diff --git a/perip/sdram/sdram_top_apb.v b/perip/sdram/sdram_top_apb.v

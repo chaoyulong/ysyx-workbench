@@ -42,11 +42,11 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
       .otherwise( arbiterState := ArbiterState.Idle)
     }
     is (ArbiterState.IfuUsing){
-      when(io.ifuAxi4.r.fire) { arbiterState := ArbiterState.Idle }
+      when(io.ifuAxi4.r.fire && io.ifuAxi4.r.last) { arbiterState := ArbiterState.Idle }  // 握手成功并且是最后一个数据才算完成
       .otherwise( arbiterState := ArbiterState.IfuUsing)
     }
     is (ArbiterState.LsuUsing){
-      when(io.lsuAxi4.r.fire) { arbiterState := ArbiterState.Idle }
+      when(io.lsuAxi4.r.fire && io.lsuAxi4.r.last) { arbiterState := ArbiterState.Idle }
       .otherwise( arbiterState := ArbiterState.LsuUsing)
     }
   }
@@ -85,7 +85,7 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
       }
     }
     is(CrossState.Clint, CrossState.External) {
-      when(busAxi4.r.fire) { readState := CrossState.Idle }
+      when(busAxi4.r.fire && busAxi4.r.last) { readState := CrossState.Idle }
       .otherwise { readState := readState }
     }
   }

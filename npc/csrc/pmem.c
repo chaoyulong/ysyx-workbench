@@ -102,5 +102,6 @@ extern "C" void sdram_mem_write(uint32_t chip, uint32_t bank, uint32_t addr, uin
 }
 
 extern "C" uint32_t sdram_mem_read(uint32_t chip, uint32_t bank, uint32_t addr) {
+  if(chip == 0 && addr == 0) {printf("sdram_mem_read: chip=%d, bank=%d, addr=%d, data=0x%04x\n", chip, bank, addr, sdram_mem[chip][bank][addr]);}
   return sdram_mem[chip][bank][addr];
 }

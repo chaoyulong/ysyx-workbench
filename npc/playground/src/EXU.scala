@@ -45,7 +45,7 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
   val pcDataB = Mux(banchCond.io.pcBsrc, io.input.rfReadData1, io.input.pc)
   val pcDataTmp = pcDataA + pcDataB
   // jalr指令规定要将最后一位清零
-  io.output.pcNext = io.input.ctrl.aluCtrl.branch.mux(
+  val pcNext = io.input.ctrl.aluCtrl.branch.mux(
     U"010"  -> (pcDataTmp(31 downto 1) ## B"1'b0").asUInt,
     default -> pcDataTmp
   )

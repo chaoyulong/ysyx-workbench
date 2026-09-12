@@ -169,7 +169,7 @@ case class ysyx_23060082_Axi4_Ctrler_ReadOnly_Burst(param: IcacheParams = Icache
 
   // 正在拼装的行(逐字填入)，最后一位由于之前代码的规则，直接靠拼接
   val lineReg = if (param.words > 1) Reg(Bits(param.dataBits - 32 bits)) else Reg(Bits(32 bits))
-  val wordCnt = Reg(UInt(math.max(param.wordBits, 1) bits)) // 读取到了第几个数，按照约束最多只会一次8个
+  val wordCnt = if (param.words > 1) UInt(param.wordBits bits) else UInt(1 bits)    // 读取到了第几个数，按照约束最多只会一次8个
   val readOnce = io.axi4.r.fire                   // 每次读回一个数据完成的信号，用于icache数据的存储
 
   io.axi4.ar.valid.setAsReg() init(False)

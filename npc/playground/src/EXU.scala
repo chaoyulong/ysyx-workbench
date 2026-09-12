@@ -5,6 +5,8 @@ import spinal.lib._    // 使用spinal的模块库
 
 case class Exu2Lsu_data(config: CpuConfig = CpuConfig()) extends Bundle {
   val pc          = UInt(32 bits) 
+  val instr       = if (config.enableSimDebug) UInt(32 bits) else null
+  
   val pcNext      = UInt(32 bits)   // 执行trapEnter指令(i_ecall，i_ebreak，i_illegal)时，pcNext数据一定是无用的，此时用来传递pc供给csr使用
                                     // 就可以省掉一个32位的寄存器，但是为了仿真好看，会在config.enableSimDebug时，保留pc寄存器
   val rfCtrl      = RfCtrl()        // 直通数据，在EXU中无作用
@@ -74,6 +76,10 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
   io.output.rfCtrl    := io.input.ctrl.rfCtrl      // 直通数据，在EXU中无作用
   io.output.memCtrl   := io.input.ctrl.memCtrl     // 直通数据，在EXU中无作用
   io.output.csrCtrl   := io.input.ctrl.csrCtrl     // 直通数据，在EXU中无作用
+
+  if (config.enableSimDebug) {
+    io.output.instr   := io.input.instr
+  }
 }
 
 /*    Branch      跳转类型

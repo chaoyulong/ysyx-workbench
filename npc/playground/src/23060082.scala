@@ -118,22 +118,6 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig()) extends Component {
   // ==================== 仿真专用: itrace 指令退休追踪 (仅仿真, 不加顶层端口) ====================
   // 黑盒实例化(寄存器在 dpi-c.v), 端口连接提供fanout, 指令逐级传递到WBU
   if (config.enableSimDebug) {
-    // 指令随流水线逐级传递(仿真专用寄存器链)
-    val itraceInstrIdu = Reg(Bits(32 bits)) init(0)
-    val itraceInstrExu = Reg(Bits(32 bits)) init(0)
-    val itraceInstrLsu = Reg(Bits(32 bits)) init(0)
-    val itraceInstrWbu = Reg(Bits(32 bits)) init(0)
-
-    when(ifu.io.output.fire) { itraceInstrIdu := ifu.io.output.instr.asBits }
-    when(idu.io.output.fire) { itraceInstrExu := itraceInstrIdu }
-    when(exu.io.output.fire) { itraceInstrLsu := itraceInstrExu }
-    when(lsu.io.output.fire) { itraceInstrWbu := itraceInstrLsu }
-
-    val itrace = ItraceReg()          // 黑盒: 寄存器在 dpi-c.v, C++ 侧直接读取
-    itrace.io.valid := wbu.io.input.valid   // 指令到达WBU = 执行完毕
-    itrace.io.pc    := wbu.io.input.pc
-    itrace.io.instr := itraceInstrWbu.asUInt
-
     // ==================== 仿真专用: mtrace 访存踪迹 (与 itrace 同一块) ====================
     // 截取 lsuAxi4(仅数据访存, 不含取指), 按地址范围区分内存/设备
     val mtrace = MtraceReg()

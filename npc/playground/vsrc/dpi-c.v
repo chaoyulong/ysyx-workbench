@@ -56,6 +56,21 @@ module ItraceReg(
       itraceRetireValid  <= 1'b0;
     end
   end
+
+  reg ebreak;
+
+  always @(posedge clock or posedge reset) begin
+    if (reset) begin
+      ebreak  <= 1'b0;
+    end
+    else if (instr == 32'b00000000000100000000000001110011) begin
+      ebreak  <= 1'b1;
+    end
+    else begin
+      ebreak  <= 1'b0;
+    end
+  end
+
 endmodule
 
 // ------------------- 仿真专用: mtrace 访存踪迹 (仅仿真, 综合不实例化) ------------------- //

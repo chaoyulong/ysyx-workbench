@@ -5,7 +5,9 @@ import spinal.lib._    // 使用spinal的模块库
 import spinal.lib.bus.amba4.axi._
 
 case class Lsu2Wbu_data(config: CpuConfig = CpuConfig()) extends Bundle {
-  val pc = if (config.enableSimDebug) UInt(32 bits) else null   // 仅仿真可见
+  val pc           = if (config.enableSimDebug) UInt(32 bits) else null   // 仅仿真可见
+  val instr        = if (config.enableSimDebug) UInt(32 bits) else null
+
   val pcNext       = UInt(32 bits)
   val mem_data_out = UInt(32 bits)
   val alu_data_out = UInt(32 bits) 
@@ -89,7 +91,11 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   io.output.valid := io.input.valid && willValid  
 
   // ================================ 数据传输部分 ================================ //
-  if (config.enableSimDebug) { io.output.pc := io.input.pc }          // 仿真专用
+  if (config.enableSimDebug) { 
+    io.output.pc       := io.input.pc
+    io.output.instr    := io.input.instr
+  }
+
   io.output.pcNext     := Mux(io.input.csrCtrl.trapEnter, csr.io.mtvec,
                           Mux(io.input.csrCtrl.trapExit , csr.io.mepc,
                               io.input.pcNext))
@@ -98,7 +104,6 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   io.output.alu_data_out:= io.input.aluResult
   io.output.rfCtrl     := io.input.rfCtrl    
   io.output.fenceI     := io.input.fenceI
-
   // ==================== 仿真专用: LSU 访存性能统计(仅仿真, 4 组: mem/dev × 读/写) ====================
   // 内存范围(两平台统一): flash 0x30000000-0x3fffffff + psram 0x80000000-0x9fffffff + sdram 0xa0000000-0xbfffffff
   if (config.enableSimDebug) {
@@ -124,7 +129,6 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
     perf.io.rsp(3) := io.axi4.b.fire &&  pendingIsDev   // dev 写响应
   }
 }
-
 
 // ================================ 数据处理单元 ================================ //
 case class ysyx_23060082_DataProcess() extends Component {

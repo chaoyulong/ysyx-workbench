@@ -4,7 +4,8 @@ import spinal.core._
 import spinal.lib._    // 使用spinal的模块库
 
 case class Idu2Exu_data(config: CpuConfig = CpuConfig()) extends Bundle {
-  val pc    = UInt(32 bits)
+  val pc          = UInt(32 bits)
+  val instr       = if (config.enableSimDebug) UInt(32 bits) else null
 
   val ctrl        = CtrlSignals()
   val imm         = UInt(32 bits)
@@ -94,8 +95,10 @@ case class ysyx_23060082_IDU(config: CpuConfig = CpuConfig()) extends Component 
   io.output.rfReadData2 := io.rfRead.data2
   io.output.ctrl        := decoder.io.ctrl
   io.output.imm         := decoder.io.imm
+
   if (config.enableSimDebug) {
     io.output.isCalc    := decoder.io.isCalc
+    io.output.instr      := io.input.instr
   }
   // ====================================== ====================================== //
 }

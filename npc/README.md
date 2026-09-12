@@ -162,3 +162,104 @@
   - `8行×16B`（128B）的 47610 **少于** `64行×4B`（256B）的 68813——**容量翻倍也补不回块大小的差距**
   - 而且大块**更省面积**（tag 数量随行数下降）：64B 容量下 `16行×4B` = 944 触发器 vs `8行×8B` = 728 触发器
   - **前提**：大块必须配合**突发传输**，否则缺失代价会按块大小线性上涨（文档「优化缺失代价」一节）
+
+## 2026-09-12 icache 8 字节块与突发传输、Xbar 与 SDRAM 模型的连环修复
+
+### icache：`16行×4B` → `8行×8B`（带突发）
+
+**动机**：cachesim 的 DSE 结论——等容量下加大块远优于加行数（64B 容量：`16行×4B` 237431 缺失 vs `8行×8B` 131178 缺失，触发器还少 216 个）
+
+**改动**：
+- `IcacheParams` 增加派生常量（`lineBits`/`indexBits`/`tagBits`/`words`/`wordBits`/`dataBits`），供 icache 与 AXI 控制器共用
+- `dataMem` 按 `lineBytes` 变宽（每行 `lineBytes*8` 位）
+- 新增 **`ysyx_23060082_Axi4_Ctrler_ReadOnly_Burst`**：控制器内完成**突发读 + 逐拍拼装**（`ar.len = words-1`、`ar.size = BYTE_4`、`ar.burst = INCR`），对 icache 仍只暴露"一次读回一整行"
+- 命中时按 `pc` 的块内字偏移选字；**缺失时按"请求时锁存的字偏移"选字**（不是最后读到的那拍 ✗ 这是最容易错的地方）
+- 缺失地址按**块**对齐（`pc(31 downto lineBits)`）
+
+**性能**（microbench test）：
+
+| 指标 | 16行×4B | 8行×8B | 变化 |
+|---|---|---|---|
+| 缺失次数 | 237431 | 131149 | **−44.8%** |
+| 命中率 | 59.22% | 77.46% | +18.2 pt |
+| 平均缺失代价 | 31.79 cyc | 40.64 cyc | +27.8%（一行 2 拍）|
+| TMT | 7548226 | **5329394** | **−29.4%** |
+| 总周期 | 20073896 | **17797665** | **−11.3%** |
+| microbench Scored time | 10860.01 ms | **8985.01 ms** | **−17.3%** |
+
+**与 cachesim 对拍**：访问次数完全一致（581747）；缺失 RTL 131149 vs cachesim 131147，**差 2**——因为 cachesim 在 `fence.i` **被取到那一拍**就清空，而 RTL 里 `fenceI` 是 **WBU 退休时**才发给 icache（中间 IFU 多取了几条）。每条 `fence.i` 多算 1 次，正好 2 次 ✓
+
+### 连环 bug 1：Xbar 用 `r.fire` 结束读事务 → 突发第二拍被吞
+
+`Xbar.scala` 的**仲裁器**和**读状态机**都在第一个响应拍就回 Idle：
+
+```scala
+when(io.ifuAxi4.r.fire) { arbiterState := ArbiterState.Idle }   // ✗ 没看 r.last
+when(busAxi4.r.fire)    { readState    := CrossState.Idle }     // ✗ 没看 r.last
+```
+
+而 `r.valid` **被这两个状态门控**（`r.payload` 却无条件透传 ✗）——于是第 1 拍正常、状态机回 Idle、**第 2 拍的 `rvalid` 被门控掉** ✗，但 `r.last` 仍然透传 → 波形上表现为"**rlast 高而 rvalid 低**"
+
+**修法**：3 处改成 `r.fire && r.last`（仲裁器 2 处 + 读状态机 1 处）；写通道 `b.fire` 不用改（AXI 写事务只有一个 B 响应 ✓）
+
+### 连环 bug 2：SDRAM 芯片模型优先级反了 → 突发第二拍全 0
+
+`perip/sdram/sdram.v` 的判断链把"**突发结束**"排在了"**新命令**"前面：
+
+```verilog
+else if(data_count >= BURST_LENGTH) rw_state <= 2'b00;   // ★ 抢在新命令之前 ✗
+...
+else if(cmd == 3'b101)              rw_state <= 2'b10;
+```
+
+BL=1 时 `data_count` 会在读出数据后停在 1，于是**背靠背的第 2 个 READ 被当成"突发结束"吞掉** ✗——`rw_state` 回 idle、`col_address` 被冲成 0、`read_data` 被清零 → `dq` 变 `z` → 控制器采到 **0** ✗
+
+**现象**：flash 取指正常，一进 SDRAM 就"**奇数 32 位字全 0**"（`0xa0000004: 00 00 00 00  c.unimp`）
+
+**修法**：**统一规则——命令优先，突发结束放最后**（`rw_state` / `col_address` / `data_count` 三处保持一致）
+
+### SDRAM 模型的整理（行为不变，perf 逐位一致）
+
+- `cmd` 具名化：`CMD_LOAD_MODE`/`CMD_REFRESH`/`CMD_PRECHARGE`/`CMD_ACTIVE`/`CMD_WRITE`/`CMD_READ`/`CMD_BURST_TERM`/`CMD_NOP`（3 位；与 `sdram_axi_core.v` 的 4 位 `CMD_*` 一一对应）
+- Mode 字段具名化：`MODE_CAS_2/3`、`MODE_BL_1/2/4/8`——注意同一个 `3'b010` 在 CAS 与 BL 两个 case 里含义不同 ✗，具名后不再混淆
+- `rw_state` 改用文件里已有的 `state_t` 枚举（顺带修正 `[2:0]` → `[1:0]` 的位宽不一致）
+- `cs` 守卫在 9 个 `always` 块里统一补回
+- `data_count`：命令拍直接置 1（原来用 `+1` 会累积 ✗）、读命令显式清 0
+- `delay_count`：互斥分支重写，读命令显式起拍
+- `read_data`：第一个条件补上 `rw_state == read_delay_t` 状态守卫
+
+### 遗留
+
+- ⚠️ **`sdram.v` 有一个隐含约束**：两次读命令间隔必须 ≥ `CAS_Latency` 拍（这个模型**不流水化**读命令，间隔不足时前一次读会**拿到错列的数据**，而不是报错 ✗）。现在靠 core 的 2 拍间隔 + CAS=2 侥幸错开——**建议加一条断言**把它变成显式报错
+- **SDRAM 的突发不靠颗粒突发模式**：`MODE_REG` 配的是 **BL=1、CAS=2**，而 `sdram_axi_core` 里 `inport_len_i` **只声明未使用**——突发是在 `sdram_axi_pmem.v` 层被拆成"一拍一个 core 命令"实现的。所以 8B 块是 **2 次独立的 SDRAM 访问**（缺失代价 +27.8% 的来源）；想再降代价，要么改 `MODE_REG` 让颗粒进 BL=2，要么让 core 真正支持 `inport_len`
+
+## ysyxSoC 本地补丁（重要，换环境必看）
+
+**背景**：`ysyxSoC` 的远端是**官方仓库** `OSCPU/ysyxSoC`——本地所有改动**推不上去** ✗，重新 clone 就会全部丢失 ✗，其中包括上面**两个连环修复**。丢了之后"突发第二拍全 0"会**神秘复现** ✗
+
+**做法**：把改动固化成 patch，放在**本项目**（`npc` 的远端是自己的仓库 ✓ 推得上去 ✓）：
+
+```
+npc/ysyxSoC-local.patch            # 补丁本体（自解释，头部记录基线 commit）
+npc/tools/make-ysyxsoc-patch.sh    # 重新生成（改完 ysyxSoC 后再跑一次即可）
+```
+
+**应用**（在纯净的 `ysyxSoC` 克隆里）：
+
+```bash
+cd ysyxSoC
+git checkout <patch 头部记录的基线 commit>       # 当前为 df38a4d9 (origin/ysyx6)
+git apply ../npc/ysyxSoC-local.patch
+```
+
+**重新生成**：
+
+```bash
+npc/tools/make-ysyxsoc-patch.sh                  # 或 BASE=<其它基线> ... 
+```
+
+**有意排除**：
+- `rocket-chip/` —— 子模块，只是指针脏标记（`-dirty`），无实际改动
+- `patch/firtool/` —— `firtool`(28MB) + `om-linker`(8.5MB) 二进制 ✗。`git diff` 对二进制只能输出 `Binary files differ`，带上反而**无法应用**；需要时另行获取
+
+**验证**：在 `origin/ysyx6` 的纯净 worktree 上 `git apply` ✓，20 个改动文件**逐字节一致** ✓

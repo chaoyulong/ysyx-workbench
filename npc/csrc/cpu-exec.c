@@ -25,7 +25,7 @@ CPU_state cpu;
 #define itraceRetireValid   top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__itraceRetireValid
 #define itraceRetirePc      top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__itraceRetirePc
 #define itraceRetireInstr   top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__itraceRetireInstr
-#define ebreak              top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__ebreak;
+#define ebreak              top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__ebreak
 #else
 #include "VNPC_TOP___024root.h"
 #define itraceRetireValid   top->rootp->NPC_TOP__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__itraceRetireValid

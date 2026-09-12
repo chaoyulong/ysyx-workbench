@@ -22,14 +22,16 @@ CPU_state cpu;
 // itrace 黑盒总是存在(enableSimDebug=true), 宏总是可用
 #ifdef __ysyxsoc__
 #include "VysyxSoCFull___024root.h"
-#define itraceRetireValid   top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireValid
-#define itraceRetirePc      top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetirePc
-#define itraceRetireInstr   top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireInstr
+#define itraceRetireValid   top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__itraceRetireValid
+#define itraceRetirePc      top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__itraceRetirePc
+#define itraceRetireInstr   top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__itraceRetireInstr
+#define ebreak              top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__ebreak;
 #else
 #include "VNPC_TOP___024root.h"
-#define itraceRetireValid   top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireValid
-#define itraceRetirePc      top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetirePc
-#define itraceRetireInstr   top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireInstr
+#define itraceRetireValid   top->rootp->NPC_TOP__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__itraceRetireValid
+#define itraceRetirePc      top->rootp->NPC_TOP__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__itraceRetirePc
+#define itraceRetireInstr   top->rootp->NPC_TOP__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__itraceRetireInstr
+#define ebreak              top->rootp->NPC_TOP__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__ebreak;
 #endif
 
 static void trace_and_difftest() {
@@ -76,12 +78,12 @@ static void exec_once()
   g_nr_guest_inst++;   // 完成一条指令
 
   // 状态更新: 用退休指令的 PC (ifu.pc 可能已指向流水线后续)
-  cpu.pc = itraceRetirePc;
-  cpu.instr  = itraceRetireInstr;
+  cpu.pc    = itraceRetirePc;
+  cpu.instr = itraceRetireInstr;
   for (int i = 0; i < REG_NUM; i++) cpu.gpr[i] = gpr(i);
 
   // 检测程序结束
-  if (Rmcause() == 3) {
+  if (ebreak) {
     npc_state.state = NPC_END;
   }
 }

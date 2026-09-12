@@ -19,7 +19,7 @@
 
 #ifdef CONFIG_TRACE
 // 指令 trace: 每条指令打印到 log + ringbuf(程序结束时显示最后16条)
-// 也是 cachesim 的 PC 序列来源(见 cachesim/README.md)
+// 也是 cachesim 的 PC 序列来源(见 tools/cachesim/README.md)
 // #define CONFIG_ITRACE 1
 
 // 访存 trace: 记录每次数据访存(load/store)的 pc/地址/数据

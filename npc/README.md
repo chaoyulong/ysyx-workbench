@@ -142,10 +142,10 @@
 - **待办**：突发读需按"每拍各自的绝对交付时刻"扩展为 FIFO（当前单拍结构会让设备被 CPU 反压，破坏节拍时序）；突发写（含 W 节拍间隔）留待 dcache 阶段。
 - **相关事实**：**flash 挂在 APB 上（APBSPI，不走 AXI）**，因此**不支持突发**；`AXI4Fragmenter` 会把发往 flash 的突发自动拆成单拍 APB 事务。flash/sram 的 SDRAM 之外路径由已有的 `apb_delayer.v`（R=3.76）校准，与本 AXI 延迟模块互不影响。
 
-### cachesim（icache 功能模拟器，`cachesim/`）
+### cachesim（icache 功能模拟器，`tools/cachesim/`）
 - **完全独立的 C 程序**（只依赖 libc，不参与 NPC 构建流程）：回放取指 PC 序列，只维护元数据（valid/tag/替换信息）统计缺失次数——不模拟数据、不执行指令，因此比 RTL 仿真相差几千倍。
 - 支持直接映射 / 组相联（`--ways`）、`lru|fifo|rand` 替换、`fence.i` 清空、`--from` 排除 boot 阶段、`--misscost` 直接算 TMT。
-- **输出单行 `RESULT:`**，便于脚本并行扫描参数组合（`npc/cachesim/README.md`）。
+- **输出单行 `RESULT:`**，便于脚本并行扫描参数组合（`npc/tools/cachesim/README.md`）。
 - **与 RTL 对拍（性能 DiffTest）完全通过**：
 
   | 程序 | RTL（`make perf` 的 `Icache access`） | cachesim |

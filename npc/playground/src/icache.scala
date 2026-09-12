@@ -40,7 +40,7 @@ object Axi4Define {
 // 命中: 请求拍组合判断(tag匹配 && valid), 同拍返回 rdata
 // 缺失: 进入 Miss 状态, 经 AXI 读回并写回 cache(valid/tag/data), 完成后返回
 case class IcacheParams(
-  lineBytes: Int = 8,       // 块大小(字节), 4B 起步(后续可加大配合突发)
+  lineBytes: Int = 16,      // 块大小(字节), 4B 起步(后续可加大配合突发)
   lines:     Int = 8        // 块数(直接映射组数)
 ) {
   // ---- 派生常量  ----

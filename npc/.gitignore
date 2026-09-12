@@ -12,6 +12,8 @@
 !.scalafmt.conf
 !README.md
 !*.sdc
+!*.patch
+!*.sh
 build/
 
 # mill

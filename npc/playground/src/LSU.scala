@@ -76,7 +76,7 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   csr.io.csrCmd     := io.input.csrCtrl.csrCmd
   csr.io.trapEnter  := io.input.csrCtrl.trapEnter
   csr.io.trapExit   := io.input.csrCtrl.trapExit
-  csr.io.pcIn       := io.input.pcOrNext
+  csr.io.pcIn       := io.input.pc
   csr.io.causeIn    := Mux(io.input.csrCtrl.illegal, U(2),
                        Mux(io.input.csrCtrl.ebreak , U(3), io.input.rfReadData))
   csr.io.instrRetire := io.output.fire    // 指令传出LSU即计数(比写回提前1拍, 总数正确)
@@ -92,7 +92,7 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   if (config.enableSimDebug) { io.output.pc := io.input.pc }          // 仿真专用
   io.output.pcNext     := Mux(io.input.csrCtrl.trapEnter, csr.io.mtvec,
                           Mux(io.input.csrCtrl.trapExit , csr.io.mepc,
-                              io.input.pcOrNext))
+                              io.input.pcNext))
 
   io.output.mem_data_out:= Mux(io.input.csrCtrl.csrCmd =/= U"3'd0", csr.io.csrRdata, dataProcess.io.rdataReal)           // 借用mem_data_out来输出读出的值
   io.output.alu_data_out:= io.input.aluResult

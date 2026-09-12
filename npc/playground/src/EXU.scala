@@ -4,8 +4,8 @@ import spinal.core._
 import spinal.lib._    // 使用spinal的模块库
 
 case class Exu2Lsu_data(config: CpuConfig = CpuConfig()) extends Bundle {
-  val pc = if (config.enableSimDebug) UInt(32 bits) else null   // 仅仿真可见
-  val pcOrNext    = UInt(32 bits)   // 执行trapEnter指令(i_ecall，i_ebreak，i_illegal)时，pcNext数据一定是无用的，此时用来传递pc供给csr使用
+  val pc          = UInt(32 bits) 
+  val pcNext      = UInt(32 bits)   // 执行trapEnter指令(i_ecall，i_ebreak，i_illegal)时，pcNext数据一定是无用的，此时用来传递pc供给csr使用
                                     // 就可以省掉一个32位的寄存器，但是为了仿真好看，会在config.enableSimDebug时，保留pc寄存器
   val rfCtrl      = RfCtrl()        // 直通数据，在EXU中无作用
   val memCtrl     = MemCtrl()       // 直通数据，在EXU中无作用
@@ -44,7 +44,8 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
   val pcDataA = Mux(banchCond.io.pcAsrc, io.input.imm, U"32'd4")
   val pcDataB = Mux(banchCond.io.pcBsrc, io.input.rfReadData1, io.input.pc)
   val pcDataTmp = pcDataA + pcDataB
-  val pcNext = io.input.ctrl.aluCtrl.branch.mux(
+  // jalr指令规定要将最后一位清零
+  io.output.pcNext = io.input.ctrl.aluCtrl.branch.mux(
     U"010"  -> (pcDataTmp(31 downto 1) ## B"1'b0").asUInt,
     default -> pcDataTmp
   )
@@ -63,11 +64,10 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
     perf.io.evt(1) := io.input.valid && io.input.isCalc               // 计算类指令数
   }
   // ================================ 数据传输部分 ================================ //
-  if (config.enableSimDebug) { io.output.pc := io.input.pc }          // 仿真专用
-
+  io.output.pc := io.input.pc
+  io.output.pcNext  := Mux(io.input.ctrl.csrCtrl.trapEnter, io.input.pc, pcNext)
   val useRs1 = io.input.ctrl.csrCtrl.trapEnter || (io.input.ctrl.csrCtrl.csrCmd =/= 0)  // rs1: CSR，rs2: store
   io.output.rfReadData:= Mux(useRs1, io.input.rfReadData1, io.input.rfReadData2)
-  io.output.pcOrNext  := Mux(io.input.ctrl.csrCtrl.trapEnter, io.input.pc, pcNext)
   io.output.aluResult := alu.io.aluResult
   io.output.csrAddr   := io.input.imm(11 downto 0)
   io.output.fenceI    := io.input.ctrl.fenceI

@@ -77,11 +77,6 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   when(io.redirect.valid) { state := IfuState.Idle }                                  // 重定向时，所有状态都强制回Idle(最高优先级)
 
   // ================================ 用于握手的部分 ================================ //
-  // icache命中，或者等待访存完成时出现命中，并且没有重定向
-  io.output.valid := ((state === IfuState.Done) || (icache.io.rspOut.valid && state === IfuState.WaitMem)) && !io.redirect.valid  
-
-  val rspIsCurrentHit = icache.io.reqIn.fire && icache.io.rspOut.valid
-
   // icache已经取出指令，或刚刚取出，或同一拍命中。并且没有重定向
   io.output.valid := ((state === IfuState.Done) ||    
                      (icache.io.rspOut.valid && state === IfuState.WaitMem) || 

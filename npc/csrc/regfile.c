@@ -47,7 +47,7 @@ void isa_reg_display() {  // 共有32个寄存器
   for(i = 0; i < REG_NUM; i++) {
     printf("-- %-2d -- %-3s     0x%08x     %-u\n", i, regs[i], gpr(i), gpr(i));
   }
-  printf("-- %-2d -- pc      0x%08x\n", i, Rpc());    // 最后打印PC的值,cpu的寄存器组包括gpr和pc
+  printf("-- %-2d -- pc      0x%08x\n", i, itraceRetirePc);    // 最后打印PC的值,cpu的寄存器组包括gpr和pc
 }
 
 word_t isa_reg_str2val(const char *s, bool *success) {

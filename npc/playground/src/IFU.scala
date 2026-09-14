@@ -9,40 +9,86 @@ case class Ifu2Idu_data() extends Bundle {
   val instr = UInt(32 bits)
 }
 
+case class RedirectReq() extends Bundle {  // 真实的在exu中运算出来，或者lsu的csr中取出来的pc,同时需要一个valid信号
+  val pcNext = UInt(32 bits)
+  val fenceI = Bool()                     // 这次重定向同时要求失效 icache
+}
+
 // ================================ ================================ //
 case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component {
   val io = new Bundle {
-    val input  = slave  Stream(Wbu2Ifu_data())
-    val output = master Stream(Ifu2Idu_data())  
-    val axi4   = master(Axi4ReadOnly(AxiConfig.axiConfig))
+    val redirect = slave Flow(RedirectReq())
+    val output   = master Stream(Ifu2Idu_data())  
+    val axi4     = master(Axi4ReadOnly(AxiConfig.axiConfig))
   }
 
   object IfuState extends SpinalEnum {              // 定义状态机枚举
     val Idle, WaitMem, Done = newElement()
   }
   val state = Reg(IfuState()) init(IfuState.Idle)   // 创建一个状态机
-  // ============================== 用于确定复位结束 ============================== //
-  val rstReg1 = RegNext(True) init(False)
-  val rstReg2 = RegNext(rstReg1) init(False)
-  val rstEnd = (rstReg1 && !rstReg2)
-  // ================================ 数据有效信号 ================================ //
-  val dataValid = RegInit(False)
-  when(io.input.fire || rstEnd) {     // 上游握手成功，或者复位结束，说明当前数据处于有效状态
-    dataValid := True
-  }elsewhen(io.output.fire) {         // 下游握手成功，说明当前数据已经无用，进入无效状态
-    dataValid := False
-  }otherwise{
-    dataValid := dataValid
-  }
-  // ================================ PC寄存器 ================================ //
-  val pc = RegNextWhen(io.input.pcNext, io.input.fire) init(U(config.resetPc, 32 bits))
-  // ================================ 指令缓存 (icache) ================================ //
-  // icache 内嵌: 持有只读 AXI 控制器(缺失访存); IFU 只发取指请求、等指令返回
+
   val icache = ysyx_23060082_Icache()
+  // ============================== 用于确定复位结束 ============================== //
+  val rstEnd = RegNext(True) init(False)
+  // =================================== PC寄存器 =================================== //
+  // pcFetch: 下一次要取的地址(重定向优先, 否则顺序+4)。取指地址与交付握手解耦
+  val pcFetch = Reg(UInt(32 bits)) init(U(config.resetPc, 32 bits))
+  when(io.redirect.valid) {
+    pcFetch := io.redirect.pcNext
+  } elsewhen(icache.io.reqIn.fire) {
+    pcFetch := pcFetch + 4
+  } otherwise {
+    pcFetch := pcFetch
+  }
+  // 每次请求的pc与它的响应配对，命中同拍用reqIn.pc, 缺失完成后用这一次请求锁存的pc
+  val pcOfReq = RegNextWhen(icache.io.reqIn.pc, icache.io.reqIn.fire) init(U(config.resetPc, 32 bits))
+
+  // ================================ 指令缓存 (icache) ================================ //
   io.axi4 <> icache.io.axi4
-  icache.io.fenceI := io.input.fenceI    // fence.i: 清空 icache 有效位
-  icache.io.reqIn.valid := (state === IfuState.Idle) && dataValid   // Idle 且数据有效: 发取指请求
-  icache.io.reqIn.pc    := pc
+  icache.io.fenceI      := io.redirect.valid && io.redirect.fenceI                    // fence.i: 清空 icache 有效位
+  icache.io.reqIn.valid := (state === IfuState.Idle) && rstEnd                        // 复位完成，并且没有指令要发送，发出请求,如果是io.redirect.valid导致的打断，
+                                                                                      // 此时icache应该不处于Idle状态，icache.io.reqIn.ready会为低
+  icache.io.reqIn.pc    := pcFetch
+
+  val rdataReg           = RegNextWhen(icache.io.rspOut.rdata, icache.io.rspOut.valid)// 响应时更新数据
+  val rspIsCurrentHit    = icache.io.reqIn.fire && icache.io.rspOut.valid             // icache直接命中
+  // ================================ 状态机 ================================ //
+  switch(state) {
+    is(IfuState.Idle) {                                                               // 手上没有指令，需要发出请求
+      when(rspIsCurrentHit) {                                                         // icache命中，同拍就能输出结果
+        when(io.output.fire) { state := IfuState.Idle }                               // 握手同时成功的话，就说明一切都在一周期内完成了，继续待在Idle状态进行下一次取指
+        .otherwise           { state := IfuState.Done }                               // 同期握手没有成功，进入Done状态等待与idu的握手
+      }
+      .elsewhen(icache.io.reqIn.fire) { state := IfuState.WaitMem }                   // icache未命中, 进入等待
+      .otherwise { state := IfuState.Idle }
+    }
+    is(IfuState.WaitMem) {                                                            // 等缺失完成
+      when(icache.io.rspOut.valid) {                                                  // icache访存完成，出现命中
+        when(io.output.fire) { state := IfuState.Idle }                               // icache访存完成立刻命中,转入Idle状态进行下一次取指
+        .otherwise           { state := IfuState.Done }                               // 没有立刻命中,转入Done等待idu接收
+      }
+      .otherwise { state := IfuState.WaitMem }
+    }
+    is(IfuState.Done) {                                                               // 手上有指令, 等IDU接收
+      when(io.output.fire) { state := IfuState.Idle }
+      .otherwise           { state := IfuState.Done }
+    }
+  }
+  when(io.redirect.valid) { state := IfuState.Idle }                                  // 重定向时，所有状态都强制回Idle(最高优先级)
+
+  // ================================ 用于握手的部分 ================================ //
+  // icache命中，或者等待访存完成时出现命中，并且没有重定向
+  io.output.valid := ((state === IfuState.Done) || (icache.io.rspOut.valid && state === IfuState.WaitMem)) && !io.redirect.valid  
+
+  val rspIsCurrentHit = icache.io.reqIn.fire && icache.io.rspOut.valid
+
+  // icache已经取出指令，或刚刚取出，或同一拍命中。并且没有重定向
+  io.output.valid := ((state === IfuState.Done) ||    
+                     (icache.io.rspOut.valid && state === IfuState.WaitMem) || 
+                      rspIsCurrentHit) && !io.redirect.valid           
+  // ================================ 数据传输部分 ================================ //
+  io.output.pc    := Mux(icache.io.reqIn.fire, pcFetch, pcOfReq)                      // 同拍命中，直接用pcFetch，否则用请求时锁存的pc
+  io.output.instr := Mux(icache.io.rspOut.valid, icache.io.rspOut.rdata, rdataReg)
 
   // 仿真专用: 取指性能统计(请求 -> 响应 延迟, 含命中/缺失)
   if (config.enableSimDebug) {
@@ -62,36 +108,6 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
     perf.io.req(1) := icache.io.miss         // 缺失开始拍(记时间)
     perf.io.rsp(1) := icache.io.missDone     // 缺失完成拍(算延迟)
   }
-
-  val rdataReg = RegNextWhen(icache.io.rspOut.rdata, icache.io.rspOut.valid) init(0)  // 响应时更新数据
-  // ================================ 状态机 ================================ //
-  switch(state) {
-    is(IfuState.Idle) {
-      when(dataValid && !icache.io.rspOut.valid) {state := IfuState.WaitMem}  // 请求未完成(缺失/等待), 进入等待
-      .otherwise{state := state}
-    }
-    is(IfuState.WaitMem) {
-      when(icache.io.rspOut.valid) {
-        when(io.output.fire){state := IfuState.Idle}     // 若已经握手成功，则返回到Idle状态
-        .otherwise{state := IfuState.Done}
-      }
-      .otherwise{state := state}
-    }
-    is(IfuState.Done) {
-      when(io.output.fire) {state := IfuState.Idle}    
-      .otherwise{state := state}    
-    }
-  }
-
-  // ================================ 用于握手的部分 ================================ //
-  // willValid的意义就是当前周期就可以完成任务
-  val willValid = ((state === IfuState.Idle || state === IfuState.WaitMem) && icache.io.rspOut.valid) ||  // 命中同拍/缺失完成
-                  (state === IfuState.Done)
-  io.output.valid := dataValid && willValid  
-  io.input.ready := !dataValid || io.output.fire
-  // ================================ 数据传输部分 ================================ //
-  io.output.pc    := pc
-  io.output.instr := Mux(icache.io.rspOut.valid, icache.io.rspOut.rdata, rdataReg)
 }
 
 /* ****************************************************************

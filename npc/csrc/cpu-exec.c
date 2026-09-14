@@ -18,22 +18,6 @@ uint64_t g_nr_guest_cycle = 0;    // 运行了多少周期
 NPCState npc_state = { .state = NPC_STOP };
 CPU_state cpu;
 
-
-// itrace 黑盒总是存在(enableSimDebug=true), 宏总是可用
-#ifdef __ysyxsoc__
-#include "VysyxSoCFull___024root.h"
-#define itraceRetireValid   top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__itraceRetireValid
-#define itraceRetirePc      top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__itraceRetirePc
-#define itraceRetireInstr   top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__itraceRetireInstr
-#define ebreak              top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__ebreak
-#else
-#include "VNPC_TOP___024root.h"
-#define itraceRetireValid   top->rootp->NPC_TOP__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__itraceRetireValid
-#define itraceRetirePc      top->rootp->NPC_TOP__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__itraceRetirePc
-#define itraceRetireInstr   top->rootp->NPC_TOP__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__itraceRetireInstr
-#define ebreak              top->rootp->NPC_TOP__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__ebreak;
-#endif
-
 static void trace_and_difftest() {
   IFDEF(CONFIG_ITRACE, itrace_trace());
   IFDEF(CONFIG_MTRACE, mtrace_trace());
@@ -74,6 +58,7 @@ static void exec_once()
       break;
     }
   } while (!itraceRetireValid);
+
   if (npc_state.state == NPC_ABORT) return;
   g_nr_guest_inst++;   // 完成一条指令
 
@@ -85,6 +70,11 @@ static void exec_once()
   // 检测程序结束
   if (ebreak) {
     npc_state.state = NPC_END;
+  }
+  if (Rmcause() == 2) { // 非法指令
+    Log(ANSI_FMT("ERROR: 非法指令%08x (pc=0x%08x), CPU可能卡死!", ANSI_FG_RED),
+        cpu.instr, (uint32_t)cpu.pc);
+    npc_state.state = NPC_ABORT;
   }
 }
 

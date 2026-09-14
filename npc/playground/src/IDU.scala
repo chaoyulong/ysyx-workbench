@@ -50,18 +50,101 @@ case class CtrlSignals() extends Bundle {   // 控制信号
   val fenceI  = out Bool()            // fence.i 指令(指令内存屏障, 需失效 icache)
 }
 
+// 状态	              含义	                                            谁会给出	                          该做什么
+// NoWriter	        这条指令不写 rd/本级没有真实指令:与任何rs无关	    三级都可能	                                不管
+// DataReady	      数据就在这一级，且这一拍就能前递	               EXU 的 ALU 类；LSU 的 ALU 类、CSR、          前递
+//                                                          访存完成那一拍；WBU 全部	
+
+// DataPendingHere  数据将在本级产生，但这一拍还没好	               只有LSU：load等AXI（!willValid）             停
+//                                                          将来开了乘法器/除法器，EXU的多周期运算也属于这一态	
+
+// DataPendingLater	数据要等这条指令走到后面某级才产生	              只有 EXU：load/csr（getDataInLsu）	        停
+object FwdState extends SpinalEnum {
+  val NoWriter, DataReady, DataPendingHere, DataPendingLater = newElement()
+}
+
+case class forwardData() extends Bundle {   // 数据前递信号
+  val state     = FwdState()
+  val writeAddr = UInt(5 bits)
+  val writeData = UInt(32 bits)
+}
+
 case class ysyx_23060082_IDU(config: CpuConfig = CpuConfig()) extends Component {
   val io = new Bundle {
     val input  = slave  Flow(Ifu2Idu_data())
     val output = master Stream(Idu2Exu_data(config)) 
+    val rfRead = master (RegFileReadBus())
 
-    val rfRead = master(RegFileReadBus())
+    val exuForward = in(forwardData())
+    val lsuForward = in(forwardData())
+    val wbuForward = in(forwardData())
   }
 
   val instr   = io.input.instr
   val decoder = ysyx_23060082_Decoder(config)
   decoder.instr := instr
 
+  // ================================ 访问寄存器的地址 ================================ //
+  val rfReadAddr1 = decoder.io.ctrl.csrCtrl.trapEnter.mux(   // 如果是触发异常的指令，则选择a5(第15个寄存器)作为数据输入
+                         True  -> U"5'd15", 
+                         False -> instr(19 downto 15))
+  val rfReadAddr2 = instr(24 downto 20)  // 为了写起来简洁，写寄存器地址在decoder中赋值
+  // ================================ 数据前递 ================================ //
+  // 查询的结论: 本条指令的这个 rs 该怎么办
+  object FwdOutcome extends SpinalEnum {
+    val Miss,   // 三级(exu,lsu,wbu)都不没有匹配，用寄存器堆的值
+        Hit,    // 这级命中，前递它的值
+        Wait    // 要写, 但数据还没到，停一拍再看
+      = newElement()
+  }
+
+  def stageStatus(f: forwardData, rsAddr: UInt, useRf: Bool): FwdOutcome.C = {
+    Mux(!useRf || (rsAddr === 0) || (f.writeAddr =/= rsAddr) || (f.state === FwdState.NoWriter), FwdOutcome.Miss,
+    Mux(f.state === FwdState.DataReady, FwdOutcome.Hit, FwdOutcome.Wait))
+  }
+
+  val rs1Exu = stageStatus(io.exuForward, rfReadAddr1, decoder.io.useRf1)
+  val rs1Lsu = stageStatus(io.lsuForward, rfReadAddr1, decoder.io.useRf1)
+  val rs1Wbu = stageStatus(io.wbuForward, rfReadAddr1, decoder.io.useRf1)
+  val rs2Exu = stageStatus(io.exuForward, rfReadAddr2, decoder.io.useRf2)
+  val rs2Lsu = stageStatus(io.lsuForward, rfReadAddr2, decoder.io.useRf2)
+  val rs2Wbu = stageStatus(io.wbuForward, rfReadAddr2, decoder.io.useRf2)
+
+  // 优先级EXU > LSU > WBU
+  val rs1Outcome = Mux(rs1Exu =/= FwdOutcome.Miss, rs1Exu,
+                   Mux(rs1Lsu =/= FwdOutcome.Miss, rs1Lsu, rs1Wbu))
+  val rs2Outcome = Mux(rs2Exu =/= FwdOutcome.Miss, rs2Exu,
+                   Mux(rs2Lsu =/= FwdOutcome.Miss, rs2Lsu, rs2Wbu))
+  // 数据必须取自上面选中的那一级(条件与上面两条链一字不差)
+  val rs1Data = Mux(rs1Exu =/= FwdOutcome.Miss, io.exuForward.writeData,
+                Mux(rs1Lsu =/= FwdOutcome.Miss, io.lsuForward.writeData,
+                                                io.wbuForward.writeData))
+  val rs2Data = Mux(rs2Exu =/= FwdOutcome.Miss, io.exuForward.writeData,
+                Mux(rs2Lsu =/= FwdOutcome.Miss, io.lsuForward.writeData,
+                                                io.wbuForward.writeData))
+
+  io.output.rfReadData1 := Mux(rs1Outcome === FwdOutcome.Hit, rs1Data, io.rfRead.data1)   // 如果有前递，就使用前递数据，没有就使用寄存器数据
+  io.output.rfReadData2 := Mux(rs2Outcome === FwdOutcome.Hit, rs2Data, io.rfRead.data2)
+  // ================================ 用于握手的部分 ================================ //
+  val stall     = (rs1Outcome === FwdOutcome.Wait) || (rs2Outcome === FwdOutcome.Wait)
+  val willValid = !stall
+
+  io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
+  // ================================ 数据传输部分 ================================ //
+  io.rfRead.addr1  := rfReadAddr1
+  io.rfRead.addr2  := rfReadAddr2
+  
+  io.output.pc          := io.input.pc
+  // io.output.rfReadData1 := io.rfRead.data1
+  // io.output.rfReadData2 := io.rfRead.data2
+  io.output.ctrl        := decoder.io.ctrl
+  io.output.imm         := decoder.io.imm
+
+  if (config.enableSimDebug) {
+    io.output.isCalc    := decoder.io.isCalc
+    io.output.instr     := io.input.instr
+  }
+  // ====================================== ====================================== //
   // 仿真专用: 指令类别性能计数(仅 enableSimDebug, 综合/STA 不生成)
   if (config.enableSimDebug) {
     val perf = PerfReg()
@@ -80,25 +163,4 @@ case class ysyx_23060082_IDU(config: CpuConfig = CpuConfig()) extends Component 
                                      dc.isJump || dc.isCsr || dc.isSys)  // 其他
     perf.io.evt(7) := instValid   // 指令总数
   }
-        
-  // ================================ 用于握手的部分 ================================ //
-  val willValid = True
-  io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
-  // ================================ 数据传输部分 ================================ //
-  io.rfRead.addr1  := decoder.io.ctrl.csrCtrl.trapEnter.mux(   // 如果是触发异常的指令，则选择a5(第15个寄存器)作为数据输入
-                         True  -> U"5'd15", 
-                         False -> instr(19 downto 15))
-  io.rfRead.addr2  := instr(24 downto 20)  // 为了写起来简洁，写寄存器地址在decoder中赋值
-  
-  io.output.pc          := io.input.pc
-  io.output.rfReadData1 := io.rfRead.data1
-  io.output.rfReadData2 := io.rfRead.data2
-  io.output.ctrl        := decoder.io.ctrl
-  io.output.imm         := decoder.io.imm
-
-  if (config.enableSimDebug) {
-    io.output.isCalc    := decoder.io.isCalc
-    io.output.instr      := io.input.instr
-  }
-  // ====================================== ====================================== //
 }

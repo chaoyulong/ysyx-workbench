@@ -8,6 +8,9 @@ case class ysyx_23060082_Decoder(config: CpuConfig = CpuConfig()) extends Compon
     val instr       = in  UInt(32 bits)
     val ctrl        = out(CtrlSignals())
     val imm         = out UInt(32 bits)
+
+    val useRf1      = out Bool()    // 读寄存器有效
+    val useRf2      = out Bool()
     // 指令类别标志(性能统计用): 仅仿真(enableSimDebug)生成, STA 时为 null(无端口)
     val isCalc      = if (config.enableSimDebug) out Bool() else null   // 计算类(ALU/立即数)
     val isMem       = if (config.enableSimDebug) out Bool() else null   // 访存(load/store)
@@ -24,7 +27,7 @@ case class ysyx_23060082_Decoder(config: CpuConfig = CpuConfig()) extends Compon
   val func3= instr(14 downto 12)
   // val func7= instr(31 downto 25) // 用不到
 
-  io.ctrl.rfCtrl.rfWriteAddr := instr(11 downto 7)   // 为了写起来简洁，写寄存器地址在此赋值
+  
 // ================================ 指令匹配 ================================ //    
   val i_add    = i === M"0000000----------000-----0110011"    // typeR
   val i_sub    = i === M"0100000----------000-----0110011"
@@ -95,24 +98,14 @@ case class ysyx_23060082_Decoder(config: CpuConfig = CpuConfig()) extends Compon
   val i_illegal = (instr =/= 0) && !isLegal
 
 // ================================ 指令类型 ================================ //
-  val typeU = op(4 downto 2) === U"101"
-  val typeJ = op(6 downto 2) === U"11011"
-  val typeI = op(6 downto 2) === U"00100" || op(6 downto 2) === U"00000" || op(6 downto 2) === U"11001" || (op(6 downto 2) === U"11100" && func3 =/= U"000")
-  val typeS = op(6 downto 2) === U"01000"
-  val typeB = op(6 downto 2) === U"11000"
-  val typeR = op(6 downto 2) === U"01100"
-
-  // ================================ 指令类别(仅仿真, 性能统计) ================================ //
-  if (config.enableSimDebug) {
-    io.isCalc   := i_add | i_sub | i_sll | i_slt | i_sltu | i_xor | i_srl | i_sra | i_or | i_and |
-                   i_addi | i_slli | i_slti | i_sltiu | i_xori | i_srli | i_srai | i_ori | i_andi |
-                   i_lui | i_auipc
-    io.isMem    := i_lb | i_lh | i_lw | i_lbu | i_lhu | i_sb | i_sh | i_sw
-    io.isBranch := i_beq | i_bne | i_blt | i_bge | i_bltu | i_bgeu
-    io.isJump   := i_jal | i_jalr
-    io.isCsr    := i_csrrw | i_csrrs
-    io.isSys    := i_ecall | i_ebreak | i_mret | i_fence_i
-  }
+  val typeU = i_lui | i_auipc
+  val typeJ = i_jal
+  val typeI = i_addi| i_slli | i_slti | i_sltiu | i_xori | i_srli | i_srai | i_ori | i_andi |
+              i_jalr| i_lb  | i_lh | i_lw | i_lbu | i_lhu |
+              i_csrrw | i_csrrs
+  val typeS = i_sb | i_sh | i_sw
+  val typeB = i_beq | i_bne | i_blt | i_bge | i_bltu | i_bgeu
+  val typeR = i_add | i_sub | i_sll | i_slt | i_sltu | i_xor | i_srl | i_sra | i_or | i_and
 
   // val typeN = (op(6 downto 2) === U"11100" && func3 === U"000") || op(6 downto 2) === U"00011"   // 系统指令
   // ================================ 立即数生成 ================================ //
@@ -129,44 +122,48 @@ case class ysyx_23060082_Decoder(config: CpuConfig = CpuConfig()) extends Compon
               typeS -> immS,
               typeB -> immB,
               True -> B"32'h0")).asUInt
-// ================================ 控制信号生成 ================================ // 
+// ================================ 控制信号生成 ================================ //
   val csrWb = i_csrrw | i_csrrs
 
-  io.ctrl.rfCtrl.regWr     := typeU | typeJ | typeI | typeR | csrWb
+  io.useRf1 := typeS | typeR | typeB | typeI | i_ecall
+  io.useRf2 := typeS | typeR | typeB
+
+  io.ctrl.rfCtrl.regWr       := typeU | typeJ | typeI | typeR
+  io.ctrl.rfCtrl.rfWriteAddr := instr(11 downto 7)            // 为了写起来简洁，写寄存器地址在此赋值
+  io.ctrl.rfCtrl.mem2reg     := i_lb | i_lh | i_lw | i_lbu | i_lhu
+  io.ctrl.rfCtrl.csr2reg     := csrWb
+
   io.ctrl.aluCtrl.aluAsrc := i_auipc | i_jal | i_jalr         // 0：选通rdata1，1：选通PC。
-
-  io.ctrl.aluCtrl.aluBsrc :=Mux(typeR | typeB, U"00",       // 选通rdata2
-                            Mux(i_jal  | i_jalr, U"10",       // 选通4，用于跳转
-                            U"01" ))                          // 选通imm
-
+  io.ctrl.aluCtrl.aluBsrc := Mux(typeR | typeB, U"00",        // 选通rdata2
+                             Mux(i_jal  | i_jalr, U"10",      // 选通4，用于跳转
+                             U"01" ))                         // 选通imm
   io.ctrl.aluCtrl.aluCtr  := PriorityMux(Seq(
-                              (i_and | i_andi) -> U"0111",    // 选择逻辑与输出
-                              (i_or  | i_ori ) -> U"0110",    // 选择逻辑或输出
-                              (i_xor | i_xori) -> U"0100",    // 选择异或输出
-                              (i_sll | i_slli) -> U"0001",    // 选择移位器输出，左移
-                              (i_srl | i_srli) -> U"0101",    // 选择移位器输出，逻辑右移
-                              (i_sra | i_srai) -> U"1101",    // 选择移位器输出，算术右移
-                              (i_sub)          -> U"1000",    // 选择加法器输出，做减法
-                              // (i_add | i_addi) -> U"0000", // 选择加法器输出，做加法
-                              (i_lui)          -> U"0011",    // 选择ALU输入B的结果直接输出
-                              (i_slt | i_slti | i_beq | i_bne | i_blt | i_bge) -> U"0010",  // 做减法，选择带符号小于置位结果输出, Less按带符号结果设置
-                              (i_sltu| i_sltiu| i_bltu| i_bgeu)                -> U"1010",  // 做减法，选择无符号小于置位结果输出, Less按无符号结果设置
-                              True             -> U"0000"))
-                     
-  io.ctrl.aluCtrl.branch   := PriorityMux(Seq(
-                              i_jal            -> U"001",     // 无条件跳转PC目标
-                              i_jalr           -> U"010",     // 无条件跳转寄存器目标
-                              i_beq            -> U"100",     // 条件分支，等于
-                              i_bne            -> U"101",     // 条件分支，不等于
-                              (i_blt | i_bltu) -> U"110",     // 条件分支，小于
-                              (i_bge | i_bgeu) -> U"111",     // 条件分支，大于等于
-                              True             -> U"000"))
+                             (i_and | i_andi) -> U"0111",     // 选择逻辑与输出
+                             (i_or  | i_ori ) -> U"0110",     // 选择逻辑或输出
+                             (i_xor | i_xori) -> U"0100",     // 选择异或输出
+                             (i_sll | i_slli) -> U"0001",     // 选择移位器输出，左移
+                             (i_srl | i_srli) -> U"0101",     // 选择移位器输出，逻辑右移
+                             (i_sra | i_srai) -> U"1101",     // 选择移位器输出，算术右移
+                             (i_sub)          -> U"1000",     // 选择加法器输出，做减法
+                             // (i_add | i_addi) -> U"0000",  // 选择加法器输出，做加法
+                             (i_lui)          -> U"0011",     // 选择ALU输入B的结果直接输出
+                             (i_slt | i_slti | i_beq | i_bne | i_blt | i_bge) -> U"0010",   // 做减法，选择带符号小于置位结果输出, Less按带符号结果设置
+                             (i_sltu| i_sltiu| i_bltu| i_bgeu)                -> U"1010",   // 做减法，选择无符号小于置位结果输出, Less按无符号结果设置
+                             True             -> U"0000"))             
+  io.ctrl.aluCtrl.branch  := PriorityMux(Seq(
+                             i_jal            -> U"001",      // 无条件跳转PC目标
+                             i_jalr           -> U"010",      // 无条件跳转寄存器目标
+                             i_beq            -> U"100",      // 条件分支，等于
+                             i_bne            -> U"101",      // 条件分支，不等于
+                             (i_blt | i_bltu) -> U"110",      // 条件分支，小于
+                             (i_bge | i_bgeu) -> U"111",      // 条件分支，大于等于
+                             True             -> U"000"))
 
-  io.ctrl.rfCtrl.mem2reg := op(6 downto 2) === U"00000"       // i_lb | i_lh | i_lw | i_lbu | i_lhu
-  io.ctrl.rfCtrl.csr2reg := csrWb
-  io.ctrl.memCtrl.memWr  := typeS                            // i_sb | i_sh | i_sw
-  io.ctrl.fenceI        := i_fence_i                         // fence.i: 指令内存屏障
-  io.ctrl.memCtrl.memOp  := func3  
+  io.ctrl.memCtrl.memWr   := i_sb | i_sh | i_sw
+  io.ctrl.memCtrl.memOp   := func3 
+
+  io.ctrl.fenceI          := i_fence_i                         // fence.i: 指令内存屏障
+   
   // ================================ csr寄存器 ================================ //
   // 操作：
   // csrrw:    R(rd) = CSR[imm]; CSR[imm] = src1; 
@@ -182,6 +179,17 @@ case class ysyx_23060082_Decoder(config: CpuConfig = CpuConfig()) extends Compon
   io.ctrl.csrCtrl.ebreak    := i_ebreak
   io.ctrl.csrCtrl.trapEnter := i_ecall | i_ebreak | i_illegal     // 异常进入,主动进入或者出现非法指令
   io.ctrl.csrCtrl.trapExit  := i_mret                             // 退出异常,MRET
-  // ==================================== ==================================== //
+
+  // ================================ 指令类别(仅仿真, 性能统计) ================================ //
+  if (config.enableSimDebug) {
+    io.isCalc   := i_add | i_sub | i_sll | i_slt | i_sltu | i_xor | i_srl | i_sra | i_or | i_and |
+                   i_addi | i_slli | i_slti | i_sltiu | i_xori | i_srli | i_srai | i_ori | i_andi |
+                   i_lui | i_auipc
+    io.isMem    := i_lb | i_lh | i_lw | i_lbu | i_lhu | i_sb | i_sh | i_sw
+    io.isBranch := i_beq | i_bne | i_blt | i_bge | i_bltu | i_bgeu
+    io.isJump   := i_jal | i_jalr
+    io.isCsr    := i_csrrw | i_csrrs
+    io.isSys    := i_ecall | i_ebreak | i_mret | i_fence_i
+  }
 }
 

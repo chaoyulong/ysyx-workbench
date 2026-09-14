@@ -63,10 +63,10 @@ module ItraceReg(
     if (reset) begin
       ebreak  <= 1'b0;
     end
-    else if (instr == 32'b00000000000100000000000001110011) begin
+    else if (valid && instr == 32'b00000000000100000000000001110011) begin
       ebreak  <= 1'b1;
     end
-    else begin
+    else if(valid) begin
       ebreak  <= 1'b0;
     end
   end

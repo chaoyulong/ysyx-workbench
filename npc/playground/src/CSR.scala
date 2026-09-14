@@ -27,8 +27,8 @@ case class ysyx_23060082_CSR() extends Component {
 
     val pcIn      = in  UInt(32 bits)    // 用于写mepc
     val causeIn   = in  UInt(32 bits)    // 异常原因
-    val mtvec      = out UInt(32 bits)
-    val mepc       = out UInt(32 bits)
+    val mtvec     = out UInt(32 bits)
+    val mepc      = out UInt(32 bits)
 
     val instrRetire = in Bool()           // 指令退休信号(每完成一条指令拉高一拍), 用于计数minstret
   }

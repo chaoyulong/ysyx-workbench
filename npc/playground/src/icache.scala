@@ -146,9 +146,16 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
   }
 
   // fence.i: 清空全部有效位(后续取指缺失重读新指令)
+  val discardMiss = RegInit(False)        // fence到达时正在读取的miss
+  when(io.fenceI) {
+    discardMiss := (state === IcacheState.Miss)
+  }elsewhen(missDone) {                   // 只是为了卡住访存完成后的那一个周期，所以之后就可以清空
+    discardMiss := False
+  }
+
   when(io.fenceI) {
     validReg := 0
-  } elsewhen(missDone) {
+  } elsewhen(missDone && !discardMiss) {  // 如果是卡住的话，vaild不会置起，所以会开始下一次访存
     validReg(indexReg) := True
   } otherwise {
     validReg := validReg

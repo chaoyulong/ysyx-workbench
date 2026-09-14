@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "simulation.h"
 #include "regfile.h"
+#include "trace.h"
 #include STR(TOP_NAME.h)    // 自动生成
 
 // csr_mcause:用于判断ebreak
@@ -56,7 +57,7 @@ word_t isa_reg_str2val(const char *s, bool *success) {
     return result;
 
   if(strcmp(&s[1], "pc") == 0) {
-    result = Rpc();
+    result = itraceRetirePc;
     *success = true;
   } else {
     for(int i = 0; i < REG_NUM; i++) {

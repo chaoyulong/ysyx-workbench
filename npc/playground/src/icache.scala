@@ -209,7 +209,7 @@ case class ysyx_23060082_Axi4_Ctrler_ReadOnly_Burst(param: IcacheParams = Icache
     when(io.axi4.ar.fire) {
       arValidReg := False
     } otherwise {
-      arValidReg := False
+      arValidReg := True
     }
   } otherwise {
     when(io.readReq && !io.axi4.ar.fire) {

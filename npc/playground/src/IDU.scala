@@ -151,16 +151,16 @@ case class ysyx_23060082_IDU(config: CpuConfig = CpuConfig()) extends Component 
     perf.io.valid := True
     perf.io.req   := B"4'b0"
     perf.io.rsp   := B"4'b0"
-    val instValid = io.input.valid
+    val instDone = io.output.fire        // 本拍真正离开 IDU 的指令: 每条只计一次
     val dc = decoder.io   // enableSimDebug 时类别端口存在
-    perf.io.evt(0) := instValid && dc.isCalc
-    perf.io.evt(1) := instValid && dc.isMem
-    perf.io.evt(2) := instValid && dc.isBranch
-    perf.io.evt(3) := instValid && dc.isJump
-    perf.io.evt(4) := instValid && dc.isCsr
-    perf.io.evt(5) := instValid && dc.isSys
-    perf.io.evt(6) := instValid && !(dc.isCalc || dc.isMem || dc.isBranch ||
-                                     dc.isJump || dc.isCsr || dc.isSys)  // 其他
-    perf.io.evt(7) := instValid   // 指令总数
+    perf.io.evt(0) := instDone && dc.isCalc
+    perf.io.evt(1) := instDone && dc.isMem
+    perf.io.evt(2) := instDone && dc.isBranch
+    perf.io.evt(3) := instDone && dc.isJump
+    perf.io.evt(4) := instDone && dc.isCsr
+    perf.io.evt(5) := instDone && dc.isSys
+    perf.io.evt(6) := instDone && !(dc.isCalc || dc.isMem || dc.isBranch ||
+                                    dc.isJump || dc.isCsr || dc.isSys)  // 其他
+    perf.io.evt(7) := instDone           // 指令总数
   }
 }

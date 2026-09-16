@@ -281,7 +281,7 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
     when(io.axi4.ar.fire) {
       arValidReg := False
     } otherwise {
-      arValidReg := False
+      arValidReg := True
     }
   } otherwise {
     when(io.readReq && !io.axi4.ar.fire) {

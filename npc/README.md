@@ -1,5 +1,65 @@
 # NPC RISC-V32E CPU
 
+## 2026-09-16 五级流水线（数据前递 + 重定向与冲刷）
+
+### 结构
+
+- `IFU | IDU | EXU | LSU | WBU` 五级；**IDU 是组合级**（译码 + 读寄存器堆 + 前递选择），各级之间的寄存器统一由顶层 `pipelineConnect` / `pipelineConnectLast` 生成
+- `pipelineConnect` 带两个语义：
+  - `flush`：本级里的指令一定比重定向源年轻 → 直接清掉（优先级最高，且不管它能不能往下走）
+  - `block`：本级里可能就留着**重定向源自己** → 只挡上游、不清。否则 `lw x1,0(x2); jal ra,f` 里分支被 LSU 顶住时 `ra` 会丢
+- 顶层按"谁比谁年轻"派生：`ifu→idu` 用 `flush=redirectAny`；`idu→exu` 用 `flush=lsuRedir, block=redirectAny`；`exu→lsu` 用 `block=lsuRedir`；`lsu→wbu` 不动（里面永远更老）
+
+### 数据前递
+
+- `forwardData`（`FwdState` 四态）由 EXU/LSU/WBU 组合给出：
+  `NoWriter`（本级没有写这个 rd 的指令）/ `DataReady`（数据就在本级这一拍）/ `DataPendingHere`（本级产生但还没好，只有 LSU 的 load 等 AXI）/ `DataPendingLater`（要等它走到后面某级，只有 EXU 的 load/csr）
+- IDU 用 `stageStatus(f, rs, useRf)` 查询三级并取**最年轻的写者**，得到 `FwdOutcome` 三态：`Miss`（用寄存器堆）/ `Hit`（前递给 EXU）/ `Wait`（停一拍，下一拍重判）
+- 好处：`valid`/`notReady` 那种"两个 bool 描述三种状态"的写法被换掉，状态间互斥由类型保证；级空时不会再有"幽灵写者"
+
+### 重定向与冲刷
+
+| 源 | 触发条件 | 目标 |
+|---|---|---|
+| EXU | 分支/jal/jalr 成立（`banchCond.io.pcAsrc`） | 直通 `pcNext`（不加逻辑；非分支指令它天然是 `pc+4`） |
+| LSU | `trapEnter` / `trapExit` / `fence.i` | `Mux(trapEnter, mtvec, Mux(trapExit, mepc, pcNext))` |
+
+- `fence.i` 放在 **LSU** 产生：LSU 顺序处理访存，fence 进到 LSU 时它前面的 store 一定已完成（`b` 已回），之后的取指必然看得到新指令；`RedirectReq` 带 `fenceI` 字段，由 IFU 自己驱动 `icache.io.fenceI`（一次重定向 = 重新取指 + 可选失效 icache）
+- IFU：`pcFetch`（重定向直接写、`reqIn.fire` 时 +4）+ `pcOfReq`（请求 pc 与响应配对）；`when(io.redirect.valid){state := Idle}` 对**所有**状态生效（否则重定向和一次 `reqIn.fire` 同拍时，错路径指令之后会被当正常指令发出去）
+- icache：fence 到达时若正在 miss，置 `discardMiss` 丢弃这次回写（否则失效前的旧行会被重新标 valid）
+
+### 顺带修掉的 bug
+
+- `Decoder`：csr 从 `typeI` 移出后 `io.imm` 漏了 CSR 地址 → `csrAddr` 恒 0（所有 CSR 读写打空）；`useRf1` 补上 csr 的 rs1
+- `Decoder`：改为显式列出 load/store/regWr，**非法指令不再产生假访存、假写回**
+- `IFU`：icache 缺失完成时交付的 pc 偏 4（Mux 条件该用 `reqIn.fire`，不是 `rspOut.valid`）
+- `icache`：删掉重复的 `validReg` 赋值块（靠 Verilog 后写覆盖先写才对）
+- `regfile.c`：IFU 不再有 `pc` 寄存器，pc 改从 itrace 黑盒读
+
+### 性能（microbench test, ysyxsoc）
+
+| 指标 | 多周期 0690d2c | 流水线 519cf4f | 变化 |
+|---|---|---|---|
+| 总周期 | 15228461 | **14354926** | −5.7% |
+| IPC | 0.0382 | **0.0405** | +6.0% |
+| icache 命中率 | 91.83% | 90.96% | −0.9 pt |
+| icache 缺失次数 | ~47.5K（按命中率推算） | 70.9K | +49% |
+| 平均缺失代价 | 60.32 cyc | 59.37 cyc | −1.6% |
+| LSU mem rd avg / total | 102.72 / 7.78M | 103.25 / 7.82M | ~ |
+| LSU mem wr avg / total | 17.13 / 0.99M | 18.95 / 1.10M | +10.6% |
+| 综合面积(nangate45) | 21735.39 µm² | **22307.29 µm²** | +2.6% |
+| 综合频率(500MHz 目标) | 623.2 MHz | **601.9 MHz** | −3.4% |
+| microbench Scored time | — | 6428.06 ms | — |
+
+**瓶颈**：LSU 访存（rd 7.82M + wr 1.10M）+ icache 缺失（4.21M）≈ **13.13M / 14.35M = 91.5% 的周期在等访存**。所以流水线级数不是瓶颈，这也是本版只比多周期快 5.7% 的原因。另外**取指 784650 条 vs 退休 581592 条：26% 的取指被冲刷丢弃**，把 icache 缺失次数顶高了 49%——错路径取指会真金白银地吃 miss 代价。
+
+**下一步（按收益/面积排序）**：
+
+1. **0 面积**：IFU 命中同拍交付（现在 `output.valid` 没算上 Idle+hit 那一拍，等于取指上限 0.5 条/拍）；Xbar 的 arbiter+crossbar 两级串联每次事务白等 1-2 拍；LSU/icache 的 `ar` 打拍（每访存 1 拍）
+2. **减少错路径取指**：把分支解析提前（EXU 3 泡 → 1 泡），既省冲刷也直接减少 icache 缺失
+3. **小面积（~300-600 µm²）**：1-entry 写缓冲，store 不再等 `b`（写 avg 18.95 cyc）
+4. **D-Cache 的账**：按 icache 的 DSE 反推面积单价约 **50-58 µm²/Byte**（nangate45、寄存器堆实现），所以"能装下 microbench 工作集"的 D-Cache 远超 2000 µm²；但 **1~4 行（16~64B）的顺序预取缓冲**只要约 800~3700 µm²，对数组遍历型负载可能吃掉相当一部分读延迟（读 avg 103 cyc）。值不值先用 `tools/cachesim` 跑访存 trace 估命中率再定（方法同 icache 的 DSE）
+
 ## 2026-08-18 更新
 
 - `ebreak` 不再通过 DPI-C 直接结束仿真，改为可综合的异常处理：`mcause` 置为 3。

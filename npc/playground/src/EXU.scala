@@ -7,8 +7,6 @@ case class Exu2Lsu_data(config: CpuConfig = CpuConfig()) extends Bundle {
   val pc          = UInt(32 bits) 
   val instr       = if (config.enableSimDebug) UInt(32 bits) else null
   
-  val pcNext      = UInt(32 bits)   // 执行trapEnter指令(i_ecall，i_ebreak，i_illegal)时，pcNext数据一定是无用的，此时用来传递pc供给csr使用
-                                    // 就可以省掉一个32位的寄存器，但是为了仿真好看，会在config.enableSimDebug时，保留pc寄存器
   val rfCtrl      = RfCtrl()        // 直通数据，在EXU中无作用
   val memCtrl     = MemCtrl()       // 直通数据，在EXU中无作用
   val csrCtrl     = CsrCtrl()       // 直通数据，在EXU中无作用 
@@ -47,9 +45,9 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
   banchCond.io.zero   := alu.io.zero
 
   // 由于pcAsrc到达较晚，所以选择去掉，并且pc+4这个pcnext不需要得出，因为默认运行的就是这个
-  val pcDataB   = Mux(banchCond.io.pcBsrc, rs1, pc)      
+  val pcDataB   = Mux(banchCond.io.pcBsrc, io.input.rfReadData1, io.input.pc)      
   val pcDataTmp = io.input.imm + pcDataB             
-  val pcNext    = Mux(banchCond.io.pcBsrc, (pcDataTmp(31 downto 1) ## B"1'b0").asUInt, tgtSum)
+  val pcNext    = (pcDataTmp(31 downto 1) ## (!banchCond.io.pcBsrc && pcDataTmp(0))).asUInt
 
   // val pcDataA   = Mux(banchCond.io.pcAsrc, io.input.imm, U"32'd4")
   // val pcDataB   = Mux(banchCond.io.pcBsrc, io.input.rfReadData1, io.input.pc)

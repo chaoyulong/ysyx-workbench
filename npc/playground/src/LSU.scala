@@ -97,9 +97,7 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
     io.output.pc       := io.input.pc
     io.output.instr    := io.input.instr
   }
-
-  io.output.pcNext     := Mux(io.input.csrCtrl.trapEnter, csr.io.mtvec,
-                          Mux(io.input.csrCtrl.trapExit , csr.io.mepc, io.input.pcNext))         
+       
   io.output.rfCtrl     := io.input.rfCtrl    
   io.output.fenceI     := io.input.fenceI
 
@@ -120,7 +118,7 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   io.redirect.valid  := io.input.valid && (io.input.csrCtrl.trapEnter || io.input.csrCtrl.trapExit || io.input.fenceI)
   io.redirect.pcNext := Mux(io.input.csrCtrl.trapEnter, csr.io.mtvec,
                         Mux(io.input.csrCtrl.trapExit , csr.io.mepc,
-                                                        io.input.pcNext))    // fence.i只是冲刷，pcNext依旧是pc+4
+                                                        io.input.pc + 4))    // fence.i只是冲刷，pcNext依旧是pc+4
   io.redirect.fenceI := io.input.fenceI
   // ==================== 仿真专用: LSU 访存性能统计(仅仿真, 4 组: mem/dev × 读/写) ====================
   // 内存范围(两平台统一): flash 0x30000000-0x3fffffff + psram 0x80000000-0x9fffffff + sdram 0xa0000000-0xbfffffff

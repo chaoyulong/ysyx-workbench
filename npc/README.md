@@ -60,6 +60,28 @@
 3. **小面积（~300-600 µm²）**：1-entry 写缓冲，store 不再等 `b`（写 avg 18.95 cyc）
 4. **D-Cache 的账**：按 icache 的 DSE 反推面积单价约 **50-58 µm²/Byte**（nangate45、寄存器堆实现），所以"能装下 microbench 工作集"的 D-Cache 远超 2000 µm²；但 **1~4 行（16~64B）的顺序预取缓冲**只要约 800~3700 µm²，对数组遍历型负载可能吃掉相当一部分读延迟（读 avg 103 cyc）。值不值先用 `tools/cachesim` 跑访存 trace 估命中率再定（方法同 icache 的 DSE）
 
+### 追加：0 面积三件（Xbar 提前放行 / ar 组合发出 / 计数器语义）
+
+| 改动 | 效果 |
+|---|---|
+| `Xbar`：`ar` 通道在 Idle 拍就组合给出 grant（`grantIfu/grantLsu`）、并组合解码地址（`routeClint/routeExternal`），不再等 `arbiterState`/`readState` 各注册一拍 | 每次读事务省 2 拍 |
+| `LSU`/`icache` 的 AXI 控制器：`ar.valid/addr` 不再 `setAsReg`，改为 `readReq \|\| arValidReg` 组合发出，`arValidReg` 只负责把"已发出但未握手"的请求举住（AXI 要求 valid 保持到 ready） | 每次读事务再省 1 拍 |
+| IDU 类别计数器：`io.input.valid` → `io.output.fire` | 恢复"指令条数占比"语义 |
+
+**踩到的坑**：`arValidReg` 的保持分支一开始写成 `otherwise { arValidReg := False }`（应为 `True`）——于是"请求已发出、但总线被 icache 占着没握上手"时，`ar.valid` 下一拍就掉了，那笔事务永远不完成 → LSU 卡在 `WaitMem`，表现为 `ERROR: 一条指令超过10000周期未完成 (pc=0x30000048)`。**LSU 和 icache 两处都是这个写法**，改的时候要一起改。
+
+| 指标 | 519cf4f | bbd3432 | 变化 |
+|---|---|---|---|
+| 总周期 | 14354926 | **13708413** | −4.5% |
+| IPC | 0.0405 | **0.0424** | +4.7% |
+| microbench Scored time | 6428.06 ms | **5964.00 ms** | −7.2% |
+| icache 缺失 avg | 59.37 cyc | **54.31 cyc** | −8.5% |
+| 取指次数 | 784650 | 817065 | +4.1% |
+| 综合面积(nangate45) | 22307.29 µm² | **22520.62 µm²** | +0.96% |
+| 综合频率(500MHz 目标) | 601.9 MHz | **587.8 MHz** | −2.3%（关键路径仍是 `ifu.icache.axi4Ctrler.io_readAddr`，slack 0.299ns） |
+
+（`LSU mem wr avg` 18.95 → 20.84 是争用抖动：写路径这次没动。）
+
 ## 2026-08-18 更新
 
 - `ebreak` 不再通过 DPI-C 直接结束仿真，改为可综合的异常处理：`mcause` 置为 3。

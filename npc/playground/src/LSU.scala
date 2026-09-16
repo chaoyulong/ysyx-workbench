@@ -9,7 +9,6 @@ case class Lsu2Wbu_data(config: CpuConfig = CpuConfig()) extends Bundle {
   val pc          = if (config.enableSimDebug) UInt(32 bits) else null   // 仅仿真可见
   val instr       = if (config.enableSimDebug) UInt(32 bits) else null
 
-  val pcNext      = UInt(32 bits)
   val rfWriteData = UInt(32 bits) 
   val rfCtrl      = RfCtrl()        // 其中的mem2reg信号会作为读内存信号被用到
   val fenceI      = Bool()          // fence.i(直通, WBU 据此通知 IFU 失效 icache)

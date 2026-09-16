@@ -46,10 +46,16 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
   banchCond.io.less   := alu.io.less
   banchCond.io.zero   := alu.io.zero
 
-  val pcDataA   = Mux(banchCond.io.pcAsrc, io.input.imm, U"32'd4")
-  val pcDataB   = Mux(banchCond.io.pcBsrc, io.input.rfReadData1, io.input.pc)
-  val pcDataTmp = pcDataA + pcDataB
-  val pcNext    = Mux(banchCond.io.pcBsrc, (pcDataTmp(31 downto 1) ## B"1'b0").asUInt, pcDataTmp)   // jalr指令规定要将最后一位清零
+  // 由于pcAsrc到达较晚，所以选择去掉，并且pc+4这个pcnext不需要得出，因为默认运行的就是这个
+  val pcDataB   = Mux(banchCond.io.pcBsrc, rs1, pc)      
+  val pcDataTmp = io.input.imm + pcDataB             
+  val pcNext    = Mux(banchCond.io.pcBsrc, (pcDataTmp(31 downto 1) ## B"1'b0").asUInt, tgtSum)
+
+  // val pcDataA   = Mux(banchCond.io.pcAsrc, io.input.imm, U"32'd4")
+  // val pcDataB   = Mux(banchCond.io.pcBsrc, io.input.rfReadData1, io.input.pc)
+  // val pcDataTmp = pcDataA + pcDataB
+  // val pcNext    = Mux(banchCond.io.pcBsrc, (pcDataTmp(31 downto 1) ## B"1'b0").asUInt, pcDataTmp)   // jalr指令规定要将最后一位清零
+
 
   io.redirect.valid  := io.input.valid && banchCond.io.pcAsrc   // 数据有效并且是跳转指令(pcAsrc,pcBsrc有一个为1就是跳转指令，而pcBsrc为1时，pcAsrc也为1)
   io.redirect.pcNext := pcNext

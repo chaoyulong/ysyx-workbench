@@ -248,8 +248,8 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
     val axi4 = master(Axi4(AxiConfig.axiConfig))
   }
   // ================================ 读操作 ================================ //
-  io.axi4.ar.valid.setAsReg() init(False)
-  io.axi4.ar.addr .setAsReg()
+  // io.axi4.ar.valid.setAsReg() init(False)
+  // io.axi4.ar.addr .setAsReg()
 
   // 加不加突发，这些数值都会是常量，不需要寄存器锁存
   io.axi4.ar.id   := U"4'b0"
@@ -257,18 +257,38 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
   io.axi4.ar.size := io.size  
   io.axi4.ar.burst:= B"2'b01"         // 突发类型INCR
   // ================================ 读地址 ================================ //
-  when(io.readReq) {
-    io.axi4.ar.valid := True
-  } elsewhen(io.axi4.ar.fire) {
-    io.axi4.ar.valid := False
-  } otherwise {
-    io.axi4.ar.valid := io.axi4.ar.valid
-  }
+  // when(io.readReq) {
+  //   io.axi4.ar.valid := True
+  // } elsewhen(io.axi4.ar.fire) {
+  //   io.axi4.ar.valid := False
+  // } otherwise {
+  //   io.axi4.ar.valid := io.axi4.ar.valid
+  // }
 
-  when(io.readReq) {
-    io.axi4.ar.addr := io.readAddr
+  // when(io.readReq) {
+  //   io.axi4.ar.addr := io.readAddr
+  // } otherwise {
+  //   io.axi4.ar.addr := io.axi4.ar.addr 
+  // }
+
+  val arValidReg = RegInit(False)
+  val arAddrReg  = RegNextWhen(arAddrReg := io.readAddr, io.readReq)
+  val arValidOut = io.readReq || arValidReg    // 提前一周期发出arvalid信号
+  io.axi4.ar.valid := arValidOut
+  io.axi4.ar.addr  := Mux(io.readReq, io.readAddr, arAddrReg)
+
+  when(arValidReg) {
+    when(io.axi4.ar.fire) {
+      arValidReg := False
+    } otherwise {
+      arValidReg := False
+    }
   } otherwise {
-    io.axi4.ar.addr := io.axi4.ar.addr 
+    when(io.readReq && !io.axi4.ar.fire) {
+      arValidReg := True
+    } otherwise {
+      arValidReg := False
+    }
   }
 
   // ================================ 读数据 ================================ //

@@ -179,25 +179,44 @@ case class ysyx_23060082_Axi4_Ctrler_ReadOnly_Burst(param: IcacheParams = Icache
   val wordCnt = if (param.words > 1) Reg(UInt(param.wordBits bits)) else Reg(UInt(1 bits))    // 读取到了第几个数，按照约束最多只会一次8个
   val readOnce = io.axi4.r.fire                   // 每次读回一个数据完成的信号，用于icache数据的存储
 
-  io.axi4.ar.valid.setAsReg() init(False)
-  io.axi4.ar.addr .setAsReg()                     // 地址要锁存
+  // io.axi4.ar.valid.setAsReg() init(False)
+  // io.axi4.ar.addr .setAsReg()                     // 地址要锁存
   io.axi4.ar.id   := U"4'b0"                      // 加不加突发，这些数值都会是常量，不需要寄存器锁存
   io.axi4.ar.len  := U(param.words - 1, 8 bits)   // 突发长度实际要-1,1+1=2
   io.axi4.ar.size := Axi4Define.size.BYTE_4       // 突发大小4字节，固定是4字节，意义是每次读取多少
   io.axi4.ar.burst:= Axi4Define.burst.INCR        // 突发类型INCR
 
-  when(io.readReq) {
-    io.axi4.ar.valid := True
-  } elsewhen(io.axi4.ar.fire) {
-    io.axi4.ar.valid := False
-  } otherwise {
-    io.axi4.ar.valid := io.axi4.ar.valid
-  }
+  // when(io.readReq) {
+  //   io.axi4.ar.valid := True
+  // } elsewhen(io.axi4.ar.fire) {
+  //   io.axi4.ar.valid := False
+  // } otherwise {
+  //   io.axi4.ar.valid := io.axi4.ar.valid
+  // }
+  // when(io.readReq) {
+  //   io.axi4.ar.addr := io.readAddr
+  // } otherwise {
+  //   io.axi4.ar.addr := io.axi4.ar.addr 
+  // }
+  
+  val arValidReg = RegInit(False)
+  val arAddrReg  = RegNextWhen(arAddrReg := io.readAddr, io.readReq)
+  val arValidOut = io.readReq || arValidReg    // 提前一周期发出arvalid信号
+  io.axi4.ar.valid := arValidOut
+  io.axi4.ar.addr  := Mux(io.readReq, io.readAddr, arAddrReg)
 
-  when(io.readReq) {
-    io.axi4.ar.addr := io.readAddr
+  when(arValidReg) {
+    when(io.axi4.ar.fire) {
+      arValidReg := False
+    } otherwise {
+      arValidReg := False
+    }
   } otherwise {
-    io.axi4.ar.addr := io.axi4.ar.addr 
+    when(io.readReq && !io.axi4.ar.fire) {
+      arValidReg := True
+    } otherwise {
+      arValidReg := False
+    }
   }
 
   io.axi4.r.ready := io.axi4.r.valid

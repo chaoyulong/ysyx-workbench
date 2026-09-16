@@ -82,6 +82,25 @@
 
 （`LSU mem wr avg` 18.95 → 20.84 是争用抖动：写路径这次没动。）
 
+### 追加：EXU 的 pcNext 把比较器移出 32 位路径（纯时序优化，0 面积）
+
+**问题**：`pcNext = Mux(pcAsrc, imm, 4) + Mux(pcBsrc, rs1, pc)`，而 `pcAsrc` 在条件分支时就是 ALU 的 `zero/less`——**晚到信号串在 32 位加法器前面**，等于两条 32 位进位链串联。STA 报告里 `pcNext` 的锥里出现 `rfReadData2` 就是证据：`pcNext` 的**值**本来不该依赖它（它只通过"是否成立"这 1 bit 影响"要不要跳"，而跳的目标恒为 `imm + (jalr ? rs1 : pc)`）。
+
+**观察**：`(pcAsrc, pcBsrc)` 只有 3 种可用组合——`(1,0)`=jal/条件成立 → `imm+pc`；`(1,1)`=jalr → `(imm+rs1)` 清 bit0；`(0,0)`=不重定向 → **pcNext 是 don't care**（顺序取指由 IFU 自己 `+4`）。需要 pcNext 的两行 A 输入都是 `imm` → **A 直接接 imm，比较器只驱动 1 bit 的 `redirect.valid`**。
+
+**改动**：
+
+- `EXU`：`pcDataTmp = imm + Mux(pcBsrc, rs1, pc)`；清零合并进 bit0（`!pcBsrc && sum(0)`，连 32 位 mux 都省了）；删除 `Exu2Lsu_data.pcNext`
+- `LSU`：fence.i 的目标改成本地算 `io.input.pc + 4`——**fence.i 是唯一 `pcAsrc=0` 但仍要重定向的指令，不补这处会重定向到 pc 自己 → 死循环**；删除 `Lsu2Wbu_data.pcNext`
+
+| 指标 | bbd3432 | b06409e | 变化 |
+|---|---|---|---|
+| 总周期 / IPC | 13708413 / 0.0424 | 13708413 / 0.0424 | **逐项不变**（纯时序改动） |
+| 综合面积(nangate45) | 22520.62 µm² | **22342.40 µm²** | −178 µm² |
+| 最差 slack / 频率 | 0.299ns / 587.8 MHz | **0.648ns / 739.6 MHz** | **+25.8%** |
+
+→ 余量从 2479 µm² 变成 **2657.6 µm²**（25000 − 22342.40），而且频率余量大幅拉开，后面加 dcache 时不必再担心时序。
+
 ## 2026-08-18 更新
 
 - `ebreak` 不再通过 DPI-C 直接结束仿真，改为可综合的异常处理：`mcause` 置为 3。

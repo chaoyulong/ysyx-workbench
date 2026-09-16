@@ -42,8 +42,7 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
   // ================================ 跳转指令 ================================ //
   banchCond.io.branch := io.input.ctrl.aluCtrl.branch
   banchCond.io.less   := alu.io.less
-  // banchCond.io.zero   := alu.io.zero
-  banchCond.io.zero   := (io.aluIn1 === io.aluIn2)  // 跳过alu，缩短路径
+  banchCond.io.zero   := alu.io.zero
 
   // val pcDataA   = Mux(banchCond.io.pcAsrc, io.input.imm, U"32'd4")
   // val pcDataB   = Mux(banchCond.io.pcBsrc, io.input.rfReadData1, io.input.pc)
@@ -162,7 +161,8 @@ case class ysyx_23060082_ALU() extends Component {
 
   val resultAdder      = resultAdder33Bit(31 downto 0)    // 计算结果
   val carryFlag        = resultAdder33Bit(32)             // 进位
-  val zeroFlag         = (resultAdder === U"32'h0")       // 判0
+  // val zeroFlag         = (resultAdder === U"32'h0")       // 判0
+  val zeroFlag         = (io.aluIn1 === io.aluIn2)  // 跳过alu，缩短路径
   val overflowFlag     = (adderDataA(31) === adderDataB(31)) && (resultAdder(31) =/= adderDataA(31))  // 溢出
   // ================================ 移位寄存器 ================================ //
   val resultShift = io.aluCtr(3 downto 2).mux(            // 直接移位操作与自己写桶形移位器没有区别

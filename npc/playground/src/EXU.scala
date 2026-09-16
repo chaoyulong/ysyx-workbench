@@ -66,7 +66,6 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
   val useRs1 = io.input.ctrl.csrCtrl.trapEnter || (io.input.ctrl.csrCtrl.csrCmd =/= 0)  // rs1: CSR，rs2: store
   io.output.rfReadData := Mux(useRs1, io.input.rfReadData1, io.input.rfReadData2)
   io.output.pc         := io.input.pc
-  io.output.pcNext     := pcNext
   io.output.aluResult  := alu.io.aluResult
   io.output.csrAddr    := io.input.imm(11 downto 0)
   io.output.fenceI     := io.input.ctrl.fenceI

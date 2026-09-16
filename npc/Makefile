@@ -25,7 +25,7 @@ SIM_WAVE = $(BUILD_DIR)/waveform.fst
 SPINAL_PRJ = playground
 SPINAL_VFILE = $(abspath $(BUILD_DIR)/$(SPINAL_TOPNAME).v)
 SPINAL_SIM_DIR = $(BUILD_DIR)/simulations
-SPINAL_SRCS = $(shell find $(abspath $(SPINAL_PRJ)) -name "*.scala" -o -name "*.v") $(abspath build.sc)
+
 # yosys综合相关
 STA_DESIGN=ysyx_23060082
 STA_SDC_FILE=$(abspath npc.sdc)
@@ -86,7 +86,7 @@ $(LIBCAPSTONE):
 SPINAL_GEN_ENV := SPINAL_TOPNAME=$(SPINAL_TOPNAME) BUILD_DIR=$(BUILD_DIR)
 SPINAL_SIM_ENV := SPINAL_SIM_DIR=$(BUILD_DIR)/simulations
 
-verilog: $(SPINAL_SRCS)
+verilog:
 	$(call git_commit, "generate verilog")
 	@mkdir -p $(BUILD_DIR)
 	@$(SPINAL_GEN_ENV) ./mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog 
@@ -153,8 +153,8 @@ sta:
 			PDK=$(STA_PDK) CLK_FREQ_MHZ=$(STA_CLK_FREQ_MHZ) CLK_PORT_NAME=$(STA_CLK_PORT_NAME) O=$(STA_OUT) \
 			RTL_FILES="$(abspath $(BUILD_DIR))/sta/$(STA_DESIGN).v"
 
-# help:
-# 	./mill -i $(SPINAL_PRJ).runMain Elborate --help
+help:
+	./mill -i $(SPINAL_PRJ).runMain Elborate --help
 
 # reformat:
 # 	./mill -i __.reformat

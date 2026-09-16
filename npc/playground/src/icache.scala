@@ -200,7 +200,7 @@ case class ysyx_23060082_Axi4_Ctrler_ReadOnly_Burst(param: IcacheParams = Icache
   // }
   
   val arValidReg = RegInit(False)
-  val arAddrReg  = RegNextWhen(arAddrReg := io.readAddr, io.readReq)
+  val arAddrReg  = RegNextWhen(io.readAddr, io.readReq)
   val arValidOut = io.readReq || arValidReg    // 提前一周期发出arvalid信号
   io.axi4.ar.valid := arValidOut
   io.axi4.ar.addr  := Mux(io.readReq, io.readAddr, arAddrReg)

@@ -31,7 +31,8 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   // ============================== 用于确定复位结束 ============================== //
   val rstEnd = RegNext(True) init(False)
   // =================================== PC寄存器 =================================== //
-  // pcFetch: 下一次要取的地址(重定向优先, 否则顺序+4)。取指地址与交付握手解耦
+  // pcFetch: 下一次要取的地址(重定向优先, 否则顺序+4),因为与icache握手之后，pcFetch就会+4以便于下一次取指
+  // 所以需要一个额外的pcOfReq记录取指时的pc,如果icache未命中时，icache输入输出不在同一拍，那时就需要传递pcOfReq
   val pcFetch = Reg(UInt(32 bits)) init(U(config.resetPc, 32 bits))
   when(io.redirect.valid) {
     pcFetch := io.redirect.pcNext
@@ -40,8 +41,6 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   } otherwise {
     pcFetch := pcFetch
   }
-
-  // val pcPlus4 = RegNext(pcFetch + 4)                              // 增量器移到"喂寄存器"这条路上
 
   // 每次请求的pc与它的响应配对，命中同拍用reqIn.pc, 缺失完成后用这一次请求锁存的pc
   val pcOfReq = RegNextWhen(icache.io.reqIn.pc, icache.io.reqIn.fire) init(U(config.resetPc, 32 bits))

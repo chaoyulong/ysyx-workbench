@@ -28,7 +28,7 @@ SPINAL_SIM_DIR = $(BUILD_DIR)/simulations
 
 # yosys综合相关
 STA_DESIGN=ysyx_23060082
-STA_SDC_FILE=$(abspath npc.sdc)
+STA_SDC_FILE=$(abspath constr/npc.sdc)
 STA_CLK_FREQ_MHZ=500
 STA_CLK_PORT_NAME=clock
 STA_OUT=$(abspath $(BUILD_DIR)/sta)

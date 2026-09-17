@@ -135,8 +135,6 @@ case class ysyx_23060082_IDU(config: CpuConfig = CpuConfig()) extends Component 
   io.rfRead.addr2  := rfReadAddr2
   
   io.output.pc          := io.input.pc
-  // io.output.rfReadData1 := io.rfRead.data1
-  // io.output.rfReadData2 := io.rfRead.data2
   io.output.ctrl        := decoder.io.ctrl
   io.output.imm         := decoder.io.imm
 

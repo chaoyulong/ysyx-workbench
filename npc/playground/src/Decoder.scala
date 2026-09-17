@@ -115,13 +115,15 @@ case class ysyx_23060082_Decoder(config: CpuConfig = CpuConfig()) extends Compon
   val immS = (instr(31) #* 20) ## instr(31 downto 25) ## instr(11 downto 7)
   val immB = (instr(31) #* 20) ## instr(7) ## instr(30 downto 25) ## instr(11 downto 8) ## B"0"
 
-  io.imm := PriorityMux(Seq(
-              typeU -> immU,
-              typeJ -> immJ,
-              typeI -> immI,
-              typeS -> immS,
-              typeB -> immB,
-              True -> B"32'h0")).asUInt
+  // io.imm := PriorityMux(Seq(
+  //             typeU -> immU,
+  //             typeJ -> immJ,
+  //             typeI -> immI,
+  //             typeS -> immS,
+  //             typeB -> immB,
+  //             True -> B"32'h0")).asUInt
+   io.imm := MuxOH(Seq(typeU, typeJ, typeI, typeS, typeB),
+                  Seq(immU, immJ, immI, immS, immB)).asUInt
 // ================================ 控制信号生成 ================================ //
   val csrWb = i_csrrw | i_csrrs
 

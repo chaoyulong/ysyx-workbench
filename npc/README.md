@@ -123,6 +123,44 @@ CPU 地址生成 → Xbar 地址 mux → CLINT 地址解码/mux → readData 寄
 
 这条路径只在读 `mtime` 时经过，不在 CPU 的性能环路上，而且 500MHz 目标早已满足（0.887ns 余量）→ **不值得为它花时间**（它下面的几条也都是 CLINT 的时钟门控 enable 路径）。余量现在是 **2551.2 µm²**（25000 − 22448.80）。
 
+### 追加：CLINT 读通道寄存器化 + 计数器拆分，icache AR 恢复打拍（切开 Xbar/CLINT 长锥）
+
+**CLINT**
+
+- 读通道寄存器化（`addrReg`/`dataReg`/`dataFinish`），响应从 AR+1 变成 **AR+2** —— 设备读只有 662 次，多 1 拍无所谓
+- 64 位计数器拆成两个 32 位：`timeCountLow` 每拍 +1，`timeCountHigh` 只在低位全 1 时 +1 → 砍掉原来那条 **1.088ns 的 64 位进位链**；语义与单计数器完全一致（回绕相位、先读低再读高的快照都对）
+- **功能验证**：与拆分前的运行结果**逐位相同**（Scored/Total/cycle/inst 全同）✓；另外 `am-tests` 的 **rtc** 用例 uptime 每秒 +1 ✓
+
+**icache**：突发控制器的 `ar.valid/addr` 恢复 `setAsReg` 打拍（回退之前的"组合发 ar"）
+
+这样交给 Xbar 的是**寄存器信号** ✓，一次切断这一族长组合锥：
+
+```
+icache: tagMem 读 mux + tag 比较 → hit → enterMiss → ar.valid
+   → Xbar 的地址 mux / isClint 解码 → CLINT 的 ar.fire → readCnt/readActive/dataFinish
+```
+
+其中 CLINT 那半截其实是**不可敏化的假路径** ✗（IFU 的取指地址永远不会落在 CLINT 的 `0x0200_0000` 段，只是 STA 做静态图分析时看不出这个相关性），所以只靠"在 Xbar 或 CLINT 里加寄存器"救不了 ✗——必须在**源头**（icache 的 AR）切掉 ✓。
+
+| 指标 | d1cdfe4 | 92a825d | 变化 |
+|---|---|---|---|
+| 总周期 | 13708413 | **13822167** | +0.78% ✗ |
+| IPC | 0.0424 | **0.0421** | ✗ |
+| Scored time | 5967.06 ms | **6058.02 ms** | +1.5% ✗ |
+| icache 缺失 avg | 54.31 cyc | **59.69 cyc** | +5.4 ✗（AR 晚一拍更容易在 Xbar 输给 LSU）|
+| 面积 | 22448.80 µm² | **22364.75 µm²** | −84 ✓ |
+| 最差路径 | `clint.readCnt` 1.085ns | **`ifu.state_0` 0.964ns** | 假路径族消失 ✓ |
+| 频率 | 898.8 MHz | **993.6 MHz** | **+12%** ✓ |
+
+**代价比预估大**（预期 +0.52%，实测 +0.78%，多出来的部分就是 `缺失avg` 涨的那几拍），但常被流水线停顿吸收 ✓（总增幅 < 缺失次数 × 5.4）。
+
+**真实瓶颈第一次暴露出来** —— 不再是 cache/CLINT，而是核内：
+
+- `exu.io_input_payload_rfReadData{1,2}_*`（0.951~0.957ns）：**IDU 的 RF 读 + 三级前递 mux** → IDU→EXU 寄存器
+- `ifu.state_0`（0.964ns）：IFU 的次态逻辑（重定向 / 响应 / Done 的 mux）
+
+评分口径是周期 + 面积、频率只要求"500MHz 通过" ✓ → 这 0.78% 周期在评分上是净亏 ✗；保留它的理由是频率余量（994MHz ≈ 2 倍）和"把假路径清出报告、让真瓶颈可见" ✓。只在乎评分的话，可以**只回退 icache 那一处**，保留 CLINT 的寄存器化与计数器拆分。
+
 ## 2026-08-18 更新
 
 - `ebreak` 不再通过 DPI-C 直接结束仿真，改为可综合的异常处理：`mcause` 置为 3。

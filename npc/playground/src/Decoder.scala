@@ -162,12 +162,14 @@ case class ysyx_23060082_Decoder(config: CpuConfig = CpuConfig()) extends Compon
   // 独热(one-hot)选择: 10 个条件两两互斥(每个指令只落在一组) → 一层"与-或"选出, 代替上面 12 级级联
   // 都不命中(如 add/addi) → 输出 0 = U"0000", 与原 PriorityMux 的 `True -> U"0000"` 默认一致
   io.ctrl.aluCtrl.aluCtr  := MuxOH(
-                             Seq((i_and | i_andi), (i_or  | i_ori ), (i_xor | i_xori),
+                             Seq((i_add | i_addi),                              // 放第一项, 索引0 = 默认值
+                                 (i_and | i_andi), (i_or  | i_ori ), (i_xor | i_xori),
                                  (i_sll | i_slli), (i_srl | i_srli), (i_sra | i_srai),
                                  i_sub, i_lui,
-                                 (i_slt | i_slti | i_beq | i_bne | i_blt | i_bge),   // 有符号
-                                 (i_sltu| i_sltiu| i_bltu| i_bgeu)).toIndexedSeq,    // 无符号
-                             Seq(U"0111", U"0110", U"0100", U"0001", U"0101", U"1101",
+                                 (i_slt | i_slti | i_beq | i_bne | i_blt | i_bge),
+                                 (i_sltu| i_sltiu| i_bltu| i_bgeu)).toIndexedSeq,
+                             Seq(U"0000",                                       //
+                                 U"0111", U"0110", U"0100", U"0001", U"0101", U"1101",
                                  U"1000", U"0011", U"0010", U"1010"))
   io.ctrl.aluCtrl.branch  := PriorityMux(Seq(
                              i_jal            -> U"001",      // 无条件跳转PC目标

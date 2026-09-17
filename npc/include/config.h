@@ -13,7 +13,7 @@
 //   #define CONFIG_DIFFTEST 1
 
 // trace 总开关: 配合 log_enable() 按指令数范围写日志(见 csrc/sdb/log.c)
-#define CONFIG_TRACE 1
+// #define CONFIG_TRACE 1
 #define CONFIG_TRACE_START 0          // trace 起始指令数
 #define CONFIG_TRACE_END   0          // trace 结束指令数(0 = 不限制, 一直记到程序结束)
 
@@ -23,7 +23,7 @@
 // #define CONFIG_ITRACE 1
 
 // 访存 trace: 记录每次数据访存(load/store)的 pc/地址/数据
-#define CONFIG_MTRACE 1
+//  #define CONFIG_MTRACE 1
 #ifdef CONFIG_MTRACE
 // 在 mtrace 记录中打印访存指令的 pc(默认开, 关闭可减小日志量)
 // #define CONFIG_MTRACE_PC 1

@@ -40,9 +40,43 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   // ---- 数据处理连接 ----
   dataProcess.io.addrOp := memAddr(1 downto 0) ## io.input.memCtrl.memOp    // 合并 addr + MemOp 生成 5 位索引
   dataProcess.io.wdata  := io.input.rfReadData                              // 写数据为rs2的数据
+  // ---- D-Cache (2 行 × 8B, 直接映射, 直写 + 写不分配) ----
+  // 可缓存地址: SRAM / MROM / Flash / PSRAM / SDRAM; 设备(CLINT/UART/SPI/GPIO/PS2/VGA 显存)不可缓存
+  def isCacheable(addr: UInt): Bool = {
+    (addr >= U(0x0f000000L, 32 bits) && addr < U(0x10000000L, 32 bits)) ||   // SRAM
+    (addr >= U(0x20000000L, 32 bits) && addr < U(0x20001000L, 32 bits)) ||   // MROM(只读)
+    (addr >= U(0x30000000L, 32 bits) && addr < U(0x40000000L, 32 bits)) ||   // Flash
+    (addr >= U(0x80000000L, 32 bits) && addr < U(0xa0000000L, 32 bits)) ||   // PSRAM
+    (addr >= U(0xa0000000L, 32 bits) && addr < U(0xc0000000L, 32 bits))      // SDRAM
+  }
+  val dc = ysyx_23060082_Dcache(DcacheParams(lineBytes = 8, lines = 2))
+  val dcCacheable = isCacheable(memAddr)
+  val dcRead      = needRead && dcCacheable                    // 可缓存地址的 load 才走 dcache
+  dc.io.reqAddr   := memAddr
+  dc.io.reqWdata  := dataProcess.io.wdataReal
+  dc.io.reqWmask  := dataProcess.io.wmask
+  dc.io.cacheable := dcCacheable
+  dc.io.storeNow  := needWrite && dcCacheable && (state === LsuState.Idle) && dc.io.hit   // 直写命中顺手更新本行
+  val dcHitNow    = dcRead && (state === LsuState.Idle)    && dc.io.hit        // 命中: 请求拍就出数据
+  val dcFillEnd   = dcRead && (state === LsuState.WaitMem) && dc.io.fillEnd    // 缺失: 填充完成那一拍
+  val dcFillWord  = Mux(memAddr(2), dc.io.fillData(63 downto 32), dc.io.fillData(31 downto 0))
+
   // ---- AXI控制器连接 ----
-  io.axi4 <> axi4Ctrler.io.axi4
-  axi4Ctrler.io.readReq  := needRead  && (state === LsuState.Idle)
+  // 填充期间由 dcache 独占 AXI 主口(填充在 WaitMem, 老的读写请求在 Idle, 状态天然互斥)
+  val dcUseAxi = dc.io.fillBusy
+  io.axi4.ar.valid   := Mux(dcUseAxi, dc.io.axi4.ar.valid,   axi4Ctrler.io.axi4.ar.valid)
+  io.axi4.ar.payload := Mux(dcUseAxi, dc.io.axi4.ar.payload, axi4Ctrler.io.axi4.ar.payload)
+  dc.io.axi4.ar.ready         := io.axi4.ar.ready
+  axi4Ctrler.io.axi4.ar.ready := io.axi4.ar.ready
+  dc.io.axi4.r.valid   := io.axi4.r.valid
+  dc.io.axi4.r.payload := io.axi4.r.payload
+  axi4Ctrler.io.axi4.r.valid   := io.axi4.r.valid
+  axi4Ctrler.io.axi4.r.payload := io.axi4.r.payload
+  io.axi4.r.ready := Mux(dcUseAxi, dc.io.axi4.r.ready, axi4Ctrler.io.axi4.r.ready)
+  io.axi4.aw <> axi4Ctrler.io.axi4.aw
+  io.axi4.w  <> axi4Ctrler.io.axi4.w
+  io.axi4.b  <> axi4Ctrler.io.axi4.b
+  axi4Ctrler.io.readReq  := needRead  && (state === LsuState.Idle) && !dcRead  // 不可缓存地址仍走老通路
   axi4Ctrler.io.writeReq := needWrite && (state === LsuState.Idle)
   axi4Ctrler.io.size     := (False ## io.input.memCtrl.memOp(1 downto 0)).asUInt
   axi4Ctrler.io.readAddr := memAddr
@@ -50,15 +84,25 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   axi4Ctrler.io.writeData:= dataProcess.io.wdataReal  // 处理后的数据
   axi4Ctrler.io.writeMask:= dataProcess.io.wmask
   // ---- 访存结束信号 ----
-  val rdEnd = (state === LsuState.WaitMem) && axi4Ctrler.io.readEnd && io.input.rfCtrl.mem2reg  // 读内存结束, 需要更新数据
+  // 读结束: 老通路读完 / dcache 命中(请求拍) / dcache 填充完成
+  val rdEnd = (((state === LsuState.WaitMem) && axi4Ctrler.io.readEnd) || dcHitNow || dcFillEnd) &&
+              io.input.rfCtrl.mem2reg
   val wrEnd = (state === LsuState.WaitMem) && axi4Ctrler.io.writeEnd && io.input.memCtrl.memWr
-  val rdataReg = RegNextWhen(axi4Ctrler.io.readData, rdEnd) init(0)  // 是读内存指令并且已读完
-  dataProcess.io.rdata  := Mux(rdEnd, axi4Ctrler.io.readData, rdataReg) // 快一周期读完
+  // 读回数据: rdEnd 那拍取"新数据", 之后一拍取锁存值(与原来一致)
+  val rdataMux = Mux(dcHitNow, dc.io.hitData,
+                  Mux(dcFillEnd, dcFillWord, axi4Ctrler.io.readData))
+  val rdataReg = RegNextWhen(rdataMux, rdEnd) init(0)  // 是读内存指令并且已读完
+  dataProcess.io.rdata  := Mux(rdEnd, rdataMux, rdataReg) // 快一周期读完
 
   // ================================ lsu状态机 ================================ //
   switch(state) {
     is(LsuState.Idle) {
-      when(needMem) {state := LsuState.WaitMem}      
+      when(needMem) {
+        when(dcHitNow) {                                  // load 命中: 当拍就完成, 不用等访存
+          when(io.output.fire){state := LsuState.Idle}
+          .otherwise          {state := LsuState.Done}
+        } .otherwise {state := LsuState.WaitMem}
+      }
       .otherwise{state := state} 
     }
     is(LsuState.WaitMem) {

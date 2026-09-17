@@ -144,19 +144,31 @@ case class ysyx_23060082_Decoder(config: CpuConfig = CpuConfig()) extends Compon
   io.ctrl.aluCtrl.aluBsrc := Mux(typeR | typeB, U"00",        // 选通rdata2
                              Mux(i_jal  | i_jalr, U"10",      // 选通4，用于跳转
                              U"01" ))                         // 选通imm
-  io.ctrl.aluCtrl.aluCtr  := PriorityMux(Seq(
-                             (i_and | i_andi) -> U"0111",     // 选择逻辑与输出
-                             (i_or  | i_ori ) -> U"0110",     // 选择逻辑或输出
-                             (i_xor | i_xori) -> U"0100",     // 选择异或输出
-                             (i_sll | i_slli) -> U"0001",     // 选择移位器输出，左移
-                             (i_srl | i_srli) -> U"0101",     // 选择移位器输出，逻辑右移
-                             (i_sra | i_srai) -> U"1101",     // 选择移位器输出，算术右移
-                             (i_sub)          -> U"1000",     // 选择加法器输出，做减法
-                             // (i_add | i_addi) -> U"0000",  // 选择加法器输出，做加法
-                             (i_lui)          -> U"0011",     // 选择ALU输入B的结果直接输出
-                             (i_slt | i_slti | i_beq | i_bne | i_blt | i_bge) -> U"0010",   // 做减法，选择带符号小于置位结果输出, Less按带符号结果设置
-                             (i_sltu| i_sltiu| i_bltu| i_bgeu)                -> U"1010",   // 做减法，选择无符号小于置位结果输出, Less按无符号结果设置
-                             True             -> U"0000"))             
+  // 原来的写法: 12 级级联的 PriorityMux (保留备查)
+  // io.ctrl.aluCtrl.aluCtr  := PriorityMux(Seq(
+  //                            (i_and | i_andi) -> U"0111",     // 选择逻辑与输出
+  //                            (i_or  | i_ori ) -> U"0110",     // 选择逻辑或输出
+  //                            (i_xor | i_xori) -> U"0100",     // 选择异或输出
+  //                            (i_sll | i_slli) -> U"0001",     // 选择移位器输出，左移
+  //                            (i_srl | i_srli) -> U"0101",     // 选择移位器输出，逻辑右移
+  //                            (i_sra | i_srai) -> U"1101",     // 选择移位器输出，算术右移
+  //                            (i_sub)          -> U"1000",     // 选择加法器输出，做减法
+  //                            // (i_add | i_addi) -> U"0000",  // 选择加法器输出，做加法
+  //                            (i_lui)          -> U"0011",     // 选择ALU输入B的结果直接输出
+  //                            (i_slt | i_slti | i_beq | i_bne | i_blt | i_bge) -> U"0010",   // 做减法，选择带符号小于置位结果输出, Less按带符号结果设置
+  //                            (i_sltu| i_sltiu| i_bltu| i_bgeu)                -> U"1010",   // 做减法，选择无符号小于置位结果输出, Less按无符号结果设置
+  //                            True             -> U"0000"))
+
+  // 独热(one-hot)选择: 10 个条件两两互斥(每个指令只落在一组) → 一层"与-或"选出, 代替上面 12 级级联
+  // 都不命中(如 add/addi) → 输出 0 = U"0000", 与原 PriorityMux 的 `True -> U"0000"` 默认一致
+  io.ctrl.aluCtrl.aluCtr  := MuxOH(
+                             Seq((i_and | i_andi), (i_or  | i_ori ), (i_xor | i_xori),
+                                 (i_sll | i_slli), (i_srl | i_srli), (i_sra | i_srai),
+                                 i_sub, i_lui,
+                                 (i_slt | i_slti | i_beq | i_bne | i_blt | i_bge),   // 有符号
+                                 (i_sltu| i_sltiu| i_bltu| i_bgeu)).toIndexedSeq,    // 无符号
+                             Seq(U"0111", U"0110", U"0100", U"0001", U"0101", U"1101",
+                                 U"1000", U"0011", U"0010", U"1010"))
   io.ctrl.aluCtrl.branch  := PriorityMux(Seq(
                              i_jal            -> U"001",      // 无条件跳转PC目标
                              i_jalr           -> U"010",      // 无条件跳转寄存器目标

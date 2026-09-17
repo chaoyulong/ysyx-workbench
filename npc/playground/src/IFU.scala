@@ -41,7 +41,7 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
     pcFetch := pcFetch
   }
 
-  val pcPlus4 = RegNext(pcFetch + 4)                              // 增量器移到"喂寄存器"这条路上
+  // val pcPlus4 = RegNext(pcFetch + 4)                              // 增量器移到"喂寄存器"这条路上
 
   // 每次请求的pc与它的响应配对，命中同拍用reqIn.pc, 缺失完成后用这一次请求锁存的pc
   val pcOfReq = RegNextWhen(icache.io.reqIn.pc, icache.io.reqIn.fire) init(U(config.resetPc, 32 bits))

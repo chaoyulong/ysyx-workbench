@@ -115,13 +115,20 @@ case class ysyx_23060082_Decoder(config: CpuConfig = CpuConfig()) extends Compon
   val immS = (instr(31) #* 20) ## instr(31 downto 25) ## instr(11 downto 7)
   val immB = (instr(31) #* 20) ## instr(7) ## instr(30 downto 25) ## instr(11 downto 8) ## B"0"
 
-  io.imm := PriorityMux(Seq(
-              typeU -> immU,
-              typeJ -> immJ,
-              typeI -> immI,
-              typeS -> immS,
-              typeB -> immB,
-              True -> B"32'h0")).asUInt
+  // 原来的写法: 6 级级联的 PriorityMux (保留备查)
+  // io.imm := PriorityMux(Seq(
+  //             typeU -> immU,
+  //             typeJ -> immJ,
+  //             typeI -> immI,
+  //             typeS -> immS,
+  //             typeB -> immB,
+  //             True -> B"32'h0")).asUInt
+
+  // 独热(one-hot)选择: 5 种 type 互斥, 一层"与-或"选出, 代替上面 6 级级联
+  // 注意 MuxOH 的选择端要求 IndexedSeq[Bool] (普通 Seq 会报 overloaded method apply), 故 toIndexedSeq
+  // 都不命中时输出 0, 与原 `True -> B"32'h0"` 默认一致
+  io.imm := MuxOH(Seq(typeU, typeJ, typeI, typeS, typeB).toIndexedSeq,
+                  Seq(immU, immJ, immI, immS, immB)).asUInt
 // ================================ 控制信号生成 ================================ //
   val csrWb = i_csrrw | i_csrrs
 

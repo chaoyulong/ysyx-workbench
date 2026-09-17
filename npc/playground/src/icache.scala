@@ -202,26 +202,6 @@ case class ysyx_23060082_Axi4_Ctrler_ReadOnly_Burst(param: IcacheParams = Icache
     io.axi4.ar.addr := io.axi4.ar.addr 
   }
   
-  // val arValidReg = RegInit(False)
-  // val arAddrReg  = RegNextWhen(io.readAddr, io.readReq)
-  // val arValidOut = io.readReq || arValidReg    // 提前一周期发出arvalid信号
-  // io.axi4.ar.valid := arValidOut
-  // io.axi4.ar.addr  := Mux(io.readReq, io.readAddr, arAddrReg)
-
-  // when(arValidReg) {
-  //   when(io.axi4.ar.fire) {
-  //     arValidReg := False
-  //   } otherwise {
-  //     arValidReg := True
-  //   }
-  // } otherwise {
-  //   when(io.readReq && !io.axi4.ar.fire) {
-  //     arValidReg := True
-  //   } otherwise {
-  //     arValidReg := False
-  //   }
-  // }
-
   io.axi4.r.ready := io.axi4.r.valid
   
   io.readEnd  := io.axi4.r.fire && io.axi4.r.last     // 突发结束(r.last)才算读完

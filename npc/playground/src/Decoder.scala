@@ -138,10 +138,14 @@ case class ysyx_23060082_Decoder(config: CpuConfig = CpuConfig()) extends Compon
   val isBranch = opF === M"1100011"
   val isJalr   = opF === M"1100111"
 
-  io.useRf1 := isOpImm || isOp || isLoad || isStore || isBranch || isJalr || csrWb || i_ecall
-  io.useRf2 := isOp || isStore || isBranch
+  // io.useRf1 := isOpImm || isOp || isLoad || isStore || isBranch || isJalr || csrWb || i_ecall
+  // io.useRf2 := isOp || isStore || isBranch
 
-  io.ctrl.rfCtrl.regWr       := typeU || typeJ || isOpImm || isLoad || isJalr || csrWb || isOp
+  io.useRf1 := typeS|typeR|typeB|typeI|i_ecall
+  io.useRf2 := isOpImm||isOp||isLoad||isStore||isBranch||isJalr||csrWb||i_ecall
+
+  // io.ctrl.rfCtrl.regWr       := typeU || typeJ || isOpImm || isLoad || isJalr || csrWb || isOp
+  io.ctrl.rfCtrl.regWr       := typeU|typeJ|typeI|typeR
   io.ctrl.rfCtrl.rfWriteAddr := instr(11 downto 7)            // 为了写起来简洁，写寄存器地址在此赋值
   io.ctrl.rfCtrl.mem2reg     := i_lb | i_lh | i_lw | i_lbu | i_lhu
   io.ctrl.rfCtrl.csr2reg     := csrWb

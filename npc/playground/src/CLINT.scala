@@ -15,8 +15,15 @@ case class ysyx_23060082_Clint() extends Component {
   private def MTIME  = U(AddressMap.CLINT_BASE + AddressMap.CLINT_MTIME,  32 bits)
   private def MTIMEH = U(AddressMap.CLINT_BASE + AddressMap.CLINT_MTIMEH, 32 bits)
 
-  val timeCount = RegInit(U"64'h0")   // 系统计时器
-  timeCount := timeCount + 1
+  // val timeCount = RegInit(U"64'h0")   // 系统计时器
+  // timeCount := timeCount + 1
+  val timeCountLow  = RegInit(U"32'h0")
+  val timeCountHigh = RegInit(U"32'h0")
+
+  timeCountLow := timeCountLow + 1
+  when(timeCountLow === U"32'hffffffff") {
+    timeCountHigh := timeCountHigh + 1
+  }
 
   io.clintAxi4.b.valid.setAsReg() init(False)
 
@@ -41,15 +48,15 @@ case class ysyx_23060082_Clint() extends Component {
     readActive := readActive
   }
 
-  val addrReg  = RegNextWhen(io.clintAxi4.ar.addr, io.clintAxi4.ar.fire)          // 地址暂存一下，打断从icache到clint这条不会存在的关键路径
-  val dataReg  = Reg(UInt(32 bits))
+  val addrReg     = RegNextWhen(io.clintAxi4.ar.addr, io.clintAxi4.ar.fire)     // 地址暂存一下，打断从icache到clint这条不会存在的关键路径
+  val dataReg     = Reg(UInt(32 bits))
   val arFireDelay = RegNext(io.clintAxi4.ar.fire) // 握手后的下一周期
-  val dataFinish  = Reg(Bool())
+  val dataFinish  = RegInit(False)
   // 读取协议: 先读低位(mtime), 硬件锁存当时的高位; 再读高位(mtimeh)返回锁存值
   // 与 mcycle 的"先读低再读高"协议保持一致
   val readLow  = addrReg === MTIME
   val readHigh = addrReg === MTIMEH
-  val timeCountHighSnap = RegNextWhen(timeCount(63 downto 32), arFireDelay && readLow) init(0)     // 读低那一拍锁存高位
+  val timeCountHighSnap = RegNextWhen(timeCountHigh, arFireDelay && readLow) init(0)     // 读低那一拍锁存高位
 
   when(arFireDelay) {
     dataFinish := True
@@ -62,7 +69,7 @@ case class ysyx_23060082_Clint() extends Component {
   when(arFireDelay) {
     dataReg := addrReg.mux(
       MTIMEH  -> timeCountHighSnap,
-      MTIME   -> timeCount(31 downto 0),
+      MTIME   -> timeCountLow,
       default -> U(0)
     )
   }

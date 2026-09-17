@@ -101,27 +101,17 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
     val Idle, Miss = newElement()
   }
   val state = Reg(IcacheState()) init(IcacheState.Idle)
-  // 缺失判定打一拍: hit(需要 tagMem 读 mux + tag 比较)只驱动这个 1 bit 寄存器,
-  // 突发 AR 由寄存器在下一拍发起 -> 切断 "hit -> ar.valid -> Xbar/CLINT" 那条长组合锥
-  val missDecision = RegInit(False)
-
-  // 请求握手: Idle时接受(命中同拍组合返回rspOut); 有未处理的缺失判定时先不收新请求
-  io.reqIn.ready := (state === IcacheState.Idle) && !missDecision
-  val reqAccept  = io.reqIn.valid && (state === IcacheState.Idle) && !missDecision   // = io.reqIn.fire
-
-  when(reqAccept) {
-    missDecision := !hit                       // ★ hit 只到这里
-  } .otherwise {
-    missDecision := False
-  }
 
   when(state === IcacheState.Idle) {
-    when(missDecision) { state := IcacheState.Miss }   // ★ 用寄存后的判定进 Miss
+    when(io.reqIn.valid && !hit) { state := IcacheState.Miss }  // 有请求但是没有命中
     .otherwise { state := IcacheState.Idle }
   } elsewhen(state === IcacheState.Miss) {
     when(axi4Ctrler.io.readEnd) { state := IcacheState.Idle }   // 访存完成, 返回
     .otherwise { state := IcacheState.Miss }
   } 
+  // ================================  ================================ //
+  // 请求握手: Idle时接受(命中同拍组合返回rspOut, 缺失进入Miss)
+  io.reqIn.ready := (state === IcacheState.Idle)
 
   // 命中 或 缺失但是读取完成
   val missDone = (state === IcacheState.Miss) && axi4Ctrler.io.readEnd
@@ -140,12 +130,14 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
                         hitWordVec (wordSel),      // 命中: 当前pc的字
                         missWordVec(wordSelReg))   // 缺失: 请求时锁存的字
                           
-  // readReq要求只持续一个周期; 由寄存后的缺失判定发起, 地址用锁存的 pcReg(请求拍锁存, 与判定同一次取指)
-  axi4Ctrler.io.readReq  := missDecision
-  axi4Ctrler.io.readAddr := (pcReg(31 downto param.lineBits) ## U(0, param.lineBits bits)).asUInt // 地址对齐
+  // readReq要求只持续一个周期
+  val enterMiss = (state === IcacheState.Idle) && io.reqIn.valid && !hit
+  axi4Ctrler.io.readReq  := enterMiss
+  axi4Ctrler.io.readAddr := (io.reqIn.pc(31 downto param.lineBits) ## U(0, param.lineBits bits)).asUInt // 地址对齐
 
-  // 缺失脉冲: 在"判定为缺失"那一拍拉高(交给 IFU 的 PerfReg 计数, 用于统计命中率)
-  io.miss := reqAccept && !hit
+  // 缺失脉冲: 每一次缺失拉高一拍(交给 IFU 的 PerfReg 计数, 用于统计命中率)
+  // 等价于 io.reqIn.fire && !hit —— 因为 reqIn.ready 只在 Idle 时拉高
+  io.miss := enterMiss
 
   // 缺失完成: 写回cache(valid/tag/data)
   when(missDone) {

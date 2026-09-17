@@ -39,6 +39,7 @@ case class ysyx_23060082_Dcache(param: DcacheParams = DcacheParams()) extends Co
     val reqWdata  = in  UInt(32 bits)
     val reqWmask  = in  UInt(4 bits)          // 字节使能(sw=1111, sh=0011/1100, sb=单个)
     val cacheable = in  Bool()                // 该地址是否可缓存(设备访问为 0)
+    val reqValid  = in  Bool()                // 本拍确实是一个"要读内存"的 load(非访存指令的地址是垃圾)
     val storeNow  = in  Bool()                // 本拍是一个"可缓存且命中"的 store
     // ---- 命中应答(组合, 请求拍即有效) ----
     val hit       = out Bool()
@@ -78,7 +79,7 @@ case class ysyx_23060082_Dcache(param: DcacheParams = DcacheParams()) extends Co
   object DcState extends SpinalEnum { val Idle, Fill = newElement() }
   val state = Reg(DcState()) init(DcState.Idle)
 
-  val startFill = (state === DcState.Idle) && io.cacheable && !lineHit
+  val startFill = (state === DcState.Idle) && io.reqValid && io.cacheable && !lineHit
   when(state === DcState.Idle) {
     when(startFill) { state := DcState.Fill }
     .otherwise      { state := DcState.Idle }

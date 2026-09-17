@@ -56,6 +56,7 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   dc.io.reqWdata  := dataProcess.io.wdataReal
   dc.io.reqWmask  := dataProcess.io.wmask
   dc.io.cacheable := dcCacheable
+  dc.io.reqValid  := needRead && (state === LsuState.Idle)     // 只有"确实要读内存的 load"才能发起填充
   dc.io.storeNow  := needWrite && dcCacheable && (state === LsuState.Idle) && dc.io.hit   // 直写命中顺手更新本行
   val dcHitNow    = dcRead && (state === LsuState.Idle)    && dc.io.hit        // 命中: 请求拍就出数据
   val dcFillEnd   = dcRead && (state === LsuState.WaitMem) && dc.io.fillEnd    // 缺失: 填充完成那一拍
@@ -68,9 +69,10 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   io.axi4.ar.payload := Mux(dcUseAxi, dc.io.axi4.ar.payload, axi4Ctrler.io.axi4.ar.payload)
   dc.io.axi4.ar.ready         := io.axi4.ar.ready
   axi4Ctrler.io.axi4.ar.ready := io.axi4.ar.ready
-  dc.io.axi4.r.valid   := io.axi4.r.valid
+  // r 通道必须分开: 两边都是 r.ready := r.valid, 否则老的控制器会把填充的 beat 当成自己的读响应
+  dc.io.axi4.r.valid   := io.axi4.r.valid && dcUseAxi
   dc.io.axi4.r.payload := io.axi4.r.payload
-  axi4Ctrler.io.axi4.r.valid   := io.axi4.r.valid
+  axi4Ctrler.io.axi4.r.valid   := io.axi4.r.valid && !dcUseAxi
   axi4Ctrler.io.axi4.r.payload := io.axi4.r.payload
   io.axi4.r.ready := Mux(dcUseAxi, dc.io.axi4.r.ready, axi4Ctrler.io.axi4.r.ready)
   io.axi4.aw <> axi4Ctrler.io.axi4.aw
@@ -84,8 +86,8 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   axi4Ctrler.io.writeData:= dataProcess.io.wdataReal  // 处理后的数据
   axi4Ctrler.io.writeMask:= dataProcess.io.wmask
   // ---- 访存结束信号 ----
-  // 读结束: 老通路读完 / dcache 命中(请求拍) / dcache 填充完成
-  val rdEnd = (((state === LsuState.WaitMem) && axi4Ctrler.io.readEnd) || dcHitNow || dcFillEnd) &&
+  // 读结束: 老通路读完(仅不可缓存/填充之外的读) / dcache 命中(请求拍) / dcache 填充完成
+  val rdEnd = (((state === LsuState.WaitMem) && axi4Ctrler.io.readEnd && !dcRead) || dcHitNow || dcFillEnd) &&
               io.input.rfCtrl.mem2reg
   val wrEnd = (state === LsuState.WaitMem) && axi4Ctrler.io.writeEnd && io.input.memCtrl.memWr
   // 读回数据: rdEnd 那拍取"新数据", 之后一拍取锁存值(与原来一致)

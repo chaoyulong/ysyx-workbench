@@ -48,6 +48,15 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   // 每次请求的pc与它的响应配对，命中同拍用reqIn.pc, 缺失完成后用这一次请求锁存的pc
   val pcOfReq = RegNextWhen(icache.io.reqIn.pc, icache.io.reqIn.fire)
 
+  // ================================ 指令缓存 (icache) ================================ //
+  io.axi4 <> icache.io.axi4
+  icache.io.fenceI      := io.redirect.valid && io.redirect.fenceI                    // fence.i: 清空 icache 有效位
+  icache.io.reqIn.valid := (state === IfuState.Idle) && rstEnd && !stopFetch          // 复位完成，并且没有指令要发送，发出请求,如果是io.redirect.valid导致的打断，
+                                                                                      // 此时icache应该不处于Idle状态，icache.io.reqIn.ready会为低
+  icache.io.reqIn.pc    := pcFetch
+
+  val rdataReg           = RegNextWhen(icache.io.rspOut.rdata, icache.io.rspOut.valid)// 响应时更新数据
+  val rspIsCurrentHit    = icache.io.reqIn.fire && icache.io.rspOut.valid             // icache直接命中
   // =================================== 预先译码出跳转指令 =================================== //
   val instrOut  = Mux(icache.io.rspOut.valid, icache.io.rspOut.rdata, rdataReg)  // 就是 io.output.instr
   val i_jalr = instrOut === M"-----------------000-----1100111"
@@ -60,15 +69,6 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   } elsewhen(io.output.valid && isJump) {
     stopFetch := True
   }
-  // ================================ 指令缓存 (icache) ================================ //
-  io.axi4 <> icache.io.axi4
-  icache.io.fenceI      := io.redirect.valid && io.redirect.fenceI                    // fence.i: 清空 icache 有效位
-  icache.io.reqIn.valid := (state === IfuState.Idle) && rstEnd && !stopFetch          // 复位完成，并且没有指令要发送，发出请求,如果是io.redirect.valid导致的打断，
-                                                                                      // 此时icache应该不处于Idle状态，icache.io.reqIn.ready会为低
-  icache.io.reqIn.pc    := pcFetch
-
-  val rdataReg           = RegNextWhen(icache.io.rspOut.rdata, icache.io.rspOut.valid)// 响应时更新数据
-  val rspIsCurrentHit    = icache.io.reqIn.fire && icache.io.rspOut.valid             // icache直接命中
   // ================================ 状态机 ================================ //
   switch(state) {
     is(IfuState.Idle) {                                                               // 手上没有指令，需要发出请求

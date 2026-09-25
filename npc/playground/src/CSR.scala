@@ -81,7 +81,8 @@ case class ysyx_23060082_CSR() extends Component {
   )
 
   val rdataWb = Mux(readMcycleh, mcycleh,
-                Mux(readMinstreth, minstreth,  io.csrRdata))
+                Mux(readMinstreth, minstreth,  io.csrRdata))  // csrrw与csrrs有与当前值做运算再写回的操作，如果正好是读取计数器的高位
+                                                              // 则会因为读取的是之前的暂存值而数据错误，所以需要使用真正的值
   val writeData = io.csrCmd.mux(
     U"3'd1" -> io.csrWdata,               // CSRRW
     U"3'd2" -> (rdataWb | io.csrWdata),   // CSRRS
@@ -94,10 +95,10 @@ case class ysyx_23060082_CSR() extends Component {
       is(CSR.mtvec)     { mtvec     := writeData }
       is(CSR.mepc)      { mepc      := writeData }
       is(CSR.mcause)    { mcause    := writeData }
-      is(CSR.mcycle)    { mcycle(31 downto 0)   := writeData }
-      is(CSR.mcycleh)   { mcycle(63 downto 32)  := writeData }
-      is(CSR.minstret)  { minstret(31 downto 0) := writeData }
-      is(CSR.minstreth) { minstret(63 downto 32):= writeData }
+      is(CSR.mcycle)    { mcycle    := writeData }
+      is(CSR.mcycleh)   { mcycleh   := writeData }
+      is(CSR.minstret)  { minstret  := writeData }
+      is(CSR.minstreth) { minstreth := writeData }
     }
   }
 

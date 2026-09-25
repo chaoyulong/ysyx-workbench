@@ -25,7 +25,7 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   val io = new Bundle {
     val reqIn   = slave  Stream(DcacheReqData())
     val rspOut  = master Flow(DcacheRspData())
-    val hit     = out Bool()
+    val readHit = out Bool()
     val miss    = if(config.enableSimDebug) {out Bool()} else null
     val missDone= if(config.enableSimDebug) {out Bool()} else null
 

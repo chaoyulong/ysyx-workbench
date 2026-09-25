@@ -49,7 +49,7 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   dcache.io.reqIn.size      := (False ## io.input.memCtrl.memOp(1 downto 0)).asUInt
 
   // 完成信号: 读命中当拍就完事, 其余等 dcache 响应
-  val rdHitNow = needRead && (state === LsuState.Idle) && dcache.io.rspOut.valid
+  val rdHitNow = needRead && (state === LsuState.Idle) && dcache.io.readHit
   val rdEnd    = ((state === LsuState.WaitMem) && dcache.io.rspOut.valid && io.input.rfCtrl.mem2reg) || rdHitNow    // 缺失读完，或者命中
   val wrEnd    =  (state === LsuState.WaitMem) && dcache.io.rspOut.valid && io.input.memCtrl.memWr                  // 写完
   dataProcess.io.rdata := dcache.io.rspOut.readData     // dcache中已经有数据寄存器，所以不需要再次寄存
@@ -57,7 +57,7 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   // ================================ lsu状态机 ================================ //
   switch(state) {
     is(LsuState.Idle) {
-      when(needMem) {
+      when(needMem && dcache.io.reqIn.fire) {
         when(rdHitNow) {                                    // load命中: 当拍完成, 不等访存
           when(io.output.fire){state := LsuState.Idle}
           .otherwise          {state := LsuState.Done}

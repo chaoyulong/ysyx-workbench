@@ -25,9 +25,9 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   val io = new Bundle {
     val reqIn   = slave  Stream(DcacheReqData())
     val rspOut  = master Flow(DcacheRspData())
+    val hit     = out Bool()
     val miss    = if(config.enableSimDebug) {out Bool()} else null
     val missDone= if(config.enableSimDebug) {out Bool()} else null
-    val hit     = if(config.enableSimDebug) {out Bool()} else null
 
     val axi4   = master(Axi4(AxiConfig.axiConfig))
   }
@@ -88,7 +88,7 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
                         Mux(readMissDone, axi4Ctrler.io.readData, readDataReg))   // 命中返回cache,未命中返回读完的数据
 
   io.rspOut.valid    := readHit || readMissDone || writeDone      // 读命中，或者读缺失但是完成，或者写完
-
+  io.readHit         := readHit                                   // 指示读命中
   // ============ AXI ============ //
   axi4Ctrler.io.readReq   := (state === DcacheState.Idle) && reqRead && !hit
   axi4Ctrler.io.readAddr  := io.reqIn.addr
@@ -118,7 +118,6 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   if(config.enableSimDebug) {
     io.miss     := (state === DcacheState.Idle) && reqRead && !hit
     io.missDone := readMissDone
-    io.hit      := hit
   }
 }
 

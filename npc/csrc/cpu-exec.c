@@ -9,7 +9,7 @@
 #include "sdb.h"
 
 #define DEVICE_UPDATE_CYCLE 20000   // 每多少个周期更新一次外设(SDL事件/屏幕刷新)    
-#define ITRACE_TIMEOUT_CYCLE 10000   // 单条指令周期上限(防卡死)
+#define ITRACE_TIMEOUT_CYCLE 5000   // 单条指令周期上限(防卡死)
 
 uint64_t g_timer = 0;
 uint64_t g_nr_guest_inst = 0;     // 运行了多少条指令
@@ -17,6 +17,20 @@ uint64_t g_nr_guest_cycle = 0;    // 运行了多少周期
 
 NPCState npc_state = { .state = NPC_STOP };
 CPU_state cpu;
+
+
+// itrace 黑盒总是存在(enableSimDebug=true), 宏总是可用
+#ifdef __ysyxsoc__
+#include "VysyxSoCFull___024root.h"
+#define itraceRetireValid   top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireValid
+#define itraceRetirePc      top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetirePc
+#define itraceRetireInstr   top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireInstr
+#else
+#include "VNPC_TOP___024root.h"
+#define itraceRetireValid   top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireValid
+#define itraceRetirePc      top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetirePc
+#define itraceRetireInstr   top->rootp->NPC_TOP__DOT__cpu__DOT__itraceReg_1__DOT__itraceRetireInstr
+#endif
 
 static void trace_and_difftest() {
   IFDEF(CONFIG_ITRACE, itrace_trace());
@@ -58,23 +72,17 @@ static void exec_once()
       break;
     }
   } while (!itraceRetireValid);
-
   if (npc_state.state == NPC_ABORT) return;
   g_nr_guest_inst++;   // 完成一条指令
 
   // 状态更新: 用退休指令的 PC (ifu.pc 可能已指向流水线后续)
-  cpu.pc    = itraceRetirePc;
-  cpu.instr = itraceRetireInstr;
+  cpu.pc = itraceRetirePc;
+  cpu.instr  = itraceRetireInstr;
   for (int i = 0; i < REG_NUM; i++) cpu.gpr[i] = gpr(i);
 
   // 检测程序结束
-  if (ebreak) {
+  if (Rmcause() == 3) {
     npc_state.state = NPC_END;
-  }
-  if (Rmcause() == 2) { // 非法指令
-    Log(ANSI_FMT("ERROR: 非法指令%08x (pc=0x%08x), CPU可能卡死!", ANSI_FG_RED),
-        cpu.instr, (uint32_t)cpu.pc);
-    npc_state.state = NPC_ABORT;
   }
 }
 

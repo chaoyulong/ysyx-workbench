@@ -22,7 +22,6 @@ object Config {
   def spinal = SpinalConfig(
     targetDirectory = build_dir,
     defaultConfigForClockDomains = ClockDomainConfig(
-      resetKind = SYNC,                     // 同步复位（默认是ASYNC，异步复位）
       resetActiveLevel = HIGH
     ),                                      // 设置将用作所有新 ``ClockDomain``时钟域默认值的配置。
     onlyStdLogicVectorAtTopLevelIo = false, // 将所有无符号/有符号顶级 io 更改为 std_logic_vector类型。

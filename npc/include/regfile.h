@@ -5,6 +5,7 @@
 
 #define REG_NUM MUXDEF(__riscv32e__, 16, 32)
 
+uint32_t Rpc(void);
 uint32_t gpr(int n);
 
 uint32_t Rmcause(void);

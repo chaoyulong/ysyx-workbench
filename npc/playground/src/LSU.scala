@@ -3,15 +3,14 @@ package playground
 import spinal.core._
 import spinal.lib._    // 使用spinal的模块库
 import spinal.lib.bus.amba4.axi._
-import javax.net.ssl.TrustManager
 
 case class Lsu2Wbu_data(config: CpuConfig = CpuConfig()) extends Bundle {
-  val pc          = if (config.enableSimDebug) UInt(32 bits) else null   // 仅仿真可见
-  val instr       = if (config.enableSimDebug) UInt(32 bits) else null
-
-  val rfWriteData = UInt(32 bits) 
-  val rfCtrl      = RfCtrl()        // 其中的mem2reg信号会作为读内存信号被用到
-  val fenceI      = Bool()          // fence.i(直通, WBU 据此通知 IFU 失效 icache)
+  val pc = if (config.enableSimDebug) UInt(32 bits) else null   // 仅仿真可见
+  val pcNext       = UInt(32 bits)
+  val mem_data_out = UInt(32 bits)
+  val alu_data_out = UInt(32 bits) 
+  val rfCtrl       = RfCtrl()      // 其中的mem2reg信号会作为读内存信号被用到
+  val fenceI       = Bool()        // fence.i(直通, WBU 据此通知 IFU 失效 icache)
 }
 
 
@@ -19,9 +18,7 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   val io = new Bundle {
     val input   = slave  Flow(Exu2Lsu_data(config))
     val output  = master Stream(Lsu2Wbu_data(config)) 
-    val axi4    = master (Axi4(AxiConfig.axiConfig))
-    val forward = out(forwardData())
-    val redirect = master Flow(RedirectReq())
+    val axi4    = master(Axi4(AxiConfig.axiConfig))
   }
   // ================================ 输入信号整理 ================================ //
   object LsuState extends SpinalEnum {
@@ -29,11 +26,10 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   }
   val state = Reg(LsuState()) init(LsuState.Idle)   // 创建一个状态机
   val memAddr   = io.input.aluResult                // alu的输出结果就是访存地址
-  val needRead  = io.input.valid && io.input.rfCtrl.mem2reg   // 需要读内存
-  val needWrite = io.input.valid && io.input.memCtrl.memWr    // 需要写内存
+  val needRead  = io.input.valid && io.input.rfCtrl.mem2reg  // 需要读内存
+  val needWrite = io.input.valid && io.input.memCtrl.memWr   // 需要写内存
   val needMem   = needRead || needWrite                       // 需要访问内存
 
-  val instIllegal = io.input.csrCtrl.illegal      
   // ================================ 访存通路 ================================ //
   val dataProcess = ysyx_23060082_DataProcess()   // 数据处理
   val axi4Ctrler  = ysyx_23060082_Axi4_Ctrler()   // AXI总线控制
@@ -52,8 +48,8 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   // ---- 访存结束信号 ----
   val rdEnd = (state === LsuState.WaitMem) && axi4Ctrler.io.readEnd && io.input.rfCtrl.mem2reg  // 读内存结束, 需要更新数据
   val wrEnd = (state === LsuState.WaitMem) && axi4Ctrler.io.writeEnd && io.input.memCtrl.memWr
-  val rdataReg = RegNextWhen(axi4Ctrler.io.readData, rdEnd)
-  dataProcess.io.rdata  := Mux(rdEnd, axi4Ctrler.io.readData, rdataReg)   // 快一周期读完
+  val rdataReg = RegNextWhen(axi4Ctrler.io.readData, rdEnd) init(0)  // 是读内存指令并且已读完
+  dataProcess.io.rdata  := Mux(rdEnd, axi4Ctrler.io.readData, rdataReg) // 快一周期读完
 
   // ================================ lsu状态机 ================================ //
   switch(state) {
@@ -93,71 +89,43 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   io.output.valid := io.input.valid && willValid  
 
   // ================================ 数据传输部分 ================================ //
-  if (config.enableSimDebug) { 
-    io.output.pc       := io.input.pc
-    io.output.instr    := io.input.instr
-  }
-       
+  if (config.enableSimDebug) { io.output.pc := io.input.pc }          // 仿真专用
+  io.output.pcNext     := Mux(io.input.csrCtrl.trapEnter, csr.io.mtvec,
+                          Mux(io.input.csrCtrl.trapExit , csr.io.mepc,
+                              io.input.pcNext))
+
+  io.output.mem_data_out:= Mux(io.input.csrCtrl.csrCmd =/= U"3'd0", csr.io.csrRdata, dataProcess.io.rdataReal)           // 借用mem_data_out来输出读出的值
+  io.output.alu_data_out:= io.input.aluResult
   io.output.rfCtrl     := io.input.rfCtrl    
   io.output.fenceI     := io.input.fenceI
 
-  val memDataOut    = Mux(io.input.csrCtrl.csrCmd =/= U"3'd0", csr.io.csrRdata, dataProcess.io.rdataReal) // 借用mem_data_out来输出读出的值
-  val aluDataOut    = io.input.aluResult
-  val getDataInLsu  = io.input.rfCtrl.mem2reg || io.input.rfCtrl.csr2reg  // 数据来自lsu（访存，csr）中
-  io.output.rfWriteData:= Mux(getDataInLsu, memDataOut, aluDataOut)
-  // ================================ 数据前递 ================================ //
-  val wr                = io.input.rfCtrl.regWr
-  io.forward.state     := Mux(!io.input.valid || !wr, FwdState.NoWriter,                // 还没有有效数据，或者不是写寄存器的信号时
-                          Mux(willValid, FwdState.DataReady, FwdState.DataPendingHere)) // willValid(数据即将有效时)，Ready，否则(即需要访存)就WaitHere
-  io.forward.writeAddr := io.input.rfCtrl.rfWriteAddr
-  io.forward.writeData := io.output.rfWriteData      // willValid 那拍就是最终写回值
-
-  // ================================ 重定向 ================================ //
-  // trap/mret 的目标是CSR寄存器输出, 当拍就有; fence.i的目标是pc+4
-  // fence.i放在LSU: LSU顺序处理访存, fence进到LSU时它前面的store一定已经完成(b已回), 之后的取指必然看得到新指令
-  io.redirect.valid  := io.input.valid && (io.input.csrCtrl.trapEnter || io.input.csrCtrl.trapExit || io.input.fenceI)
-  io.redirect.pcNext := Mux(io.input.csrCtrl.trapEnter, csr.io.mtvec,
-                        Mux(io.input.csrCtrl.trapExit , csr.io.mepc,
-                                                        io.input.pc + 4))    // fence.i只是冲刷，pcNext依旧是pc+4
-  io.redirect.fenceI := io.input.fenceI
   // ==================== 仿真专用: LSU 访存性能统计(仅仿真, 4 组: mem/dev × 读/写) ====================
   // 内存范围(两平台统一): flash 0x30000000-0x3fffffff + psram 0x80000000-0x9fffffff + sdram 0xa0000000-0xbfffffff
   if (config.enableSimDebug) {
-    // ================================ 读写记录 ================================ //
     def isDevAddr(addr: UInt) =
       !((addr >= U("32'h30000000") && addr < U("32'h40000000")) ||
         (addr >= U("32'h80000000") && addr < U("32'hc0000000")))
     val arAddr = io.axi4.ar.addr
     val awAddr = io.axi4.aw.addr
     val perf = PerfReg()
-    perf.io.valid  := True
-    perf.io.evt    := B"8'b0"
+    perf.io.valid := True
+    perf.io.evt   := B"8'b0"
     perf.io.req(0) := io.axi4.ar.fire && !isDevAddr(arAddr)   // mem 读请求
     perf.io.req(1) := io.axi4.aw.fire && !isDevAddr(awAddr)   // mem 写请求
     perf.io.req(2) := io.axi4.ar.fire &&  isDevAddr(arAddr)   // dev 读请求
     perf.io.req(3) := io.axi4.aw.fire &&  isDevAddr(awAddr)   // dev 写请求
     // 请求拍锁存类别, 响应拍按类别配对(否则 r/b.fire 无法区分是哪个请求的响应)
     val pendingIsDev = Reg(Bool()) init(False)
-    pendingIsDev   := Mux(io.axi4.ar.fire, isDevAddr(arAddr),
-                      Mux(io.axi4.aw.fire, isDevAddr(awAddr), pendingIsDev))
-    perf.io.rsp(0) := io.axi4.r.fire && !pendingIsDev         // mem 读响应
-    perf.io.rsp(1) := io.axi4.b.fire && !pendingIsDev         // mem 写响应
-    perf.io.rsp(2) := io.axi4.r.fire &&  pendingIsDev         // dev 读响应
-    perf.io.rsp(3) := io.axi4.b.fire &&  pendingIsDev         // dev 写响应
-    // ================================ mtrace ================================ //
-    // 截取 lsuAxi4(仅数据访存, 不含取指), 按地址范围区分内存/设备
-    val mtrace = MtraceReg()
-    val lsuArFire = io.axi4.ar.fire                           // 读请求握手
-    val lsuWrFire = io.axi4.aw.fire && io.axi4.w.fire         // 写握手
-
-    mtrace.io.valid := lsuArFire || lsuWrFire
-    mtrace.io.wen   := lsuWrFire
-    mtrace.io.isDev := Mux(lsuArFire, isDevAddr(io.axi4.ar.addr),
-                                      isDevAddr(io.axi4.aw.addr))
-    mtrace.io.addr  := Mux(lsuArFire, io.axi4.ar.addr, io.axi4.aw.addr)
-    mtrace.io.wdata := io.axi4.w.data.asUInt
+    pendingIsDev := Mux(io.axi4.ar.fire, isDevAddr(arAddr),
+                    Mux(io.axi4.aw.fire, isDevAddr(awAddr), pendingIsDev))
+    perf.io.rsp(0) := io.axi4.r.fire && !pendingIsDev   // mem 读响应
+    perf.io.rsp(1) := io.axi4.b.fire && !pendingIsDev   // mem 写响应
+    perf.io.rsp(2) := io.axi4.r.fire &&  pendingIsDev   // dev 读响应
+    perf.io.rsp(3) := io.axi4.b.fire &&  pendingIsDev   // dev 写响应
   }
 }
+
+
 // ================================ 数据处理单元 ================================ //
 case class ysyx_23060082_DataProcess() extends Component {
   val io = new Bundle {
@@ -245,8 +213,8 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
     val axi4 = master(Axi4(AxiConfig.axiConfig))
   }
   // ================================ 读操作 ================================ //
-  // io.axi4.ar.valid.setAsReg() init(False)
-  // io.axi4.ar.addr .setAsReg()
+  io.axi4.ar.valid.setAsReg() init(False)
+  io.axi4.ar.addr .setAsReg()
 
   // 加不加突发，这些数值都会是常量，不需要寄存器锁存
   io.axi4.ar.id   := U"4'b0"
@@ -254,38 +222,18 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
   io.axi4.ar.size := io.size  
   io.axi4.ar.burst:= B"2'b01"         // 突发类型INCR
   // ================================ 读地址 ================================ //
-  // when(io.readReq) {
-  //   io.axi4.ar.valid := True
-  // } elsewhen(io.axi4.ar.fire) {
-  //   io.axi4.ar.valid := False
-  // } otherwise {
-  //   io.axi4.ar.valid := io.axi4.ar.valid
-  // }
-
-  // when(io.readReq) {
-  //   io.axi4.ar.addr := io.readAddr
-  // } otherwise {
-  //   io.axi4.ar.addr := io.axi4.ar.addr 
-  // }
-
-  val arValidReg = RegInit(False)
-  val arAddrReg  = RegNextWhen(io.readAddr, io.readReq)
-  val arValidOut = io.readReq || arValidReg    // 提前一周期发出arvalid信号
-  io.axi4.ar.valid := arValidOut
-  io.axi4.ar.addr  := Mux(io.readReq, io.readAddr, arAddrReg)
-
-  when(arValidReg) {
-    when(io.axi4.ar.fire) {
-      arValidReg := False
-    } otherwise {
-      arValidReg := True
-    }
+  when(io.readReq) {
+    io.axi4.ar.valid := True
+  } elsewhen(io.axi4.ar.fire) {
+    io.axi4.ar.valid := False
   } otherwise {
-    when(io.readReq && !io.axi4.ar.fire) {
-      arValidReg := True
-    } otherwise {
-      arValidReg := False
-    }
+    io.axi4.ar.valid := io.axi4.ar.valid
+  }
+
+  when(io.readReq) {
+    io.axi4.ar.addr := io.readAddr
+  } otherwise {
+    io.axi4.ar.addr := io.axi4.ar.addr 
   }
 
   // ================================ 读数据 ================================ //

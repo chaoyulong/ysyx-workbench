@@ -4,6 +4,22 @@
 #include "log.h"
 #include "trace.h"
 
+// mtrace: 访存踪迹(两平台 CPU 核相同, 均含 MtraceReg 黑盒; 截取 lsuAxi4, 只记数据访存)
+// 分类用统一地址映射(取代 RTL isDev, 避免 ysyxsoc 的 psram/sdram 被误判为设备)
+#ifdef __npc__
+#include "VNPC_TOP___024root.h"
+#define mtraceCnt    top->rootp->NPC_TOP__DOT__cpu__DOT__mtraceReg_1__DOT__mtraceCnt
+#define mtraceWen    top->rootp->NPC_TOP__DOT__cpu__DOT__mtraceReg_1__DOT__mtraceWen
+#define mtraceAddr   top->rootp->NPC_TOP__DOT__cpu__DOT__mtraceReg_1__DOT__mtraceAddr
+#define mtraceWdata  top->rootp->NPC_TOP__DOT__cpu__DOT__mtraceReg_1__DOT__mtraceWdata
+#elif defined(__ysyxsoc__)
+#include "VysyxSoCFull___024root.h"
+#define mtraceCnt    top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__mtraceReg_1__DOT__mtraceCnt
+#define mtraceWen    top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__mtraceReg_1__DOT__mtraceWen
+#define mtraceAddr   top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__mtraceReg_1__DOT__mtraceAddr
+#define mtraceWdata  top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__mtraceReg_1__DOT__mtraceWdata
+#endif
+
 static uint64_t mtrace_last_cnt = 0;
 static uint64_t mem_access_cnt = 0;    // 内存访存计数
 static uint64_t dev_access_cnt = 0;    // 设备访问计数

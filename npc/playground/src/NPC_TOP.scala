@@ -52,16 +52,16 @@ case class ysyx_23060082_Axi4MemSlave() extends Component {
 
   when(arFire) {                                // 读地址握手: 传输开始
     readActive := True
-  } elsewhen(io.axi4.r.fire && readCnt === readLen) {       // 最后一拍, 传输结束
+  } elsewhen(io.axi4.r.fire && readCnt === readLen) {   // 最后一拍, 传输结束
     readActive := False
   } otherwise {
     readActive := readActive
   }
 
-  io.axi4.ar.ready := !readActive                           // 传输中不应答新请求
+  io.axi4.ar.ready := !readActive                        // 传输中不应答新请求
   io.axi4.r.valid  := readActive
   io.axi4.r.data   := memRW.io.rdata.asBits
-  io.axi4.r.resp   := Axi4.resp.OKAY                        // 正常访问成功
+  io.axi4.r.resp   := Axi4.resp.OKAY                    // 正常访问成功
   io.axi4.r.last   := readActive && (readCnt === readLen)   // 最后一拍
   io.axi4.r.id     := RegNextWhen(io.axi4.ar.id, arFire) init(0)
 

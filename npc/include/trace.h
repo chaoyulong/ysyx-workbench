@@ -12,33 +12,6 @@ typedef struct {
   uint32_t call_count; // 被调用次数(运行时统计)
 } elf_fun;
 
-// itrace 黑盒总是存在(enableSimDebug=true), 宏总是可用
-#ifdef __ysyxsoc__
-#include "VysyxSoCFull___024root.h"
-
-#define itraceRetireValid   top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__itraceRetireValid
-#define itraceRetirePc      top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__itraceRetirePc
-#define itraceRetireInstr   top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__itraceRetireInstr
-#define ebreak              top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__ebreak
-
-#define mtraceCnt           top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__lsu__DOT__mtraceReg_1__DOT__mtraceCnt
-#define mtraceWen           top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__lsu__DOT__mtraceReg_1__DOT__mtraceWen
-#define mtraceAddr          top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__lsu__DOT__mtraceReg_1__DOT__mtraceAddr
-#define mtraceWdata         top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__lsu__DOT__mtraceReg_1__DOT__mtraceWdata
-#else
-#include "VNPC_TOP___024root.h"
-
-#define itraceRetireValid   top->rootp->NPC_TOP__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__itraceRetireValid
-#define itraceRetirePc      top->rootp->NPC_TOP__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__itraceRetirePc
-#define itraceRetireInstr   top->rootp->NPC_TOP__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__itraceRetireInstr
-#define ebreak              top->rootp->NPC_TOP__DOT__cpu__DOT__wbu__DOT__itraceReg_1__DOT__ebreak
-
-#define mtraceCnt           top->rootp->NPC_TOP__DOT__cpu__DOT__lsu__DOT__mtraceReg_1__DOT__mtraceCnt
-#define mtraceWen           top->rootp->NPC_TOP__DOT__cpu__DOT__lsu__DOT__mtraceReg_1__DOT__mtraceWen
-#define mtraceAddr          top->rootp->NPC_TOP__DOT__cpu__DOT__lsu__DOT__mtraceReg_1__DOT__mtraceAddr
-#define mtraceWdata         top->rootp->NPC_TOP__DOT__cpu__DOT__lsu__DOT__mtraceReg_1__DOT__mtraceWdata
-#endif
-
 #define FUN_BUF_MAX 1024
 extern elf_fun fun_buf[FUN_BUF_MAX];
 extern int fun_buf_count;

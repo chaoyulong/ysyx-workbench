@@ -1,16 +1,17 @@
 #include <stdio.h>
 #include "simulation.h"
 #include "regfile.h"
-#include "trace.h"
 #include STR(TOP_NAME.h)    // 自动生成
 
 // csr_mcause:用于判断ebreak
 #ifdef __ysyxsoc__
 #include "VysyxSoCFull___024root.h"
+#define cpu_pc      top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__ifu__DOT__pc
 #define cpu_rf      top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__regFile__DOT__rf_0
 #define csr_mcause  top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__lsu__DOT__csr__DOT__mcause                          
 #else
 #include "VNPC_TOP___024root.h"
+#define cpu_pc      top->rootp->NPC_TOP__DOT__cpu__DOT__ifu__DOT__pc
 #define cpu_rf      top->rootp->NPC_TOP__DOT__cpu__DOT__regFile__DOT__rf_0
 #define csr_mcause  top->rootp->NPC_TOP__DOT__cpu__DOT__lsu__DOT__csr__DOT__mcause
 #endif
@@ -32,6 +33,10 @@ uint32_t Rmcause(void) {
 }
 // ----------------------------------------------------------------------------------------------- //
 
+uint32_t Rpc(void) {
+  return cpu_pc;
+}
+
 uint32_t gpr(int n) {  
   static uint32_t *rf_base_addr = &(cpu_rf);
   if(n >= REG_NUM) {
@@ -47,7 +52,7 @@ void isa_reg_display() {  // 共有32个寄存器
   for(i = 0; i < REG_NUM; i++) {
     printf("-- %-2d -- %-3s     0x%08x     %-u\n", i, regs[i], gpr(i), gpr(i));
   }
-  printf("-- %-2d -- pc      0x%08x\n", i, itraceRetirePc);    // 最后打印PC的值,cpu的寄存器组包括gpr和pc
+  printf("-- %-2d -- pc      0x%08x\n", i, Rpc());    // 最后打印PC的值,cpu的寄存器组包括gpr和pc
 }
 
 word_t isa_reg_str2val(const char *s, bool *success) {
@@ -57,7 +62,7 @@ word_t isa_reg_str2val(const char *s, bool *success) {
     return result;
 
   if(strcmp(&s[1], "pc") == 0) {
-    result = itraceRetirePc;
+    result = Rpc();
     *success = true;
   } else {
     for(int i = 0; i < REG_NUM; i++) {

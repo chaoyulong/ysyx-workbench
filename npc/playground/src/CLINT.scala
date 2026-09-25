@@ -15,21 +15,20 @@ case class ysyx_23060082_Clint() extends Component {
   private def MTIME  = U(AddressMap.CLINT_BASE + AddressMap.CLINT_MTIME,  32 bits)
   private def MTIMEH = U(AddressMap.CLINT_BASE + AddressMap.CLINT_MTIMEH, 32 bits)
 
-  // val timeCount = RegInit(U"64'h0")   // 系统计时器
-  // timeCount := timeCount + 1
-  val timeCountLow  = RegInit(U"32'h0")
-  val timeCountHigh = RegInit(U"32'h0")
+  val timeCount = RegInit(U"64'h0")   // 系统计时器
+  timeCount := timeCount + 1
 
-  timeCountLow := timeCountLow + 1
-  when(timeCountLow === U"32'hffffffff") {
-    timeCountHigh := timeCountHigh + 1
-  }
+  // 读取协议: 先读低位(mtime), 硬件锁存当时的高位; 再读高位(mtimeh)返回锁存值
+  // 与 mcycle 的"先读低再读高"协议保持一致
+  val readLow  = io.clintAxi4.ar.fire && (io.clintAxi4.ar.addr === MTIME)
+  val readHigh = io.clintAxi4.ar.fire && (io.clintAxi4.ar.addr === MTIMEH)
+  val timeCountHighSnap = RegNextWhen(timeCount(63 downto 32), readLow) init(0)  // 读低位时锁存高位
 
   io.clintAxi4.b.valid.setAsReg() init(False)
 
   // ---------- 读通道 (支持突发: 按 len 计数, last 在最后一拍) ---------- //
-  val readLen    = RegNextWhen(io.clintAxi4.ar.len, io.clintAxi4.ar.fire)// 突发长度 (len),读地址握手成功后更新
-  val readCnt    = Reg(UInt(8 bits))            // 已返回数据节拍数
+  val readLen    = RegNextWhen(io.clintAxi4.ar.len, io.clintAxi4.ar.fire) init(0)    // 突发长度 (len),读地址握手成功后更新
+  val readCnt    = Reg(UInt(8 bits)) init(0)    // 已返回数据节拍数
   val readActive = RegInit(False)               // 读传输进行中
 
   when(io.clintAxi4.ar.fire) {                  // 读地址握手
@@ -48,37 +47,20 @@ case class ysyx_23060082_Clint() extends Component {
     readActive := readActive
   }
 
-  val addrReg     = RegNextWhen(io.clintAxi4.ar.addr, io.clintAxi4.ar.fire)     // 地址暂存一下，打断从icache到clint这条不会存在的关键路径
-  val dataReg     = Reg(UInt(32 bits))
-  val arFireDelay = RegNext(io.clintAxi4.ar.fire) // 握手后的下一周期
-  val dataFinish  = RegInit(False)
-  // 读取协议: 先读低位(mtime), 硬件锁存当时的高位; 再读高位(mtimeh)返回锁存值
-  // 与 mcycle 的"先读低再读高"协议保持一致
-  val readLow  = addrReg === MTIME
-  val readHigh = addrReg === MTIMEH
-  val timeCountHighSnap = RegNextWhen(timeCountHigh, arFireDelay && readLow)    // 读低那一拍锁存高位
-
-  when(arFireDelay) {
-    dataFinish := True
-  } elsewhen(io.clintAxi4.r.fire && readCnt === readLen) {// 最后一拍, 传输结束
-    dataFinish := False
-  } otherwise {
-    dataFinish := dataFinish
-  }
-
-  when(arFireDelay) {
-    dataReg := addrReg.mux(
-      MTIMEH  -> timeCountHighSnap,
-      MTIME   -> timeCountLow,
+  // 突发期间数据按 FIXED 语义保持: arFire 时锁存时间值, 传输期间不变
+  val readData = Reg(UInt(32 bits))
+  when(io.clintAxi4.ar.fire) {
+    readData := io.clintAxi4.ar.addr.mux(
+      MTIMEH -> timeCountHighSnap,          // 读高: 锁存值(读低时锁存的)
+      MTIME  -> timeCount(31 downto 0),     // 读低: 实时低位
       default -> U(0)
     )
   }
 
   io.clintAxi4.ar.ready := !readActive                  // 传输中不应答新请求
-
-  io.clintAxi4.r.valid  := dataFinish && readActive
+  io.clintAxi4.r.valid  := readActive
   io.clintAxi4.r.last   := readActive && (readCnt === readLen)  // 最后一拍
-  io.clintAxi4.r.data   := dataReg.asBits
+  io.clintAxi4.r.data   := readData.asBits
   io.clintAxi4.r.id     := U(0)
   io.clintAxi4.r.resp   := Axi4.resp.OKAY
   // ---------- 写通道 ---------- //

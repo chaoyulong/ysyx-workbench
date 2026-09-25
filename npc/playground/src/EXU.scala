@@ -5,8 +5,8 @@ import spinal.lib._    // 使用spinal的模块库
 
 case class Exu2Lsu_data(config: CpuConfig = CpuConfig()) extends Bundle {
   val pc          = UInt(32 bits) 
-  val instr       = if (config.enableSimDebug) UInt(32 bits) else null
-  
+  val pcNext      = UInt(32 bits)   // 执行trapEnter指令(i_ecall，i_ebreak，i_illegal)时，pcNext数据一定是无用的，此时用来传递pc供给csr使用
+                                    // 就可以省掉一个32位的寄存器，但是为了仿真好看，会在config.enableSimDebug时，保留pc寄存器
   val rfCtrl      = RfCtrl()        // 直通数据，在EXU中无作用
   val memCtrl     = MemCtrl()       // 直通数据，在EXU中无作用
   val csrCtrl     = CsrCtrl()       // 直通数据，在EXU中无作用 
@@ -19,10 +19,8 @@ case class Exu2Lsu_data(config: CpuConfig = CpuConfig()) extends Bundle {
 
 case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component {
   val io = new Bundle {
-    val input    = slave  Flow  (Idu2Exu_data(config))
-    val output   = master Stream(Exu2Lsu_data(config))
-    val forward  = out(forwardData())
-    val redirect = master Flow(RedirectReq())
+    val input  = slave  Flow  (Idu2Exu_data(config))
+    val output = master Stream(Exu2Lsu_data(config)) 
   }
 
   val alu = ysyx_23060082_ALU()
@@ -39,50 +37,23 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
     default -> U"32'h4"
   )
 
-  // ================================ 跳转指令 ================================ //
   banchCond.io.branch := io.input.ctrl.aluCtrl.branch
   banchCond.io.less   := alu.io.less
   banchCond.io.zero   := alu.io.zero
 
-  // val pcDataA   = Mux(banchCond.io.pcAsrc, io.input.imm, U"32'd4")
-  // val pcDataB   = Mux(banchCond.io.pcBsrc, io.input.rfReadData1, io.input.pc)
-  // val pcDataTmp = pcDataA + pcDataB
-  // 由于pcAsrc到达较晚，所以选择去掉，并且pc+4这个pcnext不需要得出，因为默认运行的就是这个
-  val pcDataB   = Mux(banchCond.io.pcBsrc, io.input.rfReadData1, io.input.pc)      
-  val pcDataTmp = io.input.imm + pcDataB
-  val pcNextBit0= !banchCond.io.pcBsrc && pcDataTmp(0)          // jalr指令规定要将最后一位清零
-  val pcNext    = (pcDataTmp(31 downto 1) ## pcNextBit0).asUInt
-
-  io.redirect.valid  := io.input.valid && banchCond.io.pcAsrc   // 数据有效并且是跳转指令(pcAsrc,pcBsrc有一个为1就是跳转指令，而pcBsrc为1时，pcAsrc也为1)
-  io.redirect.pcNext := pcNext
-  io.redirect.fenceI := False                                   // exu中执行的话，如果上一级lsu在写入，那么此时lsu写入的数据就不是icache可见的了，所以要延迟到lsu阶段再执行
+  val pcDataA = Mux(banchCond.io.pcAsrc, io.input.imm, U"32'd4")
+  val pcDataB = Mux(banchCond.io.pcBsrc, io.input.rfReadData1, io.input.pc)
+  val pcDataTmp = pcDataA + pcDataB
+  // jalr指令规定要将最后一位清零
+  val pcNext = io.input.ctrl.aluCtrl.branch.mux(
+    U"010"  -> (pcDataTmp(31 downto 1) ## B"1'b0").asUInt,
+    default -> pcDataTmp
+  )
   // ================================ 用于握手的部分 ================================ //
   val willValid = True
   io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
-  
-  // ================================ 数据传输部分 ================================ //
-  val useRs1 = io.input.ctrl.csrCtrl.trapEnter || (io.input.ctrl.csrCtrl.csrCmd =/= 0)  // rs1: CSR，rs2: store
-  io.output.rfReadData := Mux(useRs1, io.input.rfReadData1, io.input.rfReadData2)
-  io.output.pc         := io.input.pc
-  io.output.aluResult  := alu.io.aluResult
-  io.output.csrAddr    := io.input.imm(11 downto 0)
-  io.output.fenceI     := io.input.ctrl.fenceI
-  io.output.rfCtrl     := io.input.ctrl.rfCtrl      // 直通数据，在EXU中无作用
-  io.output.memCtrl    := io.input.ctrl.memCtrl     // 直通数据，在EXU中无作用
-  io.output.csrCtrl    := io.input.ctrl.csrCtrl     // 直通数据，在EXU中无作用
-  // ================================ 数据前递 ================================ //
-  val getDataInLsu      = io.input.ctrl.rfCtrl.mem2reg || io.input.ctrl.rfCtrl.csr2reg  // 要在lsu中才会得到的数据
-  val wr                = io.input.ctrl.rfCtrl.regWr
-  io.forward.state     := Mux(!io.input.valid || !wr, FwdState.NoWriter,                    // 还没有有效数据，或者不是写寄存器的信号时
-                          Mux(getDataInLsu, FwdState.DataPendingLater, FwdState.DataReady)) // 如果要在lsu中才能得到数据，就WaitLater，如果在本级就能得到数据，Ready
-  io.forward.writeAddr := io.input.ctrl.rfCtrl.rfWriteAddr
-  io.forward.writeData := alu.io.aluResult
 
-  // ================================ 仿真专用 ================================ //
-  if (config.enableSimDebug) {
-    io.output.instr   := io.input.instr
-  }
-  // EXU 运算周期统计(isCalc && willValid; 当前单周期, 每条计算指令占1拍)
+  // 仿真专用: EXU 运算周期统计(isCalc && willValid; 当前单周期, 每条计算指令占1拍)
   if (config.enableSimDebug) {
     val perf = PerfReg()
     perf.io.valid := True
@@ -92,6 +63,17 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
     perf.io.evt(0) := io.input.valid && io.input.isCalc && willValid  // EXU 运算周期
     perf.io.evt(1) := io.input.valid && io.input.isCalc               // 计算类指令数
   }
+  // ================================ 数据传输部分 ================================ //
+  val useRs1 = io.input.ctrl.csrCtrl.trapEnter || (io.input.ctrl.csrCtrl.csrCmd =/= 0)  // rs1: CSR，rs2: store
+  io.output.rfReadData:= Mux(useRs1, io.input.rfReadData1, io.input.rfReadData2)
+  io.output.pc        := io.input.pc
+  io.output.pcNext    := pcNext
+  io.output.aluResult := alu.io.aluResult
+  io.output.csrAddr   := io.input.imm(11 downto 0)
+  io.output.fenceI    := io.input.ctrl.fenceI
+  io.output.rfCtrl    := io.input.ctrl.rfCtrl      // 直通数据，在EXU中无作用
+  io.output.memCtrl   := io.input.ctrl.memCtrl     // 直通数据，在EXU中无作用
+  io.output.csrCtrl   := io.input.ctrl.csrCtrl     // 直通数据，在EXU中无作用
 }
 
 /*    Branch      跳转类型
@@ -161,8 +143,7 @@ case class ysyx_23060082_ALU() extends Component {
 
   val resultAdder      = resultAdder33Bit(31 downto 0)    // 计算结果
   val carryFlag        = resultAdder33Bit(32)             // 进位
-  // val zeroFlag         = (resultAdder === U"32'h0")       // 判0
-  val zeroFlag         = (io.aluIn1 === io.aluIn2)  // 跳过alu，缩短路径
+  val zeroFlag         = (resultAdder === U"32'h0")       // 判0
   val overflowFlag     = (adderDataA(31) === adderDataB(31)) && (resultAdder(31) =/= adderDataA(31))  // 溢出
   // ================================ 移位寄存器 ================================ //
   val resultShift = io.aluCtr(3 downto 2).mux(            // 直接移位操作与自己写桶形移位器没有区别

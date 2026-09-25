@@ -57,7 +57,9 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   dc.io.cacheable := dcCacheable
   dc.io.fillNow   := rdEndRaw                                   // 读完成那一拍: 把这一个字写进 cache
   dc.io.fillData  := axi4Ctrler.io.readData
-  dc.io.storeNow  := needWrite && dcCacheable && (state === LsuState.Idle) && dc.io.hit  // store 命中: 作废该字
+  dc.io.storeNow  := needWrite && dcCacheable && (state === LsuState.Idle) && dc.io.hit  // store 命中: 写穿更新
+  dc.io.reqWdata  := dataProcess.io.wdataReal
+  dc.io.reqWmask  := dataProcess.io.wmask
 
   // ---- AXI控制器连接(只有一个控制器, 不需要任何 mux) ----
   io.axi4 <> axi4Ctrler.io.axi4

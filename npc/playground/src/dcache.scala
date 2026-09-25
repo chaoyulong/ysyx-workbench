@@ -38,7 +38,9 @@ case class ysyx_23060082_Dcache(param: DcacheParams = DcacheParams()) extends Co
     val hitData   = out UInt(32 bits)
     val fillNow   = in  Bool()                // 需求读完成那一拍: 把这一个字写进 cache
     val fillData  = in  UInt(32 bits)
-    val storeNow  = in  Bool()                // store 命中: 作废该字
+    val storeNow  = in  Bool()                // store 命中: 写穿更新该字
+    val reqWdata  = in  UInt(32 bits)         // 与 AXI 写用的是同一组值(dataProcess 处理后的)
+    val reqWmask  = in  UInt(4 bits)          // 字节使能
   }
 
   // ================================ 存储阵列(写法与 icache 一致) ================================ //
@@ -57,11 +59,20 @@ case class ysyx_23060082_Dcache(param: DcacheParams = DcacheParams()) extends Co
   io.hit     := wordHit && io.cacheable
   io.hitData := dataMem(slot)
 
-  // ================================ 填充 / 作废 ================================ //
+  // ================================ 填充 / 写穿更新 ================================ //
   val sameTag  = tagMem(lineU) === tag                                                // 本行旧 tag 是否与新 tag 相同
   // 注意: validReg 是 Bits, 掩码也用 Bits(不要用 U)
   val lineMask = (B((1 << param.words) - 1, slots bits) << (lineU * param.words)).resize(slots bits)  // 本行所有字
   val setMask  = (B(1, slots bits) << slot).resize(slots bits)                        // 本字
+
+  // 写穿: 与发给 AXI 写的 data/mask 完全一致 => cache 里的副本与 memory 结果相同
+  val storeData = UInt(32 bits)
+  storeData := dataMem(slot)                                  // 默认保持, 再按字节使能改
+  for (b <- 0 until 4) {
+    when(io.reqWmask(b)) {
+      storeData(b * 8 + 7 downto b * 8) := io.reqWdata(b * 8 + 7 downto b * 8)
+    }
+  }
 
   when(io.fillNow) {                       // 读完成: 写这一个字
     dataMem(slot) := io.fillData
@@ -69,7 +80,7 @@ case class ysyx_23060082_Dcache(param: DcacheParams = DcacheParams()) extends Co
     // tag 相同(同一行的另一个字): 保留原有 valid
     // tag 不同: 先把整行作废(否则本行其它字会带着新 tag 假命中), 再只置本字
     validReg := Mux(sameTag, validReg | setMask, (validReg & ~lineMask) | setMask)
-  } elsewhen(io.storeNow) {                // store 命中: 只作废这一个字
-    validReg := validReg & ~setMask
+  } elsewhen(io.storeNow) {                // store 命中: 写穿更新该字(valid 不动, 命中率得以保持)
+    dataMem(slot) := storeData
   }
 }

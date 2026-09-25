@@ -25,7 +25,6 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   val io = new Bundle {
     val reqIn   = slave  Stream(DcacheReqData())
     val rspOut  = master Flow(DcacheRspData())
-    val fenceI  = in Bool()    // fence.i: 清空有效位(后续取指缺失重读)
     val miss    = if(config.enableSimDebug) {out Bool()} else null
     val missDone= if(config.enableSimDebug) {out Bool()} else null
     val hit     = if(config.enableSimDebug) {out Bool()} else null
@@ -34,9 +33,12 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   }
 
   def inDcache(addr: UInt): Bool = {
+    val addrHigh4bits = addr(31 downto 28)
     // (addr >= U(0x0f000000L, 32 bits) && addr < U(0x10000000L, 32 bits)) ||    // sram
-    (addr >= U(0x30000000L, 32 bits) && addr < U(0x40000000L, 32 bits)) ||    // flash
-    (addr >= U(0x80000000L, 32 bits) && addr < U(0xc0000000L, 32 bits))       // psram + sdram
+    // (addr >= U(0x30000000L, 32 bits) && addr < U(0x40000000L, 32 bits)) ||    // flash
+    // (addr >= U(0x80000000L, 32 bits) && addr < U(0xc0000000L, 32 bits))       // psram + sdram
+    (addrHigh4bits >= U(0x3L, 4 bits) && addrHigh4bits < U(0x4L, 4 bits)) ||    // flash
+    (addrHigh4bits >= U(0x8L, 4 bits) && addrHigh4bits < U(0xcL, 4 bits))       // psram + sdram
   }
 
   // ================================ axi交给dcache控制，因为1行只有1个字,所以不需要突发 ================================ //
@@ -44,10 +46,10 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   io.axi4 <> axi4Ctrler.io.axi4
 
   // ================================ 存储阵列 (寄存器) ================================ //
-  val tag      = io.reqIn.addr(31 downto 4)
+  val tag      = io.reqIn.addr(31 downto 28)
   val index    = io.reqIn.addr(3 downto 2)
   val dataMem  = Reg(Vec(UInt(32 bits), 4))   // 数据
-  val tagMem   = Reg(Vec(UInt(28 bits), 4))   // 地址
+  val tagMem   = Reg(Vec(UInt(4 bits), 4))    // 地址
   val validReg = Reg(Bits(4 bits)) init(0)    // 每块1位有效位
 
   // 命中判断，当前索引位有效并且tag相等

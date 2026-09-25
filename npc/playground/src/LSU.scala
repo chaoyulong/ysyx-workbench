@@ -8,10 +8,8 @@ import javax.net.ssl.TrustManager
 case class Lsu2Wbu_data(config: CpuConfig = CpuConfig()) extends Bundle {
   val pc          = if (config.enableSimDebug) UInt(32 bits) else null   // 仅仿真可见
   val instr       = if (config.enableSimDebug) UInt(32 bits) else null
-
   val rfWriteData = UInt(32 bits) 
   val rfCtrl      = RfCtrl()        // 其中的mem2reg信号会作为读内存信号被用到
-  val fenceI      = Bool()          // fence.i(直通, WBU 据此通知 IFU 失效 icache)
 }
 
 
@@ -42,7 +40,6 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   // ================================ dcache，只读 ================================ //
   val dcache  = ysyx_23060082_Dcache(config)
   io.axi4 <> dcache.io.axi4
-  dcache.io.fenceI          := io.input.fenceI
   dcache.io.reqIn.valid     := needMem && (state === LsuState.Idle)
   dcache.io.reqIn.read      := needRead
   dcache.io.reqIn.write     := needWrite
@@ -106,7 +103,6 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   }
        
   io.output.rfCtrl     := io.input.rfCtrl    
-  io.output.fenceI     := io.input.fenceI
 
   val memDataOut    = Mux(io.input.csrCtrl.csrCmd =/= U"3'd0", csr.io.csrRdata, dataProcess.io.rdataReal) // 借用mem_data_out来输出读出的值
   val aluDataOut    = io.input.aluResult

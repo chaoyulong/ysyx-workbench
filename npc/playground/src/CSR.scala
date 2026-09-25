@@ -35,24 +35,36 @@ case class ysyx_23060082_CSR() extends Component {
 
   val mstatus   = Reg(UInt(32 bits)) init(0)
   val mtvec     = Reg(UInt(32 bits)) init(0)
-  val mepc      = Reg(UInt(32 bits)) init(0)
+  val mepc      = Reg(UInt(32 bits))
   val mcause    = Reg(UInt(32 bits)) init(0)
   val mvendorid = U"32'h79737978"   // 只读
   val marchid   = U"32'h15fde72"    // 只读
-  val mcycle    = Reg(UInt(64 bits)) init(0)     // 周期计数器: 每周期+1
-  val minstret  = Reg(UInt(64 bits)) init(0)     // 指令计数器: 每条退休指令+1
+  val mcycle    = Reg(UInt(32 bits)) init(0)     // 周期计数器: 每周期+1
+  val mcycleh   = Reg(UInt(32 bits)) init(0)
+  val minstret  = Reg(UInt(32 bits)) init(0)     // 指令计数器: 每条退休指令+1
+  val minstreth = Reg(UInt(32 bits)) init(0)
 
   val writeEnable = io.csrCmd =/= 0 // csr写使能
 
   val readMcycle  = io.csrAddr === CSR.mcycle
   val readMcycleh = io.csrAddr === CSR.mcycleh
+
   mcycle := mcycle + 1
-  val mcyclehTmp = RegNextWhen(mcycle(63 downto 32), readMcycle) init(0)      // 规定先读低位，再立刻读高位
+  when(mcycle === U"32'hffffffff") {
+    mcycleh := mcycleh + 1
+  }
+
+  val mcyclehTmp = RegNextWhen(mcycleh, readMcycle)        // 规定先读低位，再立刻读高位
 
   val readMinstret  = io.csrAddr === CSR.minstret
   val readMinstreth = io.csrAddr === CSR.minstreth
-  when(io.instrRetire) { minstret := minstret + 1 }
-  val minstrethTmp = RegNextWhen(minstret(63 downto 32), readMinstret) init(0)  // 规定先读低位，再立刻读高位
+  when(io.instrRetire) { 
+    minstret := minstret + 1
+    when(minstret === U"32'hffffffff") {
+      minstreth := minstreth + 1
+    }
+  }
+  val minstrethTmp = RegNextWhen(minstreth, readMinstret)  // 规定先读低位，再立刻读高位
 
   io.csrRdata := io.csrAddr.mux(
     CSR.mstatus   -> mstatus,
@@ -61,17 +73,17 @@ case class ysyx_23060082_CSR() extends Component {
     CSR.mcause    -> mcause,
     CSR.mvendorid -> mvendorid,
     CSR.marchid   -> marchid,
-    CSR.mcycle    -> mcycle(31 downto 0),
+    CSR.mcycle    -> mcycle,
     CSR.mcycleh   -> mcyclehTmp,
-    CSR.minstret  -> minstret(31 downto 0),
+    CSR.minstret  -> minstret,
     CSR.minstreth -> minstrethTmp,
     default       -> U"32'h0"
   )
 
-  val rdataWb = Mux(readMcycleh, mcycle(63 downto 32),
-                Mux(readMinstreth, minstret(63 downto 32),  io.csrRdata))
+  val rdataWb = Mux(readMcycleh, mcycleh,
+                Mux(readMinstreth, minstreth,  io.csrRdata))
   val writeData = io.csrCmd.mux(
-    U"3'd1" -> io.csrWdata,                    // CSRRW
+    U"3'd1" -> io.csrWdata,               // CSRRW
     U"3'd2" -> (rdataWb | io.csrWdata),   // CSRRS
     default -> rdataWb
   )

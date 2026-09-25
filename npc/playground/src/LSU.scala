@@ -52,8 +52,8 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   // ---- 访存结束信号 ----
   val rdEnd = (state === LsuState.WaitMem) && axi4Ctrler.io.readEnd && io.input.rfCtrl.mem2reg  // 读内存结束, 需要更新数据
   val wrEnd = (state === LsuState.WaitMem) && axi4Ctrler.io.writeEnd && io.input.memCtrl.memWr
-  val rdataReg = RegNextWhen(axi4Ctrler.io.readData, rdEnd) init(0)  // 是读内存指令并且已读完
-  dataProcess.io.rdata  := Mux(rdEnd, axi4Ctrler.io.readData, rdataReg) // 快一周期读完
+  val rdataReg = RegNextWhen(axi4Ctrler.io.readData, rdEnd)
+  dataProcess.io.rdata  := Mux(rdEnd, axi4Ctrler.io.readData, rdataReg)   // 快一周期读完
 
   // ================================ lsu状态机 ================================ //
   switch(state) {

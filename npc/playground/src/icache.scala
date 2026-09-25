@@ -86,15 +86,12 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
   // 命中判断，当前索引位有效并且tag相等
   val hit = validReg(index) && (tagMem(index) === tag)
 
-  val lineReg    = Reg(Bits(param.dataBits bits)) init(0)   // 正在拼装的行(逐字填入)
-  val wordCnt    = Reg(UInt(param.wordBits bits)) init(0)   // 已读到块内第几个字
-
   val wordSel = if (param.words > 1) io.reqIn.pc(param.lineBits - 1 downto 2) else U(0, 1 bits)
-  val wordSelReg = RegNextWhen(wordSel, io.reqIn.fire) init(0)    // 本次请求的是块内第几个字
+  val wordSelReg = RegNextWhen(wordSel, io.reqIn.fire)            // 本次请求的是块内第几个字
   // ================================ 握手成功锁存数据 ================================ //
-  val pcReg    = RegNextWhen(io.reqIn.pc, io.reqIn.fire) init(0)
-  val indexReg = RegNextWhen(index      , io.reqIn.fire) init(0)
-  val tagReg   = RegNextWhen(tag        , io.reqIn.fire) init(0)
+  val pcReg    = RegNextWhen(io.reqIn.pc, io.reqIn.fire)
+  val indexReg = RegNextWhen(index      , io.reqIn.fire)
+  val tagReg   = RegNextWhen(tag        , io.reqIn.fire)
   val reqFire  = io.reqIn.fire
   // ================================ 状态机 ================================ //
   object IcacheState extends SpinalEnum {
@@ -134,8 +131,6 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
   val enterMiss = (state === IcacheState.Idle) && io.reqIn.valid && !hit
   axi4Ctrler.io.readReq  := enterMiss
   axi4Ctrler.io.readAddr := (io.reqIn.pc(31 downto param.lineBits) ## U(0, param.lineBits bits)).asUInt // 地址对齐
-
-
 
   // 缺失脉冲: 每一次缺失拉高一拍(交给 IFU 的 PerfReg 计数, 用于统计命中率)
   // 等价于 io.reqIn.fire && !hit —— 因为 reqIn.ready 只在 Idle 时拉高

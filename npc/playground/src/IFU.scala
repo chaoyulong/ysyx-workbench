@@ -43,7 +43,7 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   }
 
   // 每次请求的pc与它的响应配对，命中同拍用reqIn.pc, 缺失完成后用这一次请求锁存的pc
-  val pcOfReq = RegNextWhen(icache.io.reqIn.pc, icache.io.reqIn.fire) init(U(config.resetPc, 32 bits))
+  val pcOfReq = RegNextWhen(icache.io.reqIn.pc, icache.io.reqIn.fire)
 
   // ================================ 指令缓存 (icache) ================================ //
   io.axi4 <> icache.io.axi4

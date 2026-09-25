@@ -28,8 +28,8 @@ case class ysyx_23060082_Clint() extends Component {
   io.clintAxi4.b.valid.setAsReg() init(False)
 
   // ---------- 读通道 (支持突发: 按 len 计数, last 在最后一拍) ---------- //
-  val readLen    = RegNextWhen(io.clintAxi4.ar.len, io.clintAxi4.ar.fire) init(0)   // 突发长度 (len),读地址握手成功后更新
-  val readCnt    = Reg(UInt(8 bits)) init(0)    // 已返回数据节拍数
+  val readLen    = RegNextWhen(io.clintAxi4.ar.len, io.clintAxi4.ar.fire)// 突发长度 (len),读地址握手成功后更新
+  val readCnt    = Reg(UInt(8 bits))            // 已返回数据节拍数
   val readActive = RegInit(False)               // 读传输进行中
 
   when(io.clintAxi4.ar.fire) {                  // 读地址握手
@@ -56,7 +56,7 @@ case class ysyx_23060082_Clint() extends Component {
   // 与 mcycle 的"先读低再读高"协议保持一致
   val readLow  = addrReg === MTIME
   val readHigh = addrReg === MTIMEH
-  val timeCountHighSnap = RegNextWhen(timeCountHigh, arFireDelay && readLow) init(0)     // 读低那一拍锁存高位
+  val timeCountHighSnap = RegNextWhen(timeCountHigh, arFireDelay && readLow)    // 读低那一拍锁存高位
 
   when(arFireDelay) {
     dataFinish := True

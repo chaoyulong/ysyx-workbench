@@ -42,10 +42,9 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   dataProcess.io.wdata  := io.input.rfReadData                              // 写数据为rs2的数据
 
   // ================================ D-Cache(按字有效, 直写) ================================ //
-  // 可缓存地址: SRAM/MROM/Flash/PSRAM/SDRAM; 设备(CLINT/UART/SPI/GPIO/PS2/VGA 显存)不可缓存
+  // 可缓存地址 = 与 perf 计数器里的 isDevAddr 严格互补: 只有 Flash 与 PSRAM/SDRAM 算"内存",
+  // 其余(SRAM 0x0f00_0000 / MROM / CLINT / UART / SPI / GPIO ...)一律当设备, 不缓存
   def isCacheable(addr: UInt): Bool = {
-    (addr >= U(0x0f000000L, 32 bits) && addr < U(0x10000000L, 32 bits)) ||   // SRAM
-    (addr >= U(0x20000000L, 32 bits) && addr < U(0x20001000L, 32 bits)) ||   // MROM(只读)
     (addr >= U(0x30000000L, 32 bits) && addr < U(0x40000000L, 32 bits)) ||   // Flash
     (addr >= U(0x80000000L, 32 bits) && addr < U(0xc0000000L, 32 bits))      // PSRAM + SDRAM
   }

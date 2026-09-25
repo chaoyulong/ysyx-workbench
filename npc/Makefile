@@ -153,8 +153,8 @@ sta:
 			PDK=$(STA_PDK) CLK_FREQ_MHZ=$(STA_CLK_FREQ_MHZ) CLK_PORT_NAME=$(STA_CLK_PORT_NAME) O=$(STA_OUT) \
 			RTL_FILES="$(abspath $(BUILD_DIR))/sta/$(STA_DESIGN).v"
 
-# help:
-# 	./mill -i $(SPINAL_PRJ).runMain Elborate --help
+help:
+	./mill -i $(SPINAL_PRJ).runMain Elborate --help
 
 # reformat:
 # 	./mill -i __.reformat

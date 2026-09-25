@@ -11,6 +11,7 @@
 !.gitignore
 !.scalafmt.conf
 !README.md
+!*.md
 !*.sdc
 !*.patch
 !*.sh
@@ -24,3 +25,8 @@ out/
 .idea/
 .idea_modules/
 test_run_dir/
+
+# SpinalHDL 手工生成时落在仓库根目录的 netlist
+# (正常应走 make verilog 生成到 build/, 那里已被忽略)
+/NPC_TOP.v
+/ysyx_23060082.v

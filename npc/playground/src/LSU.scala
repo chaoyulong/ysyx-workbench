@@ -138,7 +138,11 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
     val awAddr = io.axi4.aw.addr
     val perf = PerfReg()
     perf.io.valid  := True
-    perf.io.evt    := B"8'b0"
+    perf.io.evt(0) := dcache.io.miss                                            // dcache 读缺失
+    perf.io.evt(1) := dcache.io.missDone                                        // dcache 读缺失完成
+    perf.io.evt(2) := rdHitNow                                                  // dcache 读命中(当拍完成)
+    perf.io.evt(3) := (state === LsuState.Idle) && needWrite &&  dcache.io.hit  // store 命中(同步更新)
+    perf.io.evt(4) := (state === LsuState.Idle) && needWrite && !dcache.io.hit  // store 未命中(只写内存)
     perf.io.req(0) := io.axi4.ar.fire && !isDevAddr(arAddr)   // mem 读请求
     perf.io.req(1) := io.axi4.aw.fire && !isDevAddr(awAddr)   // mem 写请求
     perf.io.req(2) := io.axi4.ar.fire &&  isDevAddr(arAddr)   // dev 读请求

@@ -41,21 +41,21 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   dataProcess.io.addrOp := memAddr(1 downto 0) ## io.input.memCtrl.memOp    // 合并 addr + MemOp 生成 5 位索引
   dataProcess.io.wdata  := io.input.rfReadData                              // 写数据为rs2的数据
   // ================================ D-Cache(按字有效, 只读) ================================ //
-  // 可缓存地址 = 与 perf 计数器里的 isDevAddr 严格互补: 只有 Flash 与 PSRAM/SDRAM 算"内存"。
-  // 因为【缺失时只取一个字, 代价与基线完全相同】, 缓存 flash 也不会有额外开销(只是没收益)
+  // 可缓存地址 = 与 perf 计数器里的 isDevAddr 严格互补(只有 Flash / PSRAM / SDRAM 算"内存")。
+  // 因为缺失时只取一个字、代价与基线完全相同, 缓存 flash 也没有额外开销(只是没收益)
   def isCacheable(addr: UInt): Bool = {
     (addr >= U(0x30000000L, 32 bits) && addr < U(0x40000000L, 32 bits)) ||   // Flash
     (addr >= U(0x80000000L, 32 bits) && addr < U(0xc0000000L, 32 bits))      // PSRAM + SDRAM
   }
-  val dc         = ysyx_23060082_Dcache()
+  val dc          = ysyx_23060082_Dcache()
   val dcCacheable = isCacheable(memAddr)
-  val rdEndRaw   = (state === LsuState.WaitMem) && axi4Ctrler.io.readEnd && io.input.rfCtrl.mem2reg
-  val dcHitNow   = needRead && dcCacheable && (state === LsuState.Idle) && dc.io.hit   // 命中: 请求拍完成
-  val rdEnd      = rdEndRaw || dcHitNow
+  val rdEndRaw    = (state === LsuState.WaitMem) && axi4Ctrler.io.readEnd && io.input.rfCtrl.mem2reg
+  val dcHitNow    = needRead && dcCacheable && (state === LsuState.Idle) && dc.io.hit  // 命中: 请求拍完成
+  val rdEnd       = rdEndRaw || dcHitNow
   dc.io.reqValid  := needRead && (state === LsuState.Idle)
   dc.io.reqAddr   := memAddr
   dc.io.cacheable := dcCacheable
-  dc.io.fillNow   := rdEndRaw                                    // 读完成那一拍: 把这一个字写进 cache
+  dc.io.fillNow   := rdEndRaw                                   // 读完成那一拍: 把这一个字写进 cache
   dc.io.fillData  := axi4Ctrler.io.readData
   dc.io.storeNow  := needWrite && dcCacheable && (state === LsuState.Idle) && dc.io.hit  // store 命中: 作废该字
 

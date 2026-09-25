@@ -95,46 +95,20 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
   val reqFire  = io.reqIn.fire
   // ================================ 状态机 ================================ //
   object IcacheState extends SpinalEnum {
-    val Idle, Miss, Prefetch = newElement()
+    val Idle, Miss = newElement()
   }
   val state = Reg(IcacheState()) init(IcacheState.Idle)
-
-  // readReq要求只持续一个周期
-  val enterMiss = (state === IcacheState.Idle) && io.reqIn.valid && !hit
-
-  // ================================ 顺序预取 ================================ //
-  // 需求缺失填完后, 顺手把【下一行】也填进 cache(复用同一个突发控制器, 仍是一次 4 拍突发)。
-  // 依据: 一行 16B = 4 条指令, 顺序代码接下来必然要下一行; 这 4 条执行期间(~60 拍以上)把
-  //       下一行取好, 到时候就是命中, 省掉一次 ~60 拍的缺失。
-  // 只对 SDRAM/PSRAM 预取: flash(0x3000_0000)与设备每次传输都要吃一遍 APB 延迟,
-  //       预取只会让 boot 更慢(而 boot 阶段本来就跑在 flash)。
-  def isPrefetchable(addr: UInt): Bool =
-    addr >= U"32'h80000000" && addr < U"32'hc0000000"          // PSRAM + SDRAM
-  val demandLineAddr = (io.reqIn.pc(31 downto param.lineBits) ## U(0, param.lineBits bits)).asUInt
-  val missLineAddr   = RegNextWhen(demandLineAddr, enterMiss) init(0)   // 锁存"缺失那一行"的地址
-  val pfLineAddr     = ((missLineAddr(31 downto param.lineBits) + 1) ## U(0, param.lineBits bits)).asUInt  // 下一行
-  val pfEnable       = isPrefetchable(missLineAddr)
-  val pfGo           = (state === IcacheState.Miss) && axi4Ctrler.io.readEnd && pfEnable   // 1 拍脉冲
-  val pfDone         = (state === IcacheState.Prefetch) && axi4Ctrler.io.readEnd
 
   when(state === IcacheState.Idle) {
     when(io.reqIn.valid && !hit) { state := IcacheState.Miss }  // 有请求但是没有命中
     .otherwise { state := IcacheState.Idle }
   } elsewhen(state === IcacheState.Miss) {
-    when(axi4Ctrler.io.readEnd) {                               // 需求行填完
-      when(pfEnable) { state := IcacheState.Prefetch }          // 顺手预取下一行
-      .otherwise     { state := IcacheState.Idle }
-    } .otherwise { state := IcacheState.Miss }
-  } elsewhen(state === IcacheState.Prefetch) {
-    when(axi4Ctrler.io.readEnd) { state := IcacheState.Idle }
-    .otherwise                  { state := IcacheState.Prefetch }
-  }
+    when(axi4Ctrler.io.readEnd) { state := IcacheState.Idle }   // 访存完成, 返回
+    .otherwise { state := IcacheState.Miss }
+  } 
   // ================================  ================================ //
-  // 请求握手: Idle 时接受; 预取在后台跑时, 【同一行内的命中仍照常服务】
-  // (否则 IFU 要白等一整次填充, 预取的收益就全没了); 预取期间的缺失要等预取填完
-  // —— 因为只有一笔未完成, reqIn.ready=0 会自然挡住, 最多等到"预取的剩余时间",
-  //    绝不会比"自己重新发一次填充"更慢。
-  io.reqIn.ready := (state === IcacheState.Idle) || ((state === IcacheState.Prefetch) && hit)
+  // 请求握手: Idle时接受(命中同拍组合返回rspOut, 缺失进入Miss)
+  io.reqIn.ready := (state === IcacheState.Idle)
 
   // 命中 或 缺失但是读取完成
   val missDone = (state === IcacheState.Miss) && axi4Ctrler.io.readEnd
@@ -153,9 +127,10 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
                         hitWordVec (wordSel),      // 命中: 当前pc的字
                         missWordVec(wordSelReg))   // 缺失: 请求时锁存的字
                           
-  // readReq要求只持续一个周期; 需求缺失 或 预取下一行
-  axi4Ctrler.io.readReq  := enterMiss || pfGo
-  axi4Ctrler.io.readAddr := Mux(pfGo, pfLineAddr, demandLineAddr)   // 地址对齐
+  // readReq要求只持续一个周期
+  val enterMiss = (state === IcacheState.Idle) && io.reqIn.valid && !hit
+  axi4Ctrler.io.readReq  := enterMiss
+  axi4Ctrler.io.readAddr := (io.reqIn.pc(31 downto param.lineBits) ## U(0, param.lineBits bits)).asUInt // 地址对齐
 
   // 缺失脉冲: 每一次缺失拉高一拍(交给 IFU 的 PerfReg 计数, 用于统计命中率)
   // 等价于 io.reqIn.fire && !hit —— 因为 reqIn.ready 只在 Idle 时拉高
@@ -167,34 +142,18 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
     tagMem  (indexReg) := tagReg
   }
 
-  // 预取完成: 写回"下一行"(用它自己锁存的 index/tag, 因为请求地址这时已经变了)
-  val pfIndexReg = RegNextWhen(pfLineAddr(param.indexBits + param.lineBits - 1 downto param.lineBits), pfGo) init(0)
-  val pfTagReg   = RegNextWhen(pfLineAddr(31 downto param.indexBits + param.lineBits), pfGo) init(0)
-  when(pfDone) {
-    dataMem (pfIndexReg) := axi4Ctrler.io.readData
-    tagMem  (pfIndexReg) := pfTagReg
-  }
-
   // fence.i: 清空全部有效位(后续取指缺失重读新指令)
   val discardMiss = RegInit(False)        // fence到达时正在读取的miss
-  val discardPf   = RegInit(False)        // fence到达时正在读取的预取
   when(io.fenceI) {
     discardMiss := (state === IcacheState.Miss)
   }elsewhen(missDone) {                   // 只是为了卡住访存完成后的那一个周期，所以之后就可以清空
     discardMiss := False
-  }
-  when(io.fenceI) {
-    discardPf := (state === IcacheState.Prefetch)
-  }elsewhen(pfDone) {
-    discardPf := False
   }
 
   when(io.fenceI) {
     validReg := 0
   } elsewhen(missDone && !discardMiss) {  // 如果是卡住的话，vaild不会置起，所以会开始下一次访存
     validReg(indexReg) := True
-  } elsewhen(pfDone && !discardPf) {      // 预取行也置有效(除非期间来了 fence)
-    validReg(pfIndexReg) := True
   } otherwise {
     validReg := validReg
   }

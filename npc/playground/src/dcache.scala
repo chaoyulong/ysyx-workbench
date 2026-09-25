@@ -21,7 +21,7 @@ case class DcacheRspData() extends Bundle {
 
 // 由于剩余面积不够，并且dcache的收益不高，所以只能实现一个极其微小的dcache
 // 目前是4*1Byte，而且只有写没有读，所以fence.i不需要在这里起作用
-case class ysyx_23060082_Dcache() extends Component {
+case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Component {
   val io = new Bundle {
     val reqIn   = slave  Stream(DcacheReqData())
     val rspOut  = master Flow(DcacheRspData())

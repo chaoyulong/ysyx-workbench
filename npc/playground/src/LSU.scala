@@ -40,7 +40,7 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   dataProcess.io.addrOp := memAddr(1 downto 0) ## io.input.memCtrl.memOp    // 合并 addr + MemOp 生成 5 位索引
   dataProcess.io.wdata  := io.input.rfReadData                              // 写数据为rs2的数据
   // ================================ dcache，只读 ================================ //
-  val dcache  = ysyx_23060082_Dcache()
+  val dcache  = ysyx_23060082_Dcache(config)
   io.axi4 <> dcache.io.axi4
   dcache.io.fenceI          := io.input.fenceI
   dcache.io.reqIn.valid     := needMem && (state === LsuState.Idle)

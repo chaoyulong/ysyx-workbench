@@ -16,7 +16,7 @@ import spinal.lib._
      否则那些字会带着新 tag 造成【假命中】(返回旧数据)。这是第一版卡死的根因。
 **************************************************************** */
 case class DcacheParams(
-  lineBytes: Int = 4,      // 每行字节数(决定每行几个字槽)。4 => 每行 1 个字, 每个字一个 tag
+  lineBytes: Int = 8,      // 试试每行 2 个字
   lines    : Int = 4       // 行数
 ) {
   val lineBits  = log2Up(lineBytes)

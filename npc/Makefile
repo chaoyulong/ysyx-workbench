@@ -56,6 +56,7 @@ include $(NVBOARD_HOME)/scripts/nvboard.mk
 
 # verilator相关
 VERILATOR = verilator
+GTKWAVE = gtkwave
 
 VERILATOR_CFLAGS += -MMD --build -cc  \
 				-O3 --x-assign fast --x-initial fast --noassert \
@@ -92,7 +93,7 @@ verilog:
 
 test:
 	@$(SPINAL_SIM_ENV) ./mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalSim 
-	@gtkwave $(SPINAL_SIM_DIR)/$(SPINAL_TOPNAME)/test/wave.fst
+	@$(GTKWAVE) $(SPINAL_SIM_DIR)/$(SPINAL_TOPNAME)/test/wave.fst
 
 # 应该每次都重新生成一次verilog文件
 $(SPINAL_VFILE): verilog
@@ -128,7 +129,7 @@ sim: $(CSRCS) $(VSRCS)
 # 运行并记录波形
 wave: $(CSRCS) $(VSRCS)
 	@$(call build_target, $^, -D__GET_WAVE__)
-	@gtkwave $(SIM_WAVE)
+	@$(GTKWAVE) $(SIM_WAVE)
 
 # 性能测试: 运行 microbench(test规模)并输出统计(周期/指令/IPC + PERF计数器)
 # 配合 git checkout 历史 commit, 可复现当时代码的性能数据(记录见 PERF.md)

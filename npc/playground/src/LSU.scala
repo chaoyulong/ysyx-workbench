@@ -40,9 +40,36 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   // ---- 数据处理连接 ----
   dataProcess.io.addrOp := memAddr(1 downto 0) ## io.input.memCtrl.memOp    // 合并 addr + MemOp 生成 5 位索引
   dataProcess.io.wdata  := io.input.rfReadData                              // 写数据为rs2的数据
+  // ================================ D-Cache(只读, 仅 SDRAM) ================================ //
+  // 只缓存 SDRAM: flash 阶段的数据命中率实测 0.00%(纯流式), 缓存它只会白花总线时间;
+  // 设备/SRAM/MROM 一律不介入。store 命中时作废该行(见 dc.io.invalid), 保证不会读到旧值
+  def isSdram(addr: UInt): Bool = addr >= U(0xa0000000L, 32 bits) && addr < U(0xc0000000L, 32 bits)
+  val dc       = ysyx_23060082_Dcache()
+  val dcRead   = needRead && isSdram(memAddr)                        // 这次 load 是否走 dcache
+  val dcHitNow = dcRead && (state === LsuState.Idle) && dc.io.rspValid
+  val dcEnd    = dcRead && (state === LsuState.WaitMem) && dc.io.rspValid
+  dc.io.reqValid  := needRead && (state === LsuState.Idle)
+  dc.io.reqAddr   := memAddr
+  dc.io.cacheable := isSdram(memAddr)
+  dc.io.invalid   := needWrite && isSdram(memAddr) && (state === LsuState.Idle) && dc.io.rspValid
+
   // ---- AXI控制器连接 ----
-  io.axi4 <> axi4Ctrler.io.axi4
-  axi4Ctrler.io.readReq  := needRead  && (state === LsuState.Idle)
+  // 读通道在 dcache 填充与老控制器之间二选一; ★ r.valid 必须分开给, 否则老控制器会把
+  // dcache 填充的 beat 当成自己的读响应(readEnd 提前触发 -> load 拿到过期数据)
+  val dcUseAxi = dc.io.busy
+  io.axi4.ar.valid   := Mux(dcUseAxi, dc.io.axi4.ar.valid,   axi4Ctrler.io.axi4.ar.valid)
+  io.axi4.ar.payload := Mux(dcUseAxi, dc.io.axi4.ar.payload, axi4Ctrler.io.axi4.ar.payload)
+  io.axi4.r.ready    := Mux(dcUseAxi, dc.io.axi4.r.ready,    axi4Ctrler.io.axi4.r.ready)
+  dc.io.axi4.ar.ready    := io.axi4.ar.ready
+  dc.io.axi4.r.valid     := io.axi4.r.valid &&  dcUseAxi
+  dc.io.axi4.r.payload   := io.axi4.r.payload
+  axi4Ctrler.io.axi4.ar.ready  := io.axi4.ar.ready
+  axi4Ctrler.io.axi4.r.valid   := io.axi4.r.valid && !dcUseAxi
+  axi4Ctrler.io.axi4.r.payload := io.axi4.r.payload
+  io.axi4.aw <> axi4Ctrler.io.axi4.aw                                 // 写通道仍归老控制器
+  io.axi4.w  <> axi4Ctrler.io.axi4.w
+  io.axi4.b  <> axi4Ctrler.io.axi4.b
+  axi4Ctrler.io.readReq  := needRead  && (state === LsuState.Idle) && !dcRead   // 只有非 SDRAM 的读走老通路
   axi4Ctrler.io.writeReq := needWrite && (state === LsuState.Idle)
   axi4Ctrler.io.size     := (False ## io.input.memCtrl.memOp(1 downto 0)).asUInt
   axi4Ctrler.io.readAddr := memAddr
@@ -50,15 +77,24 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   axi4Ctrler.io.writeData:= dataProcess.io.wdataReal  // 处理后的数据
   axi4Ctrler.io.writeMask:= dataProcess.io.wmask
   // ---- 访存结束信号 ----
-  val rdEnd = (state === LsuState.WaitMem) && axi4Ctrler.io.readEnd && io.input.rfCtrl.mem2reg  // 读内存结束, 需要更新数据
+  // SDRAM 的 load 由 dcache 应答(命中当拍 / 填充完成), 其余仍走老通路
+  val rdEnd = (((state === LsuState.WaitMem) &&
+                Mux(dcRead, dc.io.rspValid, axi4Ctrler.io.readEnd)) &&
+               io.input.rfCtrl.mem2reg) || dcHitNow
   val wrEnd = (state === LsuState.WaitMem) && axi4Ctrler.io.writeEnd && io.input.memCtrl.memWr
-  val rdataReg = RegNextWhen(axi4Ctrler.io.readData, rdEnd)
-  dataProcess.io.rdata  := Mux(rdEnd, axi4Ctrler.io.readData, rdataReg)   // 快一周期读完
+  val rdataMux = Mux(dcHitNow || dcEnd, dc.io.rspData, axi4Ctrler.io.readData)
+  val rdataReg = RegNextWhen(rdataMux, rdEnd)
+  dataProcess.io.rdata  := Mux(rdEnd, rdataMux, rdataReg)   // 快一周期读完
 
   // ================================ lsu状态机 ================================ //
   switch(state) {
     is(LsuState.Idle) {
-      when(needMem) {state := LsuState.WaitMem}      
+      when(needMem) {
+        when(dcHitNow) {                                    // load 命中: 当拍完成, 不等访存
+          when(io.output.fire){state := LsuState.Idle}
+          .otherwise          {state := LsuState.Done}
+        } .otherwise {state := LsuState.WaitMem}
+      }
       .otherwise{state := state} 
     }
     is(LsuState.WaitMem) {

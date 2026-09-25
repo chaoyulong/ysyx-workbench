@@ -42,7 +42,7 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   // ================================ dcache，只读 ================================ //
   val dcache  = ysyx_23060082_Dcache()
   io.axi4 <> dcache.io.axi4
-  dcache.io.reqIn.fenceI    := io.input.fenceI
+  dcache.io.fenceI          := io.input.fenceI
   dcache.io.reqIn.valid     := needMem && (state === LsuState.Idle)
   dcache.io.reqIn.read      := needRead
   dcache.io.reqIn.write     := needWrite

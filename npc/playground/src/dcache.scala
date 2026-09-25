@@ -26,9 +26,10 @@ case class ysyx_23060082_Dcache() extends Component {
     val reqIn  = slave  Stream(DcacheReqData())
     val rspOut = master Flow(DcacheRspData())
     val fenceI = in Bool()    // fence.i: 清空有效位(后续取指缺失重读)
-    val axi4   = master(Axi4(AxiConfig.axiConfig))
     val miss   = out Bool()   // 缺失拍脉冲(每次缺失一次), 供 IFU 的性能计数器统计命中率; STA 时无人使用会被剪掉
     val missDone = out Bool() // 缺失完成拍脉冲, 与 miss 配对可测出平均缺失代价(即 TMT 里的那一项)
+
+    val axi4   = master(Axi4(AxiConfig.axiConfig))
   }
 
   def inDcache(addr: UInt): Bool = {
@@ -111,7 +112,7 @@ case class ysyx_23060082_Dcache() extends Component {
 
   when(readMissDone && cacheable) {                           // 读缺失: 写回数据 + tag + valid
     dataMem(index)  := axi4Ctrler.io.readData
-    tagMem(index)   := tagReg
+    tagMem(index)   := tag
     validReg(index) := True
   } elsewhen((state === DcacheState.Idle) && reqWrite && hit) {
     dataMem(index)     := storeData                           // 同步更新写入数据

@@ -2,85 +2,244 @@ package playground
 
 import spinal.core._
 import spinal.lib._
+import spinal.lib.bus.amba4.axi._
 
-/* ****************************************************************
-   D-Cache: 【按字有效(sectored)】 + 只读 + 直接映射
-
-   - 一个 tag 管 8B(2 个字), 但【每个 32 位字一个 valid 位】
-   - 缺失时【只取需要的那个字】(1 拍单字读), 直接复用 LSU 现有的单拍读通路
-     => 缺失的事务数/延迟【与基线完全相同】, 不增加任何总线流量
-        (整行填充版每次要多花 ~34 拍, 把命中收益全吃掉, 净 +0.52%)
-   - 命中当拍组合返回
-   - 只读: 不实现写数据通路; store 命中时【作废该字】(清 1 位), 保证不会读到旧值
-   - ★ tag 是按行共享的, 所以【填充换了 tag 时必须把本行其它字的 valid 一起清掉】,
-     否则那些字会带着新 tag 造成【假命中】(返回旧数据)。这是第一版卡死的根因。
-**************************************************************** */
-case class DcacheParams(
-  lineBytes: Int = 8,      // 试试每行 2 个字
-  lines    : Int = 4       // 行数
-) {
-  val lineBits  = log2Up(lineBytes)
-  val indexBits = log2Up(lines)
-  val tagBits   = 32 - lineBits - indexBits
-  val words     = lineBytes / 4
-  val wordBits  = log2Up(words)
-  require(isPow2(lineBytes) && isPow2(lines) && lineBytes >= 4, "lineBytes/lines 必须是 2 的幂且 lineBytes>=4")
+// valid ready pc 三个信号
+case class DcacheReqData() extends Bundle {
+  val write     = Bool()
+  val writeData = UInt(32 bits)
+  val writeMask = UInt(4 bits)
+  val read      = Bool()
+  val size      = UInt(3 bits)
+  val addr      = UInt(32 bits)
 }
 
-case class ysyx_23060082_Dcache(param: DcacheParams = DcacheParams()) extends Component {
-  val slots = param.lines * param.words                  // 总字槽数(2 行 x 2 字 = 4)
+// valid rdata 两个信号
+case class DcacheRspData() extends Bundle {
+  val readData = UInt(32 bits)
+}
 
+// 由于剩余面积不够，并且dcache的收益不高，所以只能实现一个极其微小的dcache
+// 目前是4*1Byte，而且只有写没有读，所以fence.i不需要在这里起作用
+case class ysyx_23060082_Dcache() extends Component {
   val io = new Bundle {
-    val reqValid  = in  Bool()                // 本拍确实是一个"要读内存"的 load
-    val reqAddr   = in  UInt(32 bits)
-    val cacheable = in  Bool()                // 该地址是否可缓存(设备为 0)
-    val hit       = out Bool()                // 组合命中(请求拍)
-    val hitData   = out UInt(32 bits)
-    val fillNow   = in  Bool()                // 需求读完成那一拍: 把这一个字写进 cache
-    val fillData  = in  UInt(32 bits)
-    val storeNow  = in  Bool()                // store 命中: 写穿更新该字
-    val reqWdata  = in  UInt(32 bits)         // 与 AXI 写用的是同一组值(dataProcess 处理后的)
-    val reqWmask  = in  UInt(4 bits)          // 字节使能
+    val reqIn  = slave  Stream(DcacheReqData())
+    val rspOut = master Flow(DcacheRspData())
+    val fenceI = in Bool()    // fence.i: 清空有效位(后续取指缺失重读)
+    val axi4   = master(Axi4(AxiConfig.axiConfig))
+    val miss   = out Bool()   // 缺失拍脉冲(每次缺失一次), 供 IFU 的性能计数器统计命中率; STA 时无人使用会被剪掉
+    val missDone = out Bool() // 缺失完成拍脉冲, 与 miss 配对可测出平均缺失代价(即 TMT 里的那一项)
   }
 
-  // ================================ 存储阵列(写法与 icache 一致) ================================ //
-  val dataMem  = Reg(Vec(UInt(32 bits), slots))                    // 每个字槽一份数据
-  val tagMem   = Reg(Vec(UInt(param.tagBits bits), param.lines))   // tag 按行(行内各字共享)
-  val validReg = Reg(Bits(slots bits)) init(0)                     // 每个字 1 位有效位
+  def inDcache(addr: UInt): Bool = {
+    // (addr >= U(0x0f000000L, 32 bits) && addr < U(0x10000000L, 32 bits)) ||    // sram
+    (addr >= U(0x30000000L, 32 bits) && addr < U(0x40000000L, 32 bits)) ||    // flash
+    (addr >= U(0x80000000L, 32 bits) && addr < U(0xc0000000L, 32 bits))       // psram + sdram
+  }
 
-  val index  = io.reqAddr(param.indexBits + param.lineBits - 1 downto param.lineBits)
-  val offset = io.reqAddr(param.lineBits - 1 downto 0)
-  val tag    = io.reqAddr(31 downto param.indexBits + param.lineBits)
-  val lineU  = if (param.indexBits > 0) index else U(0, 1 bits)
-  val wordU  = if (param.words > 1) offset(param.lineBits - 1 downto 2) else U(0, 1 bits)
-  val slot   = if (param.words > 1) (lineU ## wordU).asUInt else lineU   // 全局字槽号 = 行号*words + 行内字号
+  // ================================ axi交给dcache控制，因为1行只有1个字,所以不需要突发 ================================ //
+  val axi4Ctrler  = ysyx_23060082_Axi4_Ctrler() 
+  io.axi4 <> axi4Ctrler.io.axi4
 
-  val wordHit = validReg(slot) && (tagMem(lineU) === tag)
-  io.hit     := wordHit && io.cacheable
-  io.hitData := dataMem(slot)
+  // ================================ 存储阵列 (寄存器) ================================ //
+  val tag      = io.reqIn.addr(31 downto 4)
+  val index    = io.reqIn.addr(3 downto 2)
+  val dataMem  = Reg(Vec(UInt(32 bits), 4))   // 数据
+  val tagMem   = Reg(Vec(UInt(28 bits), 4))   // 地址
+  val validReg = Reg(Bits(4 bits)) init(0)    // 每块1位有效位
 
-  // ================================ 填充 / 写穿更新 ================================ //
-  val sameTag  = tagMem(lineU) === tag                                                // 本行旧 tag 是否与新 tag 相同
-  // 注意: validReg 是 Bits, 掩码也用 Bits(不要用 U)
-  val lineMask = (B((1 << param.words) - 1, slots bits) << (lineU * param.words)).resize(slots bits)  // 本行所有字
-  val setMask  = (B(1, slots bits) << slot).resize(slots bits)                        // 本字
+  // 命中判断，当前索引位有效并且tag相等
+  val cacheable = inDcache(io.reqIn.addr)     // 位于cache的有效范围内
+  val hit = validReg(index) && (tagMem(index) === tag) && cacheable
 
-  // 写穿: 与发给 AXI 写的 data/mask 完全一致 => cache 里的副本与 memory 结果相同
+  // ================================ 状态机 ================================ //
+  object DcacheState extends SpinalEnum {
+    val Idle, ReadMiss, Write= newElement()
+  }
+  val state = Reg(DcacheState()) init(DcacheState.Idle)
+
+  val reqRead  = io.reqIn.valid && io.reqIn.read
+  val reqWrite = io.reqIn.valid && io.reqIn.write
+  val readHit  = (state === DcacheState.Idle) && reqRead && hit
+
+  when(state === DcacheState.Idle) {
+    when(reqRead && !hit) { state := DcacheState.ReadMiss }   // 有读请求但是没有命中
+    .elsewhen(reqWrite)   { state := DcacheState.Write    }   // 有写请求，就算写是命中的，重新写入
+    .otherwise { state := DcacheState.Idle }
+  } elsewhen(state === DcacheState.ReadMiss) {
+    when(axi4Ctrler.io.readEnd) { state := DcacheState.Idle } // 访存完成, 返回
+    .otherwise { state := DcacheState.ReadMiss }
+  } elsewhen(state === DcacheState.Write) {
+    when(axi4Ctrler.io.writeEnd) { state := DcacheState.Idle }
+    .otherwise { state := DcacheState.Write }
+  }
+
+  // ================================  ================================ //
+  // 请求握手: Idle时接受(命中同拍组合返回rspOut, 读缺失进入ReadMiss，或写内存进入Write)
+  io.reqIn.ready := (state === DcacheState.Idle)
+
+  val readMissDone = (state === DcacheState.ReadMiss) && axi4Ctrler.io.readEnd
+  val writeDone    = (state === DcacheState.Write)    && axi4Ctrler.io.writeEnd
+
+  io.miss     := (state === DcacheState.Idle) && reqRead && !hit
+  io.missDone := readMissDone
+
+  // ================================  ================================ //
+  val readDataReg = RegNextWhen(axi4Ctrler.io.readData, readMissDone)
+  io.rspOut.readData := Mux(readHit, dataMem(index), 
+                        Mux(readMissDone, axi4Ctrler.io.readData, readDataReg))   // 命中返回cache,未命中返回读完的数据
+
+  io.rspOut.valid    := readHit || readMissDone || writeDone      // 读命中，或者读缺失但是完成，或者写完
+
+  // ============ AXI ============ //
+  axi4Ctrler.io.readReq   := (state === DcacheState.Idle) && reqRead && !hit
+  axi4Ctrler.io.readAddr  := io.reqIn.addr
+  axi4Ctrler.io.writeReq  := (state === DcacheState.Idle) && reqWrite
+  axi4Ctrler.io.writeAddr := io.reqIn.addr
+  axi4Ctrler.io.writeData := io.reqIn.writeData
+  axi4Ctrler.io.writeMask := io.reqIn.writeMask
+  axi4Ctrler.io.size      := io.reqIn.size
+
+  // 写入内存的同时也要写入cache
   val storeData = UInt(32 bits)
-  storeData := dataMem(slot)                                  // 默认保持, 再按字节使能改
+  storeData := dataMem(index)                                  // 默认保持, 再按字节使能改
   for (b <- 0 until 4) {
-    when(io.reqWmask(b)) {
-      storeData(b * 8 + 7 downto b * 8) := io.reqWdata(b * 8 + 7 downto b * 8)
+    when(io.reqIn.writeMask(b)) {
+      storeData(b * 8 + 7 downto b * 8) := io.reqIn.writeData(b * 8 + 7 downto b * 8)
     }
   }
 
-  when(io.fillNow) {                       // 读完成: 写这一个字
-    dataMem(slot) := io.fillData
-    tagMem(lineU) := tag
-    // tag 相同(同一行的另一个字): 保留原有 valid
-    // tag 不同: 先把整行作废(否则本行其它字会带着新 tag 假命中), 再只置本字
-    validReg := Mux(sameTag, validReg | setMask, (validReg & ~lineMask) | setMask)
-  } elsewhen(io.storeNow) {                // store 命中: 写穿更新该字(valid 不动, 命中率得以保持)
-    dataMem(slot) := storeData
+  when(readMissDone && cacheable) {                           // 读缺失: 写回数据 + tag + valid
+    dataMem(index)  := axi4Ctrler.io.readData
+    tagMem(index)   := tagReg
+    validReg(index) := True
+  } elsewhen((state === DcacheState.Idle) && reqWrite && hit) {
+    dataMem(index)     := storeData                           // 同步更新写入数据
   }
+}
+
+/* ****************************************************************
+  axi总线控制器
+**************************************************************** */
+case class ysyx_23060082_Axi4_Ctrler() extends Component {
+  val io = new Bundle {
+    val readReq   = in Bool()
+    val writeReq  = in Bool()
+    val size      = in UInt(3 bits)
+    val readAddr  = in UInt(32 bits)
+    val writeAddr = in UInt(32 bits)
+    val writeData = in UInt(32 bits)
+    val writeMask = in UInt(4 bits)
+    val readEnd   = out Bool()
+    val readData  = out UInt(32 bits)
+    val writeEnd  = out Bool()
+    val axi4 = master(Axi4(AxiConfig.axiConfig))
+  }
+  // ================================ 读操作 ================================ //
+  // io.axi4.ar.valid.setAsReg() init(False)
+  // io.axi4.ar.addr .setAsReg()
+
+  // 加不加突发，这些数值都会是常量，不需要寄存器锁存
+  io.axi4.ar.id   := U"4'b0"
+  io.axi4.ar.len  := U"8'b0"          // 突发长度1  
+  io.axi4.ar.size := io.size  
+  io.axi4.ar.burst:= B"2'b01"         // 突发类型INCR
+  // ================================ 读地址 ================================ //
+  // when(io.readReq) {
+  //   io.axi4.ar.valid := True
+  // } elsewhen(io.axi4.ar.fire) {
+  //   io.axi4.ar.valid := False
+  // } otherwise {
+  //   io.axi4.ar.valid := io.axi4.ar.valid
+  // }
+
+  // when(io.readReq) {
+  //   io.axi4.ar.addr := io.readAddr
+  // } otherwise {
+  //   io.axi4.ar.addr := io.axi4.ar.addr 
+  // }
+
+  val arValidReg = RegInit(False)
+  val arAddrReg  = RegNextWhen(io.readAddr, io.readReq)
+  val arValidOut = io.readReq || arValidReg    // 提前一周期发出arvalid信号
+  io.axi4.ar.valid := arValidOut
+  io.axi4.ar.addr  := Mux(io.readReq, io.readAddr, arAddrReg)
+
+  when(arValidReg) {
+    when(io.axi4.ar.fire) {
+      arValidReg := False
+    } otherwise {
+      arValidReg := True
+    }
+  } otherwise {
+    when(io.readReq && !io.axi4.ar.fire) {
+      arValidReg := True
+    } otherwise {
+      arValidReg := False
+    }
+  }
+
+  // ================================ 读数据 ================================ //
+  io.axi4.r.ready := io.axi4.r.valid
+  io.readEnd := io.axi4.r.fire && io.axi4.r.last   // 突发结束(r.last)才算读完
+  io.readData := io.axi4.r.data.asUInt
+
+  // 读响应错误检查: 从机返回非 OKAY 时仿真报错
+  when(io.axi4.r.fire && io.axi4.r.resp =/= Axi4.resp.OKAY) {
+    report(Seq("[LSU] read resp error! resp =", io.axi4.r.resp, "addr =", io.axi4.ar.addr))
+  }
+
+  // ================================ 写操作 ================================ //
+  io.axi4.aw.valid.setAsReg() init(False)
+  io.axi4.aw.addr .setAsReg()
+
+  io.axi4.w.valid .setAsReg() init(False)
+  io.axi4.w.data  .setAsReg()
+  io.axi4.w.strb  .setAsReg()
+  // io.axi4.w.last  .setAsReg()
+  io.axi4.w.last := True  
+
+  io.axi4.aw.id   := U"4'b0"
+  io.axi4.aw.len  := U"8'b0"          // 突发长度1  
+  io.axi4.aw.size := io.size       
+  io.axi4.aw.burst:= B"2'b01"         // 突发类型INCR
+  // ================================ 写地址 ================================ //
+  when(io.writeReq) {
+    io.axi4.aw.valid := True
+  } elsewhen(io.axi4.aw.fire) {
+    io.axi4.aw.valid := False
+  } otherwise {
+    io.axi4.aw.valid := io.axi4.aw.valid
+  }
+
+  when(io.writeReq) {
+    io.axi4.aw.addr := io.writeAddr
+  } otherwise {
+    io.axi4.aw.addr := io.axi4.aw.addr 
+  }
+  // ================================ 写数据 ================================ //
+  when(io.writeReq) {
+    io.axi4.w.valid := True
+  } elsewhen(io.axi4.w.fire) {
+    io.axi4.w.valid := False
+  } otherwise {
+    io.axi4.w.valid := io.axi4.w.valid
+  }
+
+  when(io.writeReq) {
+    io.axi4.w.data := io.writeData.asBits
+    io.axi4.w.strb := io.writeMask.asBits
+  } otherwise {
+    io.axi4.w.data := io.axi4.w.data
+    io.axi4.w.strb := io.axi4.w.strb
+  }
+  // ================================ 写响应 ================================ //
+  io.axi4.b.ready := io.axi4.b.valid
+  io.writeEnd := io.axi4.b.fire
+
+  // 写响应错误检查: 从机返回非 OKAY 时仿真报错
+  when(io.axi4.b.fire && io.axi4.b.resp =/= Axi4.resp.OKAY) {
+    report(Seq("[LSU] write resp error! resp =", io.axi4.b.resp, ", addr =", io.axi4.aw.addr))
+  }
+
 }

@@ -46,7 +46,7 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   val tag      = io.reqIn.addr(31 downto 4)
   val index    = io.reqIn.addr(3 downto 2)
   val dataMem  = Reg(Vec(UInt(32 bits), 4))   // 数据
-  val tagMem   = Reg(Vec(UInt(4 bits), 4))    // 地址
+  val tagMem   = Reg(Vec(UInt(28 bits), 4))    // 地址
   val validReg = Reg(Bits(4 bits)) init(0)    // 每块1位有效位
 
   // 命中判断，当前索引位有效并且tag相等

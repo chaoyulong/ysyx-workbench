@@ -16,8 +16,8 @@ import spinal.lib._
      否则那些字会带着新 tag 造成【假命中】(返回旧数据)。这是第一版卡死的根因。
 **************************************************************** */
 case class DcacheParams(
-  lineBytes: Int = 8,      // 每行字节数(决定每行几个字槽)
-  lines    : Int = 2       // 行数
+  lineBytes: Int = 4,      // 每行字节数(决定每行几个字槽)。4 => 每行 1 个字, 每个字一个 tag
+  lines    : Int = 4       // 行数
 ) {
   val lineBits  = log2Up(lineBytes)
   val indexBits = log2Up(lines)
@@ -53,7 +53,7 @@ case class ysyx_23060082_Dcache(param: DcacheParams = DcacheParams()) extends Co
   val tag    = io.reqAddr(31 downto param.indexBits + param.lineBits)
   val lineU  = if (param.indexBits > 0) index else U(0, 1 bits)
   val wordU  = if (param.words > 1) offset(param.lineBits - 1 downto 2) else U(0, 1 bits)
-  val slot   = (lineU ## wordU).asUInt     // 全局字槽号 = 行号*words + 行内字号
+  val slot   = if (param.words > 1) (lineU ## wordU).asUInt else lineU   // 全局字槽号 = 行号*words + 行内字号
 
   val wordHit = validReg(slot) && (tagMem(lineU) === tag)
   io.hit     := wordHit && io.cacheable

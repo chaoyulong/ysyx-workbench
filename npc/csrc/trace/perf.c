@@ -15,7 +15,6 @@
 #define PERF_F(module, field)  top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__##module##__DOT__perfReg_1__DOT__##field
 #endif
 static uint64_t idu_evt[8];
-static uint64_t lsu_evt[8];
 static uint64_t lsu_sum[4], lsu_cnt[4];
 
 // 程序结束时打印性能统计
@@ -46,9 +45,6 @@ void perf_stat(void) {
   lsu_cnt[1] = PERF_F(lsu, dlyCnt1);
   lsu_cnt[2] = PERF_F(lsu, dlyCnt2);
   lsu_cnt[3] = PERF_F(lsu, dlyCnt3);
-  lsu_evt[0] = PERF_F(lsu, evtCnt0);
-  lsu_evt[1] = PERF_F(lsu, evtCnt1);
-  lsu_evt[2] = PERF_F(lsu, evtCnt2);
 
   // 总周期/总指令已由 statistic() 打印, 此处只打细分统计; 所有行统一 cnt/total/avg 格式(等宽)
   const char *perf_sep = "  ========================================================================";  // 74 宽(2空格+72个=, 与 cnt/total 10位数据行对齐)
@@ -69,12 +65,6 @@ void perf_stat(void) {
     Log_nohead("  %-17s cnt=%-10lu total=%-10lu avg=%7.2f cyc/access", lsu_name[i],
            (unsigned long)lsu_cnt[i], (unsigned long)lsu_sum[i],
            lsu_cnt[i] ? (double)lsu_sum[i] / lsu_cnt[i] : 0);
-  Log_nohead("  %-17s cnt=%-10lu miss=%-11lu hit=%7.2f%%", "Dcache access:",
-       (unsigned long)(lsu_evt[2] + lsu_evt[0]), (unsigned long)lsu_evt[0],
-       (lsu_evt[2] + lsu_evt[0]) ? 100.0 * lsu_evt[2] / (lsu_evt[2] + lsu_evt[0]) : 0);
-  Log_nohead("  %-17s cnt=%-10lu miss=%-11lu hit=%7.2f%%", "Dcache store:",
-       (unsigned long)(lsu_evt[3] + lsu_evt[4]), (unsigned long)lsu_evt[4],
-       (lsu_evt[3] + lsu_evt[4]) ? 100.0 * lsu_evt[3] / (lsu_evt[3] + lsu_evt[4]) : 0);         
   Log_nohead("  %-17s cnt=%-10lu total=%-10lu avg=%7.2f cyc/inst", "EXU calc:",
          (unsigned long)exuCyc, (unsigned long)exuCalcCnt,
          exuCalcCnt ? (double)exuCyc / exuCalcCnt : 0);

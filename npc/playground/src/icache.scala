@@ -89,10 +89,10 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
   val wordSel = if (param.words > 1) io.reqIn.pc(param.lineBits - 1 downto 2) else U(0, 1 bits)
   val wordSelReg = RegNextWhen(wordSel, io.reqIn.fire)            // 本次请求的是块内第几个字
   // ================================ 握手成功锁存数据 ================================ //
-  // val pcReg    = RegNextWhen(io.reqIn.pc, io.reqIn.fire)
+  val pcReg    = RegNextWhen(io.reqIn.pc, io.reqIn.fire)
   val indexReg = RegNextWhen(index      , io.reqIn.fire)
   val tagReg   = RegNextWhen(tag        , io.reqIn.fire)
-
+  val reqFire  = io.reqIn.fire
   // ================================ 状态机 ================================ //
   object IcacheState extends SpinalEnum {
     val Idle, Miss = newElement()

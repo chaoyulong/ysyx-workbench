@@ -60,7 +60,7 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   val rdataReg           = RegNextWhen(icache.io.rspOut.rdata, icache.io.rspOut.valid)// 响应时更新数据
   val rspIsCurrentHit    = icache.io.reqIn.fire && icache.io.rspOut.valid             // icache直接命中
   // =================================== 预先译码出跳转指令 =================================== //
-  val instrOut  = Mux(icache.io.rspOut.valid, icache.io.rspOut.rdata, rdataReg)  // 就是 io.output.instr
+  val instrOut  = io.output.instr
   val i_jalr = instrOut === M"-----------------000-----1100111"
   val i_jal  = instrOut === M"-------------------------1101111"
   val isJump = i_jalr || i_jal
@@ -69,6 +69,8 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
     stopFetch := False
   } elsewhen(io.output.valid && isJump) {
     stopFetch := True
+  } otherwise {
+    stopFetch := stopFetch
   }
   // ================================ 状态机 ================================ //
   switch(state) {

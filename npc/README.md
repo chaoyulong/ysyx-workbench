@@ -197,6 +197,28 @@ defaultConfigForClockDomains = ClockDomainConfig(
 
 **注意**：报告里的"可达频率"会随"复位种类 + 再映射"大幅跳动（这一路走过 587→739→898→993→799→698 MHz，而期间周期数几乎没变 ✗），**判断标准应看 500MHz 目标下的 slack 是否为正** ✓，不要只看这个数 ✓。
 
+### 追加：IFU 遇无条件跳转立即停取指（周期 −6.1%，面积/时序还略好）
+
+**思路** ✓：`jal`/`jalr` **必然重定向** → 它们之后顺序取的指令 **100% 会被丢弃** ✗；而这些错路径取指**既自己缺失、又污染 cache** ✗。所以在 IFU 里对"刚取到的指令"预译码（只看 opcode：jal=`1101111` ✓ / jalr=`1100111` ✓），一发现就关掉取指闸门，直到重定向重启前端 ✓。
+
+```scala
+val instrOut  = Mux(icache.io.rspOut.valid, icache.io.rspOut.rdata, rdataReg)   // = io.output.instr
+val isJump    = (instrOut === M"-------------------------1101111") ||           // jal
+                (instrOut === M"-----------------000-----1100111")              // jalr
+val stopFetch = RegInit(False)
+when(io.redirect.valid)              { stopFetch := False }
+.elsewhen(io.output.valid && isJump) { stopFetch := True  }                     // ★ 必须用 io.output.valid 限定
+icache.io.reqIn.valid := (state === IfuState.Idle) && rstEnd && !stopFetch
+```
+
+**实测** ✓：周期 13,822,167 → **12,975,343（−6.13%）**、IPC 0.0421 → **0.0448**、Scored time 6058 → **5203 ms**；IFU 取指 797,102 → **769,871**、icache 缺失 70,893 → **52,810（−25.5%）**、命中率 91.11% → **93.14%**；LSU 读写**完全不变** ✓；面积 22,478.33 → **22,460.24 µm²**、500MHz slack +0.569 → **+0.711ns** —— **三个指标全赢** ✓✓。
+
+**为什么缺失降得比取指降得多** ✓：减少的 27,231 次取指里有 **66%（18,083）会 miss** ✗ —— 错路径取指既自己缺失，又挤掉有用的行 ✓，所以一个闸门吃到两份收益 ✓（原先估"只有 8% 会 miss"是错的 ✗）。
+
+**★ 死锁坑（第一版）** ✗✗：置位条件**必须**用 `io.output.valid` 限定 ✓。`icache.io.rspOut.valid = (reqIn.fire && hit) || missDone` ✓，其中 `missDone` **会迟到** ✗：若重定向发生在缺失填充期间，填充完成时 IFU 已回到 Idle、等的是新 pc，这条"已作废"的响应仍会拉高 `rspOut.valid` ✗。只看 `rspOut.valid && isJump` 时，一条**废弃路径上的 jalr** 就会把 `stopFetch` **永久置起** ✗（它只被 redirect 清 ✓）→ 前端从此不再取指 → **死锁** ✓（表现为 `一条指令超过10000周期未完成 (pc=0xa0005668)` ✓ —— 反汇编出来那条正是 `ret` = `jalr x0,0(x1)` ✓✓）。`io.output.valid` 里 missDone 那一项要求 `state===WaitMem` ✓，正好排除这种迟到响应 ✓✓。
+
+**剩余空间** ✓：现在 52,810 次缺失 vs 按退休 PC 算的理想值 47,610 → **多余的只剩约 5,200 次（10%）** ✗，所以"把闸门扩展到条件分支"收益已不大（约 2% ✓）；下一刀应转向**顺序预取**（fetch 侧 ✓）或 sectored dcache（load 侧 ✓）。
+
 ## 2026-08-18 更新
 
 - `ebreak` 不再通过 DPI-C 直接结束仿真，改为可综合的异常处理：`mcause` 置为 3。

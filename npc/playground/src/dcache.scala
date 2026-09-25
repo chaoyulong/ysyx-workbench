@@ -51,7 +51,8 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
 
   // 命中判断，当前索引位有效并且tag相等
   val cacheable = inDcache(io.reqIn.addr)     // 位于cache的有效范围内
-  val hit = validReg(index) && (tagMem(index) === tag) && cacheable
+  // val hit = validReg(index) && (tagMem(index) === tag) && cacheable
+  val hit = False
 
   // ================================ 状态机 ================================ //
   object DcacheState extends SpinalEnum {

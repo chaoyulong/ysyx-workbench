@@ -49,11 +49,6 @@ void perf_stat(void) {
   lsu_evt[0] = PERF_F(lsu, evtCnt0);
   lsu_evt[1] = PERF_F(lsu, evtCnt1);
   lsu_evt[2] = PERF_F(lsu, evtCnt2);
-  lsu_evt[3] = PERF_F(lsu, evtCnt3);
-  lsu_evt[4] = PERF_F(lsu, evtCnt4);
-  lsu_evt[5] = PERF_F(lsu, evtCnt5);
-  lsu_evt[6] = PERF_F(lsu, evtCnt6);
-  lsu_evt[7] = PERF_F(lsu, evtCnt7);
 
   // 总周期/总指令已由 statistic() 打印, 此处只打细分统计; 所有行统一 cnt/total/avg 格式(等宽)
   const char *perf_sep = "  ========================================================================";  // 74 宽(2空格+72个=, 与 cnt/total 10位数据行对齐)

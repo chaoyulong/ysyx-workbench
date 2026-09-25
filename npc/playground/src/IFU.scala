@@ -27,10 +27,10 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   }
   val state = Reg(IfuState()) init(IfuState.Idle)   // 创建一个状态机
 
-  // 原配置 8 行 × 16B(128B); 改为等容量 4 行 × 32B: 行更大 -> 顺序取指的空间局部性更好,
-  // tag 从 8 份减到 4 份、tag 位宽还少 1 位 => 面积更小(cachesim 在 microbench itrace 上:
-  // 8x16B 命中 91.82% / 缺失 47610 -> 4x32B 命中 93.77% / 缺失 36270)
-  val icache = ysyx_23060082_Icache(IcacheParams(lineBytes = 32, lines = 4))
+  // 曾试过等容量的 4 行 × 32B(8 拍突发): cachesim 预测命中率 91.82%->93.77%, 但实测直接崩
+  // (icache 缺失 avg 2615 拍、LSU 读 avg 732 拍 -> 平台不支持 8 拍突发, boot 阶段就 ABORT)
+  // => 这个平台上 icache 的行长不能超过 16B(4 拍突发), 保持 8 行 × 16B
+  val icache = ysyx_23060082_Icache()
   // ============================== 用于确定复位结束 ============================== //
   val rstEnd = RegNext(True) init(False)
   // =================================== PC寄存器 =================================== //
@@ -48,10 +48,21 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   // 每次请求的pc与它的响应配对，命中同拍用reqIn.pc, 缺失完成后用这一次请求锁存的pc
   val pcOfReq = RegNextWhen(icache.io.reqIn.pc, icache.io.reqIn.fire)
 
+  // =================================== 预先译码出跳转指令 =================================== //
+  val i_jalr = icache.io.rspOut.rdata === M"-----------------000-----1100111"
+  val i_jal  = icache.io.rspOut.rdata === M"-------------------------1101111"
+  val isJump = i_jalr || i_jal
+  // 取到无条件跳转就关闭取指，直到重定向把前端重启
+  val stopFetch = RegInit(False)
+  when(io.redirect.valid) {   // 靠重定向信号来关闭阻塞
+    stopFetch := False
+  } elsewhen(icache.io.rspOut.valid && isJump) {
+    stopFetch := True
+  }
   // ================================ 指令缓存 (icache) ================================ //
   io.axi4 <> icache.io.axi4
   icache.io.fenceI      := io.redirect.valid && io.redirect.fenceI                    // fence.i: 清空 icache 有效位
-  icache.io.reqIn.valid := (state === IfuState.Idle) && rstEnd                        // 复位完成，并且没有指令要发送，发出请求,如果是io.redirect.valid导致的打断，
+  icache.io.reqIn.valid := (state === IfuState.Idle) && rstEnd && !stopFetch          // 复位完成，并且没有指令要发送，发出请求,如果是io.redirect.valid导致的打断，
                                                                                       // 此时icache应该不处于Idle状态，icache.io.reqIn.ready会为低
   icache.io.reqIn.pc    := pcFetch
 

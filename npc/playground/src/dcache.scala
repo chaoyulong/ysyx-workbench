@@ -23,11 +23,12 @@ case class DcacheRspData() extends Bundle {
 // 目前是4*1Byte，而且只有写没有读，所以fence.i不需要在这里起作用
 case class ysyx_23060082_Dcache() extends Component {
   val io = new Bundle {
-    val reqIn  = slave  Stream(DcacheReqData())
-    val rspOut = master Flow(DcacheRspData())
-    val fenceI = in Bool()    // fence.i: 清空有效位(后续取指缺失重读)
-    val miss   = out Bool()   // 缺失拍脉冲(每次缺失一次), 供 IFU 的性能计数器统计命中率; STA 时无人使用会被剪掉
-    val missDone = out Bool() // 缺失完成拍脉冲, 与 miss 配对可测出平均缺失代价(即 TMT 里的那一项)
+    val reqIn   = slave  Stream(DcacheReqData())
+    val rspOut  = master Flow(DcacheRspData())
+    val fenceI  = in Bool()    // fence.i: 清空有效位(后续取指缺失重读)
+    val miss    = if(config.enableSimDebug) {out Bool()} else null
+    val missDone= if(config.enableSimDebug) {out Bool()} else null
+    val hit     = if(config.enableSimDebug) {out Bool()} else null
 
     val axi4   = master(Axi4(AxiConfig.axiConfig))
   }
@@ -82,9 +83,6 @@ case class ysyx_23060082_Dcache() extends Component {
   val readMissDone = (state === DcacheState.ReadMiss) && axi4Ctrler.io.readEnd
   val writeDone    = (state === DcacheState.Write)    && axi4Ctrler.io.writeEnd
 
-  io.miss     := (state === DcacheState.Idle) && reqRead && !hit
-  io.missDone := readMissDone
-
   // ================================  ================================ //
   val readDataReg = RegNextWhen(axi4Ctrler.io.readData, readMissDone)
   io.rspOut.readData := Mux(readHit, dataMem(index), 
@@ -116,6 +114,12 @@ case class ysyx_23060082_Dcache() extends Component {
     validReg(index) := True
   } elsewhen((state === DcacheState.Idle) && reqWrite && hit) {
     dataMem(index)     := storeData                           // 同步更新写入数据
+  }
+
+  if(config.enableSimDebug) {
+    io.miss     := (state === DcacheState.Idle) && reqRead && !hit
+    io.missDone := readMissDone
+    io.hit      := hit
   }
 }
 

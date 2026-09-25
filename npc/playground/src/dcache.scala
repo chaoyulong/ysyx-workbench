@@ -33,12 +33,9 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   }
 
   def inDcache(addr: UInt): Bool = {
-    val addrHigh4bits = addr(31 downto 28)
     // (addr >= U(0x0f000000L, 32 bits) && addr < U(0x10000000L, 32 bits)) ||    // sram
-    // (addr >= U(0x30000000L, 32 bits) && addr < U(0x40000000L, 32 bits)) ||    // flash
-    // (addr >= U(0x80000000L, 32 bits) && addr < U(0xc0000000L, 32 bits))       // psram + sdram
-    (addrHigh4bits >= U(0x3L, 4 bits) && addrHigh4bits < U(0x4L, 4 bits)) ||    // flash
-    (addrHigh4bits >= U(0x8L, 4 bits) && addrHigh4bits < U(0xcL, 4 bits))       // psram + sdram
+    (addr >= U(0x30000000L, 32 bits) && addr < U(0x40000000L, 32 bits)) ||    // flash
+    (addr >= U(0x80000000L, 32 bits) && addr < U(0xc0000000L, 32 bits))       // psram + sdram
   }
 
   // ================================ axi交给dcache控制，因为1行只有1个字,所以不需要突发 ================================ //

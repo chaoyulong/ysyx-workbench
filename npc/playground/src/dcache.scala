@@ -43,7 +43,7 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   io.axi4 <> axi4Ctrler.io.axi4
 
   // ================================ 存储阵列 (寄存器) ================================ //
-  val tag      = io.reqIn.addr(31 downto 4)
+  val tag      = io.reqIn.addr(31 downto 28)
   val index    = io.reqIn.addr(3 downto 2)
   val dataMem  = Reg(Vec(UInt(32 bits), 4))   // 数据
   val tagMem   = Reg(Vec(UInt(4 bits), 4))    // 地址

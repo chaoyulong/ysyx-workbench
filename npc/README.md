@@ -161,6 +161,42 @@ icache: tagMem 读 mux + tag 比较 → hit → enterMiss → ar.valid
 
 评分口径是周期 + 面积、频率只要求"500MHz 通过" ✓ → 这 0.78% 周期在评分上是净亏 ✗；保留它的理由是频率余量（994MHz ≈ 2 倍）和"把假路径清出报告、让真瓶颈可见" ✓。只在乎评分的话，可以**只回退 icache 那一处**，保留 CLINT 的寄存器化与计数器拆分。
 
+### 追加：同步复位（项目要求）+ mcycle/minstret 拆两个 32 位 + 去掉可省的复位
+
+**改法只有一行**（`playground/Config.scala`）：
+
+```scala
+defaultConfigForClockDomains = ClockDomainConfig(
+  resetKind = SYNC,            // SpinalHDL 默认是 ASYNC
+  resetActiveLevel = HIGH)
+```
+
+**两个层面的验证**：生成 RTL 里 `or posedge reset` 从有到 **0 处** ✓；网表里 `DFFR_X1`(579) + `DFFS_X1`(9) **全部消失** ✓，只剩 `DFF_X1`(3036) ✓。
+**功能验证**：`make perf` 的周期/指令数/全部 PERF 计数器与 `92a825d` **逐位相同** ✓（复位只在上电生效 ✓）。
+
+**对照实验**（只把 `resetKind` 改回 `ASYNC`，其他一字不动）：
+
+| 配置 | 面积 | 最差路径 | 频率 | 500MHz slack |
+|---|---|---|---|---|
+| `92a825d`（ASYNC，未清理）| 22,364.75 | 0.964ns | 993.6 MHz | +0.994ns |
+| **本次（SYNC + 清理）** | **22,478.33** | **1.387ns** | **698.6 MHz** | **+0.569ns ✓ 达标** |
+| 对照（ASYNC + 同样清理）| 22,625.43 | 1.029ns | 929.2 MHz | +0.924ns |
+
+**两条结论**：
+
+1. **同步复位的代价是"关键路径 +0.36ns"，而面积反而更小（−147 µm²）** ✓ —— 复位变成"参与数据路径的高扇出信号"后，每个带复位触发器 D 侧多一层 mux、且要像普通信号一样满足建立时间；异步复位走专用复位脚、无 D 侧逻辑 ✓。**面积与关键路径是两本独立的账，减少线不保证缩短路径** ✓。
+2. 同步复位**把一条本来不是最长的路径顶成了最长** ✓：ASYNC 版榜首是 `ifu.rdataReg_31`（1.029ns）✓，SYNC 版榜首变成 EXU 的 imm/branch/pcNext 锥（1.387ns）✗。
+
+**去掉可省的复位**（规则："上电后可能被读、而此前从未被写"的才必须保留）：
+
+| 去掉 | icache: `lineReg`(128b)/`wordCnt`/`wordSelReg`/`pcReg`/`indexReg`/`tagReg`；IFU: `pcOfReq`；LSU: `rdataReg`；CLINT: `readLen`/`readCnt`/`timeCountHighSnap` |
+|---|---|
+| **必须保留** | 各状态机（LSU/IFU/icache/Xbar）、流水线 valid、AXI 握手 valid、icache 行有效位、CSR 的 `mstatus/mtvec/mcause`（规范要求复位值）、CLINT 的 `timeCountLow/High`（项目要求初始为 0）；`mepc` 例外——它只被 `mret` 读，而 `mret` 之前必有 trap 写入 ✓ |
+
+这一轮清理把同步复位的面积代价从 **+502 µm² 压到 +114 µm²**（相对 `92a825d`）✓。
+
+**注意**：报告里的"可达频率"会随"复位种类 + 再映射"大幅跳动（这一路走过 587→739→898→993→799→698 MHz，而期间周期数几乎没变 ✗），**判断标准应看 500MHz 目标下的 slack 是否为正** ✓，不要只看这个数 ✓。
+
 ## 2026-08-18 更新
 
 - `ebreak` 不再通过 DPI-C 直接结束仿真，改为可综合的异常处理：`mcause` 置为 3。

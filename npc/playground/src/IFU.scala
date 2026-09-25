@@ -27,7 +27,10 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   }
   val state = Reg(IfuState()) init(IfuState.Idle)   // 创建一个状态机
 
-  val icache = ysyx_23060082_Icache()
+  // 原配置 8 行 × 16B(128B); 改为等容量 4 行 × 32B: 行更大 -> 顺序取指的空间局部性更好,
+  // tag 从 8 份减到 4 份、tag 位宽还少 1 位 => 面积更小(cachesim 在 microbench itrace 上:
+  // 8x16B 命中 91.82% / 缺失 47610 -> 4x32B 命中 93.77% / 缺失 36270)
+  val icache = ysyx_23060082_Icache(IcacheParams(lineBytes = 32, lines = 4))
   // ============================== 用于确定复位结束 ============================== //
   val rstEnd = RegNext(True) init(False)
   // =================================== PC寄存器 =================================== //

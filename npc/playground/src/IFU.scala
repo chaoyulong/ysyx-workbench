@@ -49,6 +49,8 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   val pcOfReq = RegNextWhen(icache.io.reqIn.pc, icache.io.reqIn.fire)
 
   // ================================ 指令缓存 (icache) ================================ //
+  val stopFetch = RegInit(False)
+
   io.axi4 <> icache.io.axi4
   icache.io.fenceI      := io.redirect.valid && io.redirect.fenceI                    // fence.i: 清空 icache 有效位
   icache.io.reqIn.valid := (state === IfuState.Idle) && rstEnd && !stopFetch          // 复位完成，并且没有指令要发送，发出请求,如果是io.redirect.valid导致的打断，
@@ -63,7 +65,6 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   val i_jal  = instrOut === M"-------------------------1101111"
   val isJump = i_jalr || i_jal
   // 取到无条件跳转就关闭取指，直到重定向把前端重启
-  val stopFetch = RegInit(False)
   when(io.redirect.valid) {   // 靠重定向信号来关闭阻塞
     stopFetch := False
   } elsewhen(io.output.valid && isJump) {

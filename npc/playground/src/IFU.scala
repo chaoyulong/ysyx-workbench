@@ -49,14 +49,15 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   val pcOfReq = RegNextWhen(icache.io.reqIn.pc, icache.io.reqIn.fire)
 
   // =================================== 预先译码出跳转指令 =================================== //
-  val i_jalr = icache.io.rspOut.rdata === M"-----------------000-----1100111"
-  val i_jal  = icache.io.rspOut.rdata === M"-------------------------1101111"
+  val instrOut  = Mux(icache.io.rspOut.valid, icache.io.rspOut.rdata, rdataReg)  // 就是 io.output.instr
+  val i_jalr = instrOut === M"-----------------000-----1100111"
+  val i_jal  = instrOut === M"-------------------------1101111"
   val isJump = i_jalr || i_jal
   // 取到无条件跳转就关闭取指，直到重定向把前端重启
   val stopFetch = RegInit(False)
   when(io.redirect.valid) {   // 靠重定向信号来关闭阻塞
     stopFetch := False
-  } elsewhen(icache.io.rspOut.valid && isJump) {
+  } elsewhen(io.output.valid && isJump) {
     stopFetch := True
   }
   // ================================ 指令缓存 (icache) ================================ //

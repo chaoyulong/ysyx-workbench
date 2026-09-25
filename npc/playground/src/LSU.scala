@@ -137,6 +137,7 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
     val arAddr = io.axi4.ar.addr
     val awAddr = io.axi4.aw.addr
     val perf = PerfReg()
+    perf.io.evt    := B"8'b0"
     perf.io.valid  := True
     perf.io.evt(0) := dcache.io.miss                                            // dcache 读缺失
     perf.io.evt(1) := dcache.io.missDone                                        // dcache 读缺失完成

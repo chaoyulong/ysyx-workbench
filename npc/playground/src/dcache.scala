@@ -1,103 +1,67 @@
 package playground
 
 import spinal.core._
-import spinal.lib.bus.amba4.axi._
-import spinal.lib._       // 使用spinal的模块库
+import spinal.lib._
 
 /* ****************************************************************
-   D-Cache: 只读 + 直接映射 + 整行突发填充(结构照抄 icache)
+   D-Cache: 【按字有效(sectored)】 + 只读 + 直接映射
 
-   - 【只缓存 SDRAM】(0xa000_0000~0xbfff_ffff): trace 实测 flash 阶段数据命中率 0.00%
-     (纯流式零复用), 缓存它只是白花总线时间; 设备访问完全不介入
-   - 结构照抄 icache: 同一套 params / dataMem·tagMem·validReg / Idle-Fill 状态机,
-     并直接复用 ysyx_23060082_Axi4_Ctrler_ReadOnly_Burst 做填充
-   - 【只读】: 不实现写数据通路。但 store 命中时必须【作废该行】(1 位清零), 否则 cache
-     里的副本会变旧, 之后的 load 读到旧值 —— 这是"只读 cache"唯一的正确性要点
-   - 缺失整行填充(2 行 x 8B => 2 拍突发), 命中当拍返回
+   核心: 一个 tag 管 8B(2 个字), 但【每个 32 位字一个 valid 位】。
+   - 缺失时【只取需要的那个字】(1 拍单字读), 直接复用 LSU 现有的单拍读通路
+     => 缺失的事务数/延迟【与基线完全相同】, 不增加任何总线流量
+        (这是前几版翻车的原因: 整行填充每次要多花 ~34 拍, 把命中收益全吃掉)
+   - 命中当拍组合返回
+   - 只读: 不实现写数据通路; store 命中时【作废该字】(清 1 位), 保证不会读到旧值
+   - 因此不需要第二个 AXI 控制器、不需要突发、不需要 AXI 通道 mux
 **************************************************************** */
 case class DcacheParams(
-  lineBytes: Int = 8,      // 块大小(字节)
-  lines    : Int = 2       // 块数(直接映射组数)
+  lineBytes: Int = 8,      // 每行字节数(决定每行几个字槽)
+  lines    : Int = 2       // 行数
 ) {
   val lineBits  = log2Up(lineBytes)
   val indexBits = log2Up(lines)
   val tagBits   = 32 - lineBits - indexBits
   val words     = lineBytes / 4
   val wordBits  = log2Up(words)
-  val dataBits  = lineBytes * 8
   require(isPow2(lineBytes) && isPow2(lines) && lineBytes >= 4, "lineBytes/lines 必须是 2 的幂且 lineBytes>=4")
 }
 
 case class ysyx_23060082_Dcache(param: DcacheParams = DcacheParams()) extends Component {
+  val slots = param.lines * param.words                  // 总字槽数(2 行 x 2 字 = 4)
+
   val io = new Bundle {
     val reqValid  = in  Bool()                // 本拍确实是一个"要读内存"的 load
     val reqAddr   = in  UInt(32 bits)
-    val cacheable = in  Bool()                // 该地址是否可缓存(仅 SDRAM 为 1)
-    val rspValid  = out Bool()                // 命中(请求拍) 或 填充完成(拍)
-    val rspData   = out UInt(32 bits)
-    val invalid   = in  Bool()                // store 命中: 作废该行(只清 valid, 不写数据)
-    val busy      = out Bool()                // 正在填充 -> LSU 用它来切换 AXI 读通道
-    val axi4      = master(Axi4ReadOnly(AxiConfig.axiConfig))
+    val cacheable = in  Bool()                // 该地址是否可缓存(设备为 0)
+    val hit       = out Bool()                // 组合命中(请求拍)
+    val hitData   = out UInt(32 bits)
+    val fillNow   = in  Bool()                // 需求读完成那一拍: 把这一个字写进 cache
+    val fillData  = in  UInt(32 bits)
+    val storeNow  = in  Bool()                // store 命中: 作废该字
   }
 
   // ================================ 存储阵列(写法与 icache 一致) ================================ //
-  val dataMem  = Reg(Vec(UInt(param.dataBits bits), param.lines))   // 数据
-  val tagMem   = Reg(Vec(UInt(param.tagBits bits), param.lines))    // 标签
-  val validReg = Reg(Bits(param.lines bits)) init(0)                // 每行 1 位有效位
+  val dataMem  = Reg(Vec(UInt(32 bits), slots))           // 每个字槽一份数据
+  val tagMem   = Reg(Vec(UInt(param.tagBits bits), param.lines))  // tag 按行(行内各字共享)
+  val validReg = Reg(Bits(slots bits)) init(0)            // ★ 每个字 1 位有效位
 
-  val index   = io.reqAddr(param.indexBits + param.lineBits - 1 downto param.lineBits)
-  val tag     = io.reqAddr(31 downto param.indexBits + param.lineBits)
-  val wordSel = if (param.words > 1) io.reqAddr(param.lineBits - 1 downto 2) else U(0, 1 bits)
+  val index  = io.reqAddr(param.indexBits + param.lineBits - 1 downto param.lineBits)
+  val offset = io.reqAddr(param.lineBits - 1 downto 0)
+  val tag    = io.reqAddr(31 downto param.indexBits + param.lineBits)
+  val lineU  = if (param.indexBits > 0) index else U(0, 1 bits)
+  val wordU  = if (param.words > 1) offset(param.lineBits - 1 downto 2) else U(0, 1 bits)
+  val slot   = (lineU ## wordU).asUInt                    // 全局字槽号 = 行号*words + 行内字号
 
-  val lineHit = validReg(index) && (tagMem(index) === tag)
-  val hit     = lineHit && io.cacheable
+  val wordHit = validReg(slot) && (tagMem(lineU) === tag)
+  io.hit     := wordHit && io.cacheable
+  io.hitData := dataMem(slot)
 
-  // ================================ 状态机 ================================ //
-  object DcState extends SpinalEnum {
-    val Idle, Fill = newElement()
+  // ================================ 填充 / 作废 ================================ //
+  when(io.fillNow) {                                      // 读完成: 只写这一个字 + 置它的 valid
+    dataMem(slot)  := io.fillData
+    tagMem(lineU)  := tag
+    validReg(slot) := True
+  } elsewhen(io.storeNow) {                               // store 命中: 只作废这一个字
+    validReg := validReg & ~(B(1, slots bits) << slot).resize(slots bits)
   }
-  val state = Reg(DcState()) init(DcState.Idle)
-
-  // 填充用与 icache 完全相同的突发读控制器
-  val fill = ysyx_23060082_Axi4_Ctrler_ReadOnly_Burst(
-               IcacheParams(lineBytes = param.lineBytes, lines = param.lines))
-  io.axi4 <> fill.io.axi4
-
-  val startFill = (state === DcState.Idle) && io.reqValid && io.cacheable && !lineHit
-  fill.io.readReq  := startFill                                          // 只持续一个周期
-  fill.io.readAddr := (io.reqAddr(31 downto param.lineBits) ## U(0, param.lineBits bits)).asUInt  // 地址对齐
-
-  val indexReg = RegNextWhen(index  , startFill) init(0)
-  val tagReg   = RegNextWhen(tag    , startFill) init(0)
-  val wordReg  = RegNextWhen(wordSel, startFill) init(0)
-  val fillDone = (state === DcState.Fill) && fill.io.readEnd
-
-  when(state === DcState.Idle) {
-    when(startFill) { state := DcState.Fill }
-  } elsewhen(state === DcState.Fill) {
-    when(fill.io.readEnd) { state := DcState.Idle }
-  }
-  io.busy := (state === DcState.Fill)
-
-  // ================================ 写回 / 作废 ================================ //
-  when(fillDone) {                                    // 填充完成: 写回整行
-    dataMem(indexReg)  := fill.io.readData
-    tagMem(indexReg)   := tagReg
-    validReg(indexReg) := True
-  } elsewhen(io.invalid) {                            // store 命中: 只作废这一行(不写数据)
-    validReg := validReg & ~(B(1, param.lines bits) << index).resize(param.lines bits)
-  }
-
-  // ================================ 响应 ================================ //
-  val hitWordVec  = Vec(UInt(32 bits), param.words)
-  val fillWordVec = Vec(UInt(32 bits), param.words)
-  for (i <- 0 until param.words) {
-    hitWordVec (i) := dataMem(index)(i * 32 + 31 downto i * 32)
-    fillWordVec(i) := fill.io.readData(i * 32 + 31 downto i * 32)
-  }
-
-  io.rspValid := (hit && (state === DcState.Idle)) || fillDone
-  io.rspData  := Mux(hit && (state === DcState.Idle),
-                     hitWordVec (wordSel),     // 命中: 当前地址那个字
-                     fillWordVec(wordReg))     // 填充完成: 请求时锁存的字
 }

@@ -135,9 +135,8 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   val getDataInLsu  = io.input.rfCtrl.mem2reg || io.input.rfCtrl.csr2reg  // 数据来自lsu（访存，csr）中
   io.output.rfWriteData:= Mux(getDataInLsu, memDataOut, aluDataOut)
   // ================================ 数据前递 ================================ //
-  val wr                = io.input.rfCtrl.regWr
-  io.forward.state     := Mux(!io.input.valid || !wr, FwdState.NoWriter,                // 还没有有效数据，或者不是写寄存器的信号时
-                          Mux(willValid, FwdState.DataReady, FwdState.DataPendingHere)) // willValid(数据即将有效时)，Ready，否则(即需要访存)就WaitHere
+  io.forward.state     := Mux(!io.input.valid || !io.input.rfCtrl.regWr, FwdState.NoWriter, // 还没有有效数据，或者不是写寄存器的信号时
+                          Mux(willValid, FwdState.DataReady, FwdState.DataPendingHere))     // willValid(数据即将有效时)，Ready，否则(即需要访存)就WaitHere
   io.forward.writeAddr := io.input.rfCtrl.rfWriteAddr
   io.forward.writeData := io.output.rfWriteData      // willValid 那拍就是最终写回值
 

@@ -22,6 +22,9 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
     val forward = out(forwardData())
     val redirect = master Flow(RedirectReq())
   }
+
+  val dataProcess = ysyx_23060082_DataProcess()   // 数据处理
+  val dcache  = ysyx_23060082_Dcache(config)   // D-Cache(独占 AXI)
   // ================================ 输入信号整理 ================================ //
   object LsuState extends SpinalEnum {
     val Idle, WaitMem, Done = newElement()          // lsu等待读写完成的状态机
@@ -47,8 +50,7 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
                                  Mux(needRead, U(5, 4 bits), U(7, 4 bits))))       // 5 = load, 7 = store
 
   // ================================ 访存通路 ================================ //
-  val dataProcess = ysyx_23060082_DataProcess()   // 数据处理
-  val dcache  = ysyx_23060082_Dcache(config)   // D-Cache(独占 AXI)
+
   // ---- 数据处理连接 ----
   dataProcess.io.addrOp := memAddr(1 downto 0) ## io.input.memCtrl.memOp    // 合并 addr + MemOp 生成 5 位索引
   dataProcess.io.wdata  := io.input.rfReadData                              // 写数据为rs2的数据

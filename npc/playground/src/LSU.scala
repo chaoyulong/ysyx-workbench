@@ -125,7 +125,7 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
     io.output.pc       := io.input.pc
     io.output.instr    := io.input.instr
   }
-       
+  io.output.rfCtrl.rfWriteAddr := io.input.rfCtrl.rfWriteAddr
   io.output.rfCtrl.mem2reg := io.input.rfCtrl.mem2reg
   io.output.rfCtrl.csr2reg := io.input.rfCtrl.csr2reg
   io.output.rfCtrl.regWr   := io.input.rfCtrl.regWr && !trapEnter      // ★ 异常时不写回

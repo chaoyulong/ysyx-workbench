@@ -18,18 +18,22 @@ extern NPCState npc_state;
 typedef struct decode{
   char log_buf[128];
   char iringbuf[16][128]; 
-  int iringbuf_end = 0;
+  int iringbuf_end;
 }Decode;
 #endif
 
-typedef struct cpu_state{
-  word_t gpr[REG_NUM];  // 寄存器
+typedef struct {
+  word_t  gpr[32];      // 寄存器,恒定32,为了与nemu做difftest
   paddr_t pc;           // pc
+} cpu_base_state_t; 
+
+typedef struct cpu_state{
+  cpu_base_state_t base;// 基础的pc与寄存器        
   word_t instr;         // 指令
 #ifdef CONFIG_ITRACE    
   Decode decode;        // 指令译码
 #endif
-}CPU_state;
+} CPU_state;
 extern CPU_state cpu;
 
 extern uint64_t g_nr_guest_inst; // 已执行指令数

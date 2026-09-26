@@ -14,8 +14,11 @@
 #define PMEM_LEFT  ((paddr_t)CONFIG_MBASE)
 #define PMEM_RIGHT ((paddr_t)CONFIG_MBASE + CONFIG_MSIZE - 1)
 #define CONFIG_PC_RESET_OFFSET 0x0
+#ifdef __ysyxsoc__
+#define RESET_VECTOR 0x30000000
+#else
 #define RESET_VECTOR (PMEM_LEFT + CONFIG_PC_RESET_OFFSET)
-
+#endif
 uint8_t* guest_to_host(paddr_t paddr);
 paddr_t host_to_guest(uint8_t *haddr);
 

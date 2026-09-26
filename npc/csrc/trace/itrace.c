@@ -22,11 +22,11 @@ bool itrace_print_step(void) {
 }
 
 // 生成当前指令的 trace: 格式化 log_buf + 存入 ringbuf + 输出(log/屏幕)
-// 由 trace_and_difftest 每条指令调用(cpu.pc/cpu.instr 已是退休指令)
+// 由 trace_and_difftest 每条指令调用(cpu.base.pc/cpu.instr 已是退休指令)
 void itrace_trace(void) {
 #ifdef CONFIG_ITRACE
   char *p = cpu.decode.log_buf;
-  p += snprintf(p, sizeof(cpu.decode.log_buf), "0x%08x:", cpu.pc);
+  p += snprintf(p, sizeof(cpu.decode.log_buf), "0x%08x:", cpu.base.pc);
   uint8_t *inst = (uint8_t *)&cpu.instr;
   for (int i = 3; i >= 0; i --) {
     p += snprintf(p, 4, " %02x", inst[i]);
@@ -35,7 +35,7 @@ void itrace_trace(void) {
   p += 4;
 
   void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
-  disassemble(p, cpu.decode.log_buf + sizeof(cpu.decode.log_buf) - p, cpu.pc, (uint8_t *)&cpu.instr, 4);
+  disassemble(p, cpu.decode.log_buf + sizeof(cpu.decode.log_buf) - p, cpu.base.pc, (uint8_t *)&cpu.instr, 4);
 
   strcpy(cpu.decode.iringbuf[cpu.decode.iringbuf_end], cpu.decode.log_buf);
   cpu.decode.iringbuf_end++;

@@ -22,7 +22,7 @@ static void trace_and_difftest() {
   IFDEF(CONFIG_ITRACE, itrace_trace());
   IFDEF(CONFIG_MTRACE, mtrace_trace());
   IFDEF(CONFIG_FTRACE, func_trace());
-  // IFDEF(CONFIG_DIFFTEST, void difftest_step(vaddr_t pc, vaddr_t npc); if(reg_updated && npc_state.state != NPC_END) {difftest_step(cpu.pc, cpu.pc_next); });
+  // IFDEF(CONFIG_DIFFTEST, void difftest_step(vaddr_t pc, vaddr_t npc); if(reg_updated && npc_state.state != NPC_END) {difftest_step(cpu.base.pc, cpu.base.pc); });
 
 #ifdef CONFIG_WATCHPOINT
   if(watchpoint_update()) {
@@ -37,10 +37,13 @@ void cpu_reset(int n) {
 }
 
 void cpu_state_init() {
-  for(int i = 0; i < REG_NUM; i++) {
-    cpu.gpr[i] = 0;
+  for(int i = 0; i < 32; i++) {
+    cpu.base.gpr[i] = 0;
   }
-  cpu.pc = RESET_VECTOR;
+  cpu.base.pc = RESET_VECTOR;
+#ifdef CONFIG_ITRACE
+  cpu.decode.iringbuf_end = 0;
+#endif
 }
 
 static void exec_once() 
@@ -63,9 +66,9 @@ static void exec_once()
   g_nr_guest_inst++;   // 完成一条指令
 
   // 状态更新: 用退休指令的 PC (ifu.pc 可能已指向流水线后续)
-  cpu.pc    = itraceRetirePc;
+  cpu.base.pc    = itraceRetirePc;
   cpu.instr = itraceRetireInstr;
-  for (int i = 0; i < REG_NUM; i++) cpu.gpr[i] = gpr(i);
+  for (int i = 0; i < REG_NUM; i++) cpu.base.gpr[i] = gpr(i);
 
   // 检测程序结束
   if (ebreak) {
@@ -73,7 +76,7 @@ static void exec_once()
   }
   if (Rmcause() == 2) { // 非法指令
     Log(ANSI_FMT("ERROR: 非法指令%08x (pc=0x%08x), CPU可能卡死!", ANSI_FG_RED),
-        cpu.instr, (uint32_t)cpu.pc);
+        cpu.instr, (uint32_t)cpu.base.pc);
     npc_state.state = NPC_ABORT;
   }
 }
@@ -120,7 +123,7 @@ void cpu_exec(uint64_t n)
       Log(MUXDEF(__ysyxsoc__, "ysyxsoc", "npc") ": %s at pc = 0x%08x", \
       (npc_state.state == NPC_ABORT ? ANSI_FMT("ABORT", ANSI_FG_RED) : \
       npc_state.halt_ret == 0 ? ANSI_FMT("HIT GOOD TRAP", ANSI_FG_GREEN) : ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED)), \
-      cpu.pc); // 打印正确还是错误的信息
+      cpu.base.pc); // 打印正确还是错误的信息
       // fall through
     case NPC_QUIT: statistic();
   }

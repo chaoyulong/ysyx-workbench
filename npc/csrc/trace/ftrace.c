@@ -120,7 +120,7 @@ static elf_fun *find_func(uint32_t pc) {
 
 void func_trace(void) {
   if (fun_buf_count == 0) return;
-  elf_fun *cur = find_func(cpu.pc);
+  elf_fun *cur = find_func(cpu.base.pc);
   if (cur == prev_func) return;            // 同函数内, 忽略
 
   int pos = -1;

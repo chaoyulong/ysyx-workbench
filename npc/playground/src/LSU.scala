@@ -129,7 +129,7 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   // ================================ 重定向 ================================ //
   // trap/mret 的目标是CSR寄存器输出, 当拍就有; fence.i的目标是pc+4
   // fence.i放在LSU: LSU顺序处理访存, fence进到LSU时最多有一个后台访存，只要等待访存完成，之后的取指必然看得到新指令
-  io.redirect.valid  := io.input.valid && (io.input.csrCtrl.trapEnter || io.input.csrCtrl.trapExit || (io.input.fenceI && dcache.io.writeBusy))
+  io.redirect.valid  := io.input.valid && (io.input.csrCtrl.trapEnter || io.input.csrCtrl.trapExit || (io.input.fenceI && !dcache.io.writeBusy))
   io.redirect.pcNext := Mux(io.input.csrCtrl.trapEnter, csr.io.mtvec,
                         Mux(io.input.csrCtrl.trapExit , csr.io.mepc,
                                                         io.input.pc + 4))    // fence.i只是冲刷，pcNext依旧是pc+4

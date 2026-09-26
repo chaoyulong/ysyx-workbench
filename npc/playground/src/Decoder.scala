@@ -99,7 +99,7 @@ case class ysyx_23060082_Decoder(config: CpuConfig = CpuConfig()) extends Compon
                 i_lb | i_lh | i_lw | i_lbu | i_lhu | i_sb | i_sh | i_sw |
                 i_beq | i_bne | i_blt | i_bge | i_bltu | i_bgeu | i_jalr | i_jal  | i_lui | i_auipc |
                 i_csrrw | i_csrrs | i_ecall | i_ebreak | i_mret | i_fence_i
-  val i_illegal = (instr =/= 0) && !isLegal
+  val i_illegal = !isLegal
 
 // ================================ 指令类型 ================================ //
   val typeU = i_lui | i_auipc

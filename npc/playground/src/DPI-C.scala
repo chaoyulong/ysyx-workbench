@@ -17,9 +17,10 @@ case class NpcMemRW() extends BlackBox{
     val reset = in Bool()
     val valid = in Bool()
     val wen   = in Bool()
-    val addr  = in UInt(32 bits)
+    val waddr  = in UInt(32 bits)
     val wdata = in UInt(32 bits)
     val wmask = in UInt(4 bits)
+    val raddr  = in UInt(32 bits)
     val rdata = out UInt(32 bits)
   }
   noIoPrefix()

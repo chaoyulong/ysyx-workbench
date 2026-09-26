@@ -68,9 +68,12 @@ case class ysyx_23060082_Axi4MemSlave() extends Component {
   // NpcMemRW 读请求: arFire 拍读首地址, 之后仅在还有后续节拍(cnt < len)时继续读
   // 避免 len=0 时多发一次越界读
   memRW.io.valid := memRW.io.wen || arFire || (readActive && (readCnt < readLen))
-  memRW.io.addr  := Mux(memRW.io.wen, io.axi4.aw.addr,
-                    Mux(arFire, io.axi4.ar.addr,
-                        readBase + ((readCnt + 1) << io.axi4.ar.size)))
+  // memRW.io.addr  := Mux(memRW.io.wen, io.axi4.aw.addr,
+  //                   Mux(arFire, io.axi4.ar.addr,
+  //                       readBase + ((readCnt + 1) << io.axi4.ar.size)))
+  memRW.io.waddr   := io.axi4.aw.addr
+  memRW.io.raddr   := Mux(arFire, io.axi4.ar.addr, readBase + ((readCnt + 1) << io.axi4.ar.size))
+                      
 
   // ------------------------- 写通道 ------------------------- //
   val wAllValid = io.axi4.aw.valid && io.axi4.w.valid

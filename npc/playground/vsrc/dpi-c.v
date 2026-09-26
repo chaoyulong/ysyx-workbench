@@ -6,24 +6,31 @@ module NpcMemRW(
   input             reset,
   input             valid,
   input             wen,
-  input      [31:0] addr,
+  input      [31:0] waddr,
   input      [31:0] wdata,
   input      [3:0]  wmask,
+  input      [31:0] raddr,
   output reg [31:0] rdata
 );
   import "DPI-C" function int pmem_read(input int raddr);
   import "DPI-C" function void pmem_write(input int waddr, input int wdata, input byte wmask);
-  always @(posedge clock or posedge reset) begin
+  always @(posedge clock) begin
     if (reset) begin 
       rdata <= 32'h0;
     end
     else if(valid) begin
       if(wen) begin   // 写
-        pmem_write(addr, wdata, {4'b0, wmask});
+        pmem_write(waddr, wdata, {4'b0, wmask});
       end
-      else begin
-        rdata <= pmem_read(addr);
-      end
+    end
+  end
+
+  always @(posedge clock) begin
+    if (reset) begin 
+      rdata <= 32'h0;
+    end
+    else if(valid) begin
+      rdata <= pmem_read(raddr);
     end
   end
 endmodule

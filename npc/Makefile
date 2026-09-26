@@ -27,16 +27,15 @@ SPINAL_VFILE = $(abspath $(BUILD_DIR)/$(SPINAL_TOPNAME).v)
 SPINAL_SIM_DIR = $(BUILD_DIR)/simulations
 
 # yosys综合相关
+# sta目标内自行生成到$(BUILD_DIR)/sta/ysyx_23060082.v(SPINAL_SIM_DEBUG=0)
 STA_DESIGN=ysyx_23060082
 STA_SDC_FILE=$(abspath constr/npc.sdc)
 STA_CLK_FREQ_MHZ=500
 STA_CLK_PORT_NAME=clock
 STA_OUT=$(abspath $(BUILD_DIR)/sta)
 # 综合工艺: nangate45(教程基准, 面积限制按此工艺) / icsprout55(流片工艺)
-# 用法: make sta                      -> 用下面的默认值
-#       make sta STA_PDK=icsprout55   -> 临时换工艺
 STA_PDK=nangate45
-# sta 目标内自行生成到 $(BUILD_DIR)/sta/ysyx_23060082.v (SPINAL_SIM_DEBUG=0)
+
 
 ifneq ($(words $(CURDIR)),1)
   $(error Unsupported: GNU Make cannot build in directories containing spaces, build elsewhere: '$(CURDIR)')
@@ -57,6 +56,7 @@ include $(NVBOARD_HOME)/scripts/nvboard.mk
 
 # verilator相关
 VERILATOR = verilator
+GTKWAVE = gtkwave
 
 VERILATOR_CFLAGS += -MMD --build -cc  \
 				-O3 --x-assign fast --x-initial fast --noassert \
@@ -93,7 +93,7 @@ verilog:
 
 test:
 	@$(SPINAL_SIM_ENV) ./mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalSim 
-	@gtkwave $(SPINAL_SIM_DIR)/$(SPINAL_TOPNAME)/test/wave.fst
+	@$(GTKWAVE) $(SPINAL_SIM_DIR)/$(SPINAL_TOPNAME)/test/wave.fst
 
 # 应该每次都重新生成一次verilog文件
 $(SPINAL_VFILE): verilog
@@ -129,7 +129,7 @@ sim: $(CSRCS) $(VSRCS)
 # 运行并记录波形
 wave: $(CSRCS) $(VSRCS)
 	@$(call build_target, $^, -D__GET_WAVE__)
-	@gtkwave $(SIM_WAVE)
+	@$(GTKWAVE) $(SIM_WAVE)
 
 # 性能测试: 运行 microbench(test规模)并输出统计(周期/指令/IPC + PERF计数器)
 # 配合 git checkout 历史 commit, 可复现当时代码的性能数据(记录见 PERF.md)
@@ -152,21 +152,6 @@ sta:
 			DESIGN=$(STA_DESIGN) SDC_FILE=$(STA_SDC_FILE) \
 			PDK=$(STA_PDK) CLK_FREQ_MHZ=$(STA_CLK_FREQ_MHZ) CLK_PORT_NAME=$(STA_CLK_PORT_NAME) O=$(STA_OUT) \
 			RTL_FILES="$(abspath $(BUILD_DIR))/sta/$(STA_DESIGN).v"
-
-help:
-	./mill -i $(SPINAL_PRJ).runMain Elborate --help
-
-# reformat:
-# 	./mill -i __.reformat
-
-# checkformat:
-# 	./mill -i __.checkFormat
-
-# bsp:
-# 	./mill -i mill.bsp.BSP/install
-
-# idea:
-# 	./mill -i mill.idea.GenIdea/idea
 
 clean:
 	-rm -rf $(BUILD_DIR) ./simulations ./*.v

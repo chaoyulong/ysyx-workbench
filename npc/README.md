@@ -1,5 +1,224 @@
 # NPC RISC-V32E CPU
 
+## 2026-09-16 五级流水线（数据前递 + 重定向与冲刷）
+
+### 结构
+
+- `IFU | IDU | EXU | LSU | WBU` 五级；**IDU 是组合级**（译码 + 读寄存器堆 + 前递选择），各级之间的寄存器统一由顶层 `pipelineConnect` / `pipelineConnectLast` 生成
+- `pipelineConnect` 带两个语义：
+  - `flush`：本级里的指令一定比重定向源年轻 → 直接清掉（优先级最高，且不管它能不能往下走）
+  - `block`：本级里可能就留着**重定向源自己** → 只挡上游、不清。否则 `lw x1,0(x2); jal ra,f` 里分支被 LSU 顶住时 `ra` 会丢
+- 顶层按"谁比谁年轻"派生：`ifu→idu` 用 `flush=redirectAny`；`idu→exu` 用 `flush=lsuRedir, block=redirectAny`；`exu→lsu` 用 `block=lsuRedir`；`lsu→wbu` 不动（里面永远更老）
+
+### 数据前递
+
+- `forwardData`（`FwdState` 四态）由 EXU/LSU/WBU 组合给出：
+  `NoWriter`（本级没有写这个 rd 的指令）/ `DataReady`（数据就在本级这一拍）/ `DataPendingHere`（本级产生但还没好，只有 LSU 的 load 等 AXI）/ `DataPendingLater`（要等它走到后面某级，只有 EXU 的 load/csr）
+- IDU 用 `stageStatus(f, rs, useRf)` 查询三级并取**最年轻的写者**，得到 `FwdOutcome` 三态：`Miss`（用寄存器堆）/ `Hit`（前递给 EXU）/ `Wait`（停一拍，下一拍重判）
+- 好处：`valid`/`notReady` 那种"两个 bool 描述三种状态"的写法被换掉，状态间互斥由类型保证；级空时不会再有"幽灵写者"
+
+### 重定向与冲刷
+
+| 源 | 触发条件 | 目标 |
+|---|---|---|
+| EXU | 分支/jal/jalr 成立（`banchCond.io.pcAsrc`） | 直通 `pcNext`（不加逻辑；非分支指令它天然是 `pc+4`） |
+| LSU | `trapEnter` / `trapExit` / `fence.i` | `Mux(trapEnter, mtvec, Mux(trapExit, mepc, pcNext))` |
+
+- `fence.i` 放在 **LSU** 产生：LSU 顺序处理访存，fence 进到 LSU 时它前面的 store 一定已完成（`b` 已回），之后的取指必然看得到新指令；`RedirectReq` 带 `fenceI` 字段，由 IFU 自己驱动 `icache.io.fenceI`（一次重定向 = 重新取指 + 可选失效 icache）
+- IFU：`pcFetch`（重定向直接写、`reqIn.fire` 时 +4）+ `pcOfReq`（请求 pc 与响应配对）；`when(io.redirect.valid){state := Idle}` 对**所有**状态生效（否则重定向和一次 `reqIn.fire` 同拍时，错路径指令之后会被当正常指令发出去）
+- icache：fence 到达时若正在 miss，置 `discardMiss` 丢弃这次回写（否则失效前的旧行会被重新标 valid）
+
+### 顺带修掉的 bug
+
+- `Decoder`：csr 从 `typeI` 移出后 `io.imm` 漏了 CSR 地址 → `csrAddr` 恒 0（所有 CSR 读写打空）；`useRf1` 补上 csr 的 rs1
+- `Decoder`：改为显式列出 load/store/regWr，**非法指令不再产生假访存、假写回**
+- `IFU`：icache 缺失完成时交付的 pc 偏 4（Mux 条件该用 `reqIn.fire`，不是 `rspOut.valid`）
+- `icache`：删掉重复的 `validReg` 赋值块（靠 Verilog 后写覆盖先写才对）
+- `regfile.c`：IFU 不再有 `pc` 寄存器，pc 改从 itrace 黑盒读
+
+### 性能（microbench test, ysyxsoc）
+
+| 指标 | 多周期 0690d2c | 流水线 519cf4f | 变化 |
+|---|---|---|---|
+| 总周期 | 15228461 | **14354926** | −5.7% |
+| IPC | 0.0382 | **0.0405** | +6.0% |
+| icache 命中率 | 91.83% | 90.96% | −0.9 pt |
+| icache 缺失次数 | ~47.5K（按命中率推算） | 70.9K | +49% |
+| 平均缺失代价 | 60.32 cyc | 59.37 cyc | −1.6% |
+| LSU mem rd avg / total | 102.72 / 7.78M | 103.25 / 7.82M | ~ |
+| LSU mem wr avg / total | 17.13 / 0.99M | 18.95 / 1.10M | +10.6% |
+| 综合面积(nangate45) | 21735.39 µm² | **22307.29 µm²** | +2.6% |
+| 综合频率(500MHz 目标) | 623.2 MHz | **601.9 MHz** | −3.4% |
+| microbench Scored time | — | 6428.06 ms | — |
+
+**瓶颈**：LSU 访存（rd 7.82M + wr 1.10M）+ icache 缺失（4.21M）≈ **13.13M / 14.35M = 91.5% 的周期在等访存**。所以流水线级数不是瓶颈，这也是本版只比多周期快 5.7% 的原因。另外**取指 784650 条 vs 退休 581592 条：26% 的取指被冲刷丢弃**，把 icache 缺失次数顶高了 49%——错路径取指会真金白银地吃 miss 代价。
+
+**下一步（按收益/面积排序）**：
+
+1. **0 面积**：IFU 命中同拍交付（现在 `output.valid` 没算上 Idle+hit 那一拍，等于取指上限 0.5 条/拍）；Xbar 的 arbiter+crossbar 两级串联每次事务白等 1-2 拍；LSU/icache 的 `ar` 打拍（每访存 1 拍）
+2. **减少错路径取指**：把分支解析提前（EXU 3 泡 → 1 泡），既省冲刷也直接减少 icache 缺失
+3. **小面积（~300-600 µm²）**：1-entry 写缓冲，store 不再等 `b`（写 avg 18.95 cyc）
+4. **D-Cache 的账**：按 icache 的 DSE 反推面积单价约 **50-58 µm²/Byte**（nangate45、寄存器堆实现），所以"能装下 microbench 工作集"的 D-Cache 远超 2000 µm²；但 **1~4 行（16~64B）的顺序预取缓冲**只要约 800~3700 µm²，对数组遍历型负载可能吃掉相当一部分读延迟（读 avg 103 cyc）。值不值先用 `tools/cachesim` 跑访存 trace 估命中率再定（方法同 icache 的 DSE）
+
+### 追加：0 面积三件（Xbar 提前放行 / ar 组合发出 / 计数器语义）
+
+| 改动 | 效果 |
+|---|---|
+| `Xbar`：`ar` 通道在 Idle 拍就组合给出 grant（`grantIfu/grantLsu`）、并组合解码地址（`routeClint/routeExternal`），不再等 `arbiterState`/`readState` 各注册一拍 | 每次读事务省 2 拍 |
+| `LSU`/`icache` 的 AXI 控制器：`ar.valid/addr` 不再 `setAsReg`，改为 `readReq \|\| arValidReg` 组合发出，`arValidReg` 只负责把"已发出但未握手"的请求举住（AXI 要求 valid 保持到 ready） | 每次读事务再省 1 拍 |
+| IDU 类别计数器：`io.input.valid` → `io.output.fire` | 恢复"指令条数占比"语义 |
+
+**踩到的坑**：`arValidReg` 的保持分支一开始写成 `otherwise { arValidReg := False }`（应为 `True`）——于是"请求已发出、但总线被 icache 占着没握上手"时，`ar.valid` 下一拍就掉了，那笔事务永远不完成 → LSU 卡在 `WaitMem`，表现为 `ERROR: 一条指令超过10000周期未完成 (pc=0x30000048)`。**LSU 和 icache 两处都是这个写法**，改的时候要一起改。
+
+| 指标 | 519cf4f | bbd3432 | 变化 |
+|---|---|---|---|
+| 总周期 | 14354926 | **13708413** | −4.5% |
+| IPC | 0.0405 | **0.0424** | +4.7% |
+| microbench Scored time | 6428.06 ms | **5964.00 ms** | −7.2% |
+| icache 缺失 avg | 59.37 cyc | **54.31 cyc** | −8.5% |
+| 取指次数 | 784650 | 817065 | +4.1% |
+| 综合面积(nangate45) | 22307.29 µm² | **22520.62 µm²** | +0.96% |
+| 综合频率(500MHz 目标) | 601.9 MHz | **587.8 MHz** | −2.3%（关键路径仍是 `ifu.icache.axi4Ctrler.io_readAddr`，slack 0.299ns） |
+
+（`LSU mem wr avg` 18.95 → 20.84 是争用抖动：写路径这次没动。）
+
+### 追加：EXU 的 pcNext 把比较器移出 32 位路径（纯时序优化，0 面积）
+
+**问题**：`pcNext = Mux(pcAsrc, imm, 4) + Mux(pcBsrc, rs1, pc)`，而 `pcAsrc` 在条件分支时就是 ALU 的 `zero/less`——**晚到信号串在 32 位加法器前面**，等于两条 32 位进位链串联。STA 报告里 `pcNext` 的锥里出现 `rfReadData2` 就是证据：`pcNext` 的**值**本来不该依赖它（它只通过"是否成立"这 1 bit 影响"要不要跳"，而跳的目标恒为 `imm + (jalr ? rs1 : pc)`）。
+
+**观察**：`(pcAsrc, pcBsrc)` 只有 3 种可用组合——`(1,0)`=jal/条件成立 → `imm+pc`；`(1,1)`=jalr → `(imm+rs1)` 清 bit0；`(0,0)`=不重定向 → **pcNext 是 don't care**（顺序取指由 IFU 自己 `+4`）。需要 pcNext 的两行 A 输入都是 `imm` → **A 直接接 imm，比较器只驱动 1 bit 的 `redirect.valid`**。
+
+**改动**：
+
+- `EXU`：`pcDataTmp = imm + Mux(pcBsrc, rs1, pc)`；清零合并进 bit0（`!pcBsrc && sum(0)`，连 32 位 mux 都省了）；删除 `Exu2Lsu_data.pcNext`
+- `LSU`：fence.i 的目标改成本地算 `io.input.pc + 4`——**fence.i 是唯一 `pcAsrc=0` 但仍要重定向的指令，不补这处会重定向到 pc 自己 → 死循环**；删除 `Lsu2Wbu_data.pcNext`
+
+| 指标 | bbd3432 | b06409e | 变化 |
+|---|---|---|---|
+| 总周期 / IPC | 13708413 / 0.0424 | 13708413 / 0.0424 | **逐项不变**（纯时序改动） |
+| 综合面积(nangate45) | 22520.62 µm² | **22342.40 µm²** | −178 µm² |
+| 最差 slack / 频率 | 0.299ns / 587.8 MHz | **0.648ns / 739.6 MHz** | **+25.8%** |
+
+→ 余量从 2479 µm² 变成 **2657.6 µm²**（25000 − 22342.40），而且频率余量大幅拉开，后面加 dcache 时不必再担心时序。
+
+### 追加：ALU 判零改走"操作数比较"（跳开 33 位减法链，频率 +21.5%）
+
+`zeroFlag = (resultAdder === U"32'h0")` 要等 33 位进位链才出结果 ✗，而 `io.zero` 的**唯一消费者是 `BranchCond`**，它只在条件分支（`branch=100..111`）时被看，而那些指令的 `aluCtr` 全是减法（`0010/1010`）✓ —— 减法下 `a - b == 0 ⟺ a == b`，所以可以并行算：
+
+```scala
+val zeroFlag = (io.aluIn1 === io.aluIn2)      // 32 位 XOR 归约, 与减法链并行
+```
+
+| 指标 | b06409e | d1cdfe4 | 变化 |
+|---|---|---|---|
+| 总周期 / IPC | 13708413 / 0.0424 | 13708413 / 0.0424 | **逐项不变** |
+| 综合面积(nangate45) | 22342.40 µm² | **22448.80 µm²** | +106 µm² |
+| 频率 | 739.6 MHz | **898.8 MHz** | **+21.5%** |
+
+**新的关键路径已经不在 CPU 核里了**：最差的是 `clint.io_clintAxi4_r_payload_data_*__reg_p:D`（1.082ns / slack 0.887ns）——CLINT 的读数据寄存器 `readData`，它的 D 锥是 `ar.addr`（Xbar 从 CPU 控制器**组合透传**过来），整条是：
+
+```
+CPU 地址生成 → Xbar 地址 mux → CLINT 地址解码/mux → readData 寄存器
+```
+
+这条路径只在读 `mtime` 时经过，不在 CPU 的性能环路上，而且 500MHz 目标早已满足（0.887ns 余量）→ **不值得为它花时间**（它下面的几条也都是 CLINT 的时钟门控 enable 路径）。余量现在是 **2551.2 µm²**（25000 − 22448.80）。
+
+### 追加：CLINT 读通道寄存器化 + 计数器拆分，icache AR 恢复打拍（切开 Xbar/CLINT 长锥）
+
+**CLINT**
+
+- 读通道寄存器化（`addrReg`/`dataReg`/`dataFinish`），响应从 AR+1 变成 **AR+2** —— 设备读只有 662 次，多 1 拍无所谓
+- 64 位计数器拆成两个 32 位：`timeCountLow` 每拍 +1，`timeCountHigh` 只在低位全 1 时 +1 → 砍掉原来那条 **1.088ns 的 64 位进位链**；语义与单计数器完全一致（回绕相位、先读低再读高的快照都对）
+- **功能验证**：与拆分前的运行结果**逐位相同**（Scored/Total/cycle/inst 全同）✓；另外 `am-tests` 的 **rtc** 用例 uptime 每秒 +1 ✓
+
+**icache**：突发控制器的 `ar.valid/addr` 恢复 `setAsReg` 打拍（回退之前的"组合发 ar"）
+
+这样交给 Xbar 的是**寄存器信号** ✓，一次切断这一族长组合锥：
+
+```
+icache: tagMem 读 mux + tag 比较 → hit → enterMiss → ar.valid
+   → Xbar 的地址 mux / isClint 解码 → CLINT 的 ar.fire → readCnt/readActive/dataFinish
+```
+
+其中 CLINT 那半截其实是**不可敏化的假路径** ✗（IFU 的取指地址永远不会落在 CLINT 的 `0x0200_0000` 段，只是 STA 做静态图分析时看不出这个相关性），所以只靠"在 Xbar 或 CLINT 里加寄存器"救不了 ✗——必须在**源头**（icache 的 AR）切掉 ✓。
+
+| 指标 | d1cdfe4 | 92a825d | 变化 |
+|---|---|---|---|
+| 总周期 | 13708413 | **13822167** | +0.78% ✗ |
+| IPC | 0.0424 | **0.0421** | ✗ |
+| Scored time | 5967.06 ms | **6058.02 ms** | +1.5% ✗ |
+| icache 缺失 avg | 54.31 cyc | **59.69 cyc** | +5.4 ✗（AR 晚一拍更容易在 Xbar 输给 LSU）|
+| 面积 | 22448.80 µm² | **22364.75 µm²** | −84 ✓ |
+| 最差路径 | `clint.readCnt` 1.085ns | **`ifu.state_0` 0.964ns** | 假路径族消失 ✓ |
+| 频率 | 898.8 MHz | **993.6 MHz** | **+12%** ✓ |
+
+**代价比预估大**（预期 +0.52%，实测 +0.78%，多出来的部分就是 `缺失avg` 涨的那几拍），但常被流水线停顿吸收 ✓（总增幅 < 缺失次数 × 5.4）。
+
+**真实瓶颈第一次暴露出来** —— 不再是 cache/CLINT，而是核内：
+
+- `exu.io_input_payload_rfReadData{1,2}_*`（0.951~0.957ns）：**IDU 的 RF 读 + 三级前递 mux** → IDU→EXU 寄存器
+- `ifu.state_0`（0.964ns）：IFU 的次态逻辑（重定向 / 响应 / Done 的 mux）
+
+评分口径是周期 + 面积、频率只要求"500MHz 通过" ✓ → 这 0.78% 周期在评分上是净亏 ✗；保留它的理由是频率余量（994MHz ≈ 2 倍）和"把假路径清出报告、让真瓶颈可见" ✓。只在乎评分的话，可以**只回退 icache 那一处**，保留 CLINT 的寄存器化与计数器拆分。
+
+### 追加：同步复位（项目要求）+ mcycle/minstret 拆两个 32 位 + 去掉可省的复位
+
+**改法只有一行**（`playground/Config.scala`）：
+
+```scala
+defaultConfigForClockDomains = ClockDomainConfig(
+  resetKind = SYNC,            // SpinalHDL 默认是 ASYNC
+  resetActiveLevel = HIGH)
+```
+
+**两个层面的验证**：生成 RTL 里 `or posedge reset` 从有到 **0 处** ✓；网表里 `DFFR_X1`(579) + `DFFS_X1`(9) **全部消失** ✓，只剩 `DFF_X1`(3036) ✓。
+**功能验证**：`make perf` 的周期/指令数/全部 PERF 计数器与 `92a825d` **逐位相同** ✓（复位只在上电生效 ✓）。
+
+**对照实验**（只把 `resetKind` 改回 `ASYNC`，其他一字不动）：
+
+| 配置 | 面积 | 最差路径 | 频率 | 500MHz slack |
+|---|---|---|---|---|
+| `92a825d`（ASYNC，未清理）| 22,364.75 | 0.964ns | 993.6 MHz | +0.994ns |
+| **本次（SYNC + 清理）** | **22,478.33** | **1.387ns** | **698.6 MHz** | **+0.569ns ✓ 达标** |
+| 对照（ASYNC + 同样清理）| 22,625.43 | 1.029ns | 929.2 MHz | +0.924ns |
+
+**两条结论**：
+
+1. **同步复位的代价是"关键路径 +0.36ns"，而面积反而更小（−147 µm²）** ✓ —— 复位变成"参与数据路径的高扇出信号"后，每个带复位触发器 D 侧多一层 mux、且要像普通信号一样满足建立时间；异步复位走专用复位脚、无 D 侧逻辑 ✓。**面积与关键路径是两本独立的账，减少线不保证缩短路径** ✓。
+2. 同步复位**把一条本来不是最长的路径顶成了最长** ✓：ASYNC 版榜首是 `ifu.rdataReg_31`（1.029ns）✓，SYNC 版榜首变成 EXU 的 imm/branch/pcNext 锥（1.387ns）✗。
+
+**去掉可省的复位**（规则："上电后可能被读、而此前从未被写"的才必须保留）：
+
+| 去掉 | icache: `lineReg`(128b)/`wordCnt`/`wordSelReg`/`pcReg`/`indexReg`/`tagReg`；IFU: `pcOfReq`；LSU: `rdataReg`；CLINT: `readLen`/`readCnt`/`timeCountHighSnap` |
+|---|---|
+| **必须保留** | 各状态机（LSU/IFU/icache/Xbar）、流水线 valid、AXI 握手 valid、icache 行有效位、CSR 的 `mstatus/mtvec/mcause`（规范要求复位值）、CLINT 的 `timeCountLow/High`（项目要求初始为 0）；`mepc` 例外——它只被 `mret` 读，而 `mret` 之前必有 trap 写入 ✓ |
+
+这一轮清理把同步复位的面积代价从 **+502 µm² 压到 +114 µm²**（相对 `92a825d`）✓。
+
+**注意**：报告里的"可达频率"会随"复位种类 + 再映射"大幅跳动（这一路走过 587→739→898→993→799→698 MHz，而期间周期数几乎没变 ✗），**判断标准应看 500MHz 目标下的 slack 是否为正** ✓，不要只看这个数 ✓。
+
+### 追加：IFU 遇无条件跳转立即停取指（周期 −6.1%，面积/时序还略好）
+
+**思路** ✓：`jal`/`jalr` **必然重定向** → 它们之后顺序取的指令 **100% 会被丢弃** ✗；而这些错路径取指**既自己缺失、又污染 cache** ✗。所以在 IFU 里对"刚取到的指令"预译码（只看 opcode：jal=`1101111` ✓ / jalr=`1100111` ✓），一发现就关掉取指闸门，直到重定向重启前端 ✓。
+
+```scala
+val instrOut  = Mux(icache.io.rspOut.valid, icache.io.rspOut.rdata, rdataReg)   // = io.output.instr
+val isJump    = (instrOut === M"-------------------------1101111") ||           // jal
+                (instrOut === M"-----------------000-----1100111")              // jalr
+val stopFetch = RegInit(False)
+when(io.redirect.valid)              { stopFetch := False }
+.elsewhen(io.output.valid && isJump) { stopFetch := True  }                     // ★ 必须用 io.output.valid 限定
+icache.io.reqIn.valid := (state === IfuState.Idle) && rstEnd && !stopFetch
+```
+
+**实测** ✓：周期 13,822,167 → **12,975,343（−6.13%）**、IPC 0.0421 → **0.0448**、Scored time 6058 → **5203 ms**；IFU 取指 797,102 → **769,871**、icache 缺失 70,893 → **52,810（−25.5%）**、命中率 91.11% → **93.14%**；LSU 读写**完全不变** ✓；面积 22,478.33 → **22,460.24 µm²**、500MHz slack +0.569 → **+0.711ns** —— **三个指标全赢** ✓✓。
+
+**为什么缺失降得比取指降得多** ✓：减少的 27,231 次取指里有 **66%（18,083）会 miss** ✗ —— 错路径取指既自己缺失，又挤掉有用的行 ✓，所以一个闸门吃到两份收益 ✓（原先估"只有 8% 会 miss"是错的 ✗）。
+
+**★ 死锁坑（第一版）** ✗✗：置位条件**必须**用 `io.output.valid` 限定 ✓。`icache.io.rspOut.valid = (reqIn.fire && hit) || missDone` ✓，其中 `missDone` **会迟到** ✗：若重定向发生在缺失填充期间，填充完成时 IFU 已回到 Idle、等的是新 pc，这条"已作废"的响应仍会拉高 `rspOut.valid` ✗。只看 `rspOut.valid && isJump` 时，一条**废弃路径上的 jalr** 就会把 `stopFetch` **永久置起** ✗（它只被 redirect 清 ✓）→ 前端从此不再取指 → **死锁** ✓（表现为 `一条指令超过10000周期未完成 (pc=0xa0005668)` ✓ —— 反汇编出来那条正是 `ret` = `jalr x0,0(x1)` ✓✓）。`io.output.valid` 里 missDone 那一项要求 `state===WaitMem` ✓，正好排除这种迟到响应 ✓✓。
+
+**剩余空间** ✓：现在 52,810 次缺失 vs 按退休 PC 算的理想值 47,610 → **多余的只剩约 5,200 次（10%）** ✗，所以"把闸门扩展到条件分支"收益已不大（约 2% ✓）；下一刀应转向**顺序预取**（fetch 侧 ✓）或 sectored dcache（load 侧 ✓）。
+
 ## 2026-08-18 更新
 
 - `ebreak` 不再通过 DPI-C 直接结束仿真，改为可综合的异常处理：`mcause` 置为 3。

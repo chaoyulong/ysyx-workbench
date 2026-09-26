@@ -7,8 +7,6 @@ case class Exu2Lsu_data(config: CpuConfig = CpuConfig()) extends Bundle {
   val pc          = UInt(32 bits) 
   val instr       = if (config.enableSimDebug) UInt(32 bits) else null
   
-  val pcNext      = UInt(32 bits)   // 执行trapEnter指令(i_ecall，i_ebreak，i_illegal)时，pcNext数据一定是无用的，此时用来传递pc供给csr使用
-                                    // 就可以省掉一个32位的寄存器，但是为了仿真好看，会在config.enableSimDebug时，保留pc寄存器
   val rfCtrl      = RfCtrl()        // 直通数据，在EXU中无作用
   val memCtrl     = MemCtrl()       // 直通数据，在EXU中无作用
   val csrCtrl     = CsrCtrl()       // 直通数据，在EXU中无作用 
@@ -46,10 +44,14 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
   banchCond.io.less   := alu.io.less
   banchCond.io.zero   := alu.io.zero
 
-  val pcDataA   = Mux(banchCond.io.pcAsrc, io.input.imm, U"32'd4")
-  val pcDataB   = Mux(banchCond.io.pcBsrc, io.input.rfReadData1, io.input.pc)
-  val pcDataTmp = pcDataA + pcDataB
-  val pcNext    = Mux(banchCond.io.pcBsrc, (pcDataTmp(31 downto 1) ## B"1'b0").asUInt, pcDataTmp)   // jalr指令规定要将最后一位清零
+  // val pcDataA   = Mux(banchCond.io.pcAsrc, io.input.imm, U"32'd4")
+  // val pcDataB   = Mux(banchCond.io.pcBsrc, io.input.rfReadData1, io.input.pc)
+  // val pcDataTmp = pcDataA + pcDataB
+  // 由于pcAsrc到达较晚，所以选择去掉，并且pc+4这个pcnext不需要得出，因为默认运行的就是这个
+  val pcDataB   = Mux(banchCond.io.pcBsrc, io.input.rfReadData1, io.input.pc)      
+  val pcDataTmp = io.input.imm + pcDataB
+  val pcNextBit0= !banchCond.io.pcBsrc && pcDataTmp(0)          // jalr指令规定要将最后一位清零
+  val pcNext    = (pcDataTmp(31 downto 1) ## pcNextBit0).asUInt
 
   io.redirect.valid  := io.input.valid && banchCond.io.pcAsrc   // 数据有效并且是跳转指令(pcAsrc,pcBsrc有一个为1就是跳转指令，而pcBsrc为1时，pcAsrc也为1)
   io.redirect.pcNext := pcNext
@@ -62,7 +64,6 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
   val useRs1 = io.input.ctrl.csrCtrl.trapEnter || (io.input.ctrl.csrCtrl.csrCmd =/= 0)  // rs1: CSR，rs2: store
   io.output.rfReadData := Mux(useRs1, io.input.rfReadData1, io.input.rfReadData2)
   io.output.pc         := io.input.pc
-  io.output.pcNext     := pcNext
   io.output.aluResult  := alu.io.aluResult
   io.output.csrAddr    := io.input.imm(11 downto 0)
   io.output.fenceI     := io.input.ctrl.fenceI
@@ -160,7 +161,8 @@ case class ysyx_23060082_ALU() extends Component {
 
   val resultAdder      = resultAdder33Bit(31 downto 0)    // 计算结果
   val carryFlag        = resultAdder33Bit(32)             // 进位
-  val zeroFlag         = (resultAdder === U"32'h0")       // 判0
+  // val zeroFlag         = (resultAdder === U"32'h0")       // 判0
+  val zeroFlag         = (io.aluIn1 === io.aluIn2)  // 跳过alu，缩短路径
   val overflowFlag     = (adderDataA(31) === adderDataB(31)) && (resultAdder(31) =/= adderDataA(31))  // 溢出
   // ================================ 移位寄存器 ================================ //
   val resultShift = io.aluCtr(3 downto 2).mux(            // 直接移位操作与自己写桶形移位器没有区别

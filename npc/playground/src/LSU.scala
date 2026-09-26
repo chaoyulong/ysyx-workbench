@@ -54,7 +54,9 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   // 读命中用 dcache.io.readHit 判(不能用 rspOut.valid: 它还含上一笔 store 的 b 响应/上一笔缺失的完成)
   val rdHitNow = needRead && (state === LsuState.Idle) && dcache.io.readHit
   val rdEnd    = ((state === LsuState.WaitMem) && dcache.io.rspOut.valid && io.input.rfCtrl.mem2reg) || rdHitNow
-  val wrEnd    =  (state === LsuState.WaitMem) && dcache.io.rspOut.valid && io.input.memCtrl.memWr
+
+  val wrNow = needWrite && (state === LsuState.Idle) && dcache.io.writeAccept       // 可以后台写入
+  val wrEnd = ((state === LsuState.WaitMem) && dcache.io.rspOut.valid && io.input.memCtrl.memWr) || wrNow
   dataProcess.io.rdata := dcache.io.rspOut.readData   // dcache 内已有数据寄存器, 不需要再寄存
 
   // ================================ lsu状态机 ================================ //
@@ -64,7 +66,12 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
         when(rdHitNow) {                               // 读命中: 当拍完成, 不等访存
           when(io.output.fire){state := LsuState.Idle}
           .otherwise          {state := LsuState.Done}
-        } .otherwise {state := LsuState.WaitMem}
+        } 
+        .elsewhen(wrNow) {                              // 不等写入完成就开始握手，让写操作在后台运行
+          when(io.output.fire){state := LsuState.Idle} 
+          .otherwise{state := LsuState.Done} 
+        } 
+        .otherwise {state := LsuState.WaitMem}
       }
       .otherwise{state := state}
     }
@@ -121,8 +128,8 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
 
   // ================================ 重定向 ================================ //
   // trap/mret 的目标是CSR寄存器输出, 当拍就有; fence.i的目标是pc+4
-  // fence.i放在LSU: LSU顺序处理访存, fence进到LSU时它前面的store一定已经完成(b已回), 之后的取指必然看得到新指令
-  io.redirect.valid  := io.input.valid && (io.input.csrCtrl.trapEnter || io.input.csrCtrl.trapExit || io.input.fenceI)
+  // fence.i放在LSU: LSU顺序处理访存, fence进到LSU时最多有一个后台访存，只要等待访存完成，之后的取指必然看得到新指令
+  io.redirect.valid  := io.input.valid && (io.input.csrCtrl.trapEnter || io.input.csrCtrl.trapExit || (io.input.fenceI && dcache.io.writeBusy))
   io.redirect.pcNext := Mux(io.input.csrCtrl.trapEnter, csr.io.mtvec,
                         Mux(io.input.csrCtrl.trapExit , csr.io.mepc,
                                                         io.input.pc + 4))    // fence.i只是冲刷，pcNext依旧是pc+4

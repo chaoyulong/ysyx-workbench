@@ -37,6 +37,8 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
     val reqIn    = slave  Stream(DcacheReqData())
     val rspOut   = master Flow(DcacheRspData())
     val readHit  = out Bool()      // 本拍这次读真的命中(load 用它判"当拍完成")
+    val writeAccept = out Bool()    // dcache接收了写数据，正在执行写
+    val writeBusy= out Bool()   // 正在后台写
     val miss     = if (config.enableSimDebug) out Bool() else null   // 缺失脉冲(供 perf 计数)
     val missDone = if (config.enableSimDebug) out Bool() else null   // 缺失完成脉冲
     val axi4     = master(Axi4(AxiConfig.axiConfig))
@@ -93,10 +95,15 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   }
 
   // ================================ 响应 ================================ //
+  val writeAccept = (state === DcacheState.Idle) && reqWrite      // 请求被接受
+  io.rspOut.valid := readHit || readMissDone || writeAccept       // 不等到写完
+  io.writeAccept  := writeAccept                                  //
+  io.writeBusy    := (state === DcacheState.Write)
+
   val readDataReg = RegNextWhen(axi4Ctrler.io.readData, readMissDone)
   io.rspOut.readData := Mux(readHit, dataMem(index),
                         Mux(readMissDone, axi4Ctrler.io.readData, readDataReg))
-  io.rspOut.valid    := readHit || readMissDone || writeDone
+  // io.rspOut.valid    := readHit || readMissDone || writeDone
   io.readHit         := readHit
 
   // ================================ AXI ================================ //

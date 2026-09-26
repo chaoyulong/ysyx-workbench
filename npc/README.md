@@ -516,3 +516,43 @@ npc/tools/make-ysyxsoc-patch.sh                  # 或 BASE=<其它基线> ...
 - `patch/firtool/` —— `firtool`(28MB) + `om-linker`(8.5MB) 二进制 ✗。`git diff` 对二进制只能输出 `Binary files differ`，带上反而**无法应用**；需要时另行获取
 
 **验证**：在 `origin/ysyx6` 的纯净 worktree 上 `git apply` ✓，20 个改动文件**逐字节一致** ✓
+
+### 追加：D-Cache（周期 −2.82%）与一个平台侧真 bug（NpcMemRW 不支持同时读写）
+
+#### ① D-Cache：4 项 × 1 个字，写穿 + 独占 AXI
+
+结构**照抄 icache 的风格**：`Stream` 请求（read/write/addr/wdata/wmask/size）+ `Flow` 响应；dcache 内部复用 `ysyxx_23060082_Axi4_Ctrler`（单拍读写）并**独占 CPU 的 AXI 口** → **不需要第二个控制器、不需要任何 AXI 通道 mux**（早前一版正是栽在"两个控制器共用 r 通道"上）。
+
+- 每项只有 1 个字（4B）→ **不需要突发，也不需要多字选择**
+- 只缓存 **flash(0x3000_0000) 与 PSRAM/SDRAM(0x8000_0000~0xbfff_ffff)**；SRAM/MROM/设备不介入（设备读也不占 cache）
+- 读命中当拍组合返回；读缺失进 `ReadMiss`，等控制器读完再填回并返回
+- 写一律进 `Write`（**写穿**：命中也要写内存），命中时**同步更新 cache 那一个字**；写不分配
+  → 于是 **cache 永远与内存一致**，不存在"读到旧值"的窗口（这正是不需要 `fence.i` 的原因）
+
+**实测**：周期 12,975,343 → **12,609,428（−2.82%）**、IPC 0.0448 → **0.0462**、LSU 读事务 75,728 → **64,258**（命中率 **15.15%**）、icache 缺失 avg **不变**（无争用）、面积 22,460.24 → **24,830.83**、500MHz slack **+0.799ns**。
+
+**两个必须记住的握手坑**（症状都是"错数据"，而不是明显挂死）：
+
+| 坑 | 现象 | 正确做法 |
+|---|---|---|
+| 用 `rspOut.valid` 判"读命中" | 它还包含**上一笔 store 的 `b` 响应**与**上一笔缺失的完成** → 一次 load 拿别人的响应"当拍完成"，拿到旧数据 → ALU/分支错乱 → **死循环** | dcache 导出真正的 `readHit`（`Idle && reqRead && hit`），LSU 用它判命中 |
+| `Idle → WaitMem` 在 `needMem` 上跳 | dcache 还在 `Write` 时 `reqIn.ready=0`，请求被丢掉，之后只会等到**属于别人的响应** | 等 `dcache.io.reqIn.fire` 再离开 Idle |
+
+**注意**：面积余量只剩 **169 µm²**（抖动 ±250）→ 再往上加东西必须先腾面积。
+
+#### ② NpcMemRW：一个平台侧的真 bug（不是核的问题）
+
+- **现象**：跑 `am-kernels/tests/cpu-tests` 时随机失败，报"非法指令"（例如 `pc=0x3000017c 报非法 feb71ae3` —— 而该地址的指令其实完全合法），或输出错乱（`ID = __`）、或死循环。
+- **定位**：`0690d2c`（更早）通过、`519cf4f`（五级流水线）起失败 → 逐版本二分锁定到流水线。关键推理：**同一条 `bne` 刚刚才在打印循环里执行过 5 次** → 不是译码器不认识 B 型 → 只能是"**送进 IDU 的指令与 pc 对不上**"。
+- **根因**：五级流水线之后，**icache 的取指（读）与 LSU 的数据访问（读/写）可以在同一拍**通过 Xbar 打到内存；而旧的 `NpcMemRW` 只有**一个 `addr` 端口** → 两边抢用同一个地址 → 取指可能读到写地址、数据访问读到取指地址。
+- **修复**：拆分读写地址（3 个文件同步改）
+  - `playground/src/DPI-C.scala`：黑盒端口 `addr` → `waddr` + `raddr`
+  - `playground/vsrc/dpi-c.v`：端口同步拆分，`pmem_write(waddr,…)` / `pmem_read(raddr)`
+  - `playground/src/NPC_TOP.scala`：`waddr := io.axi4.aw.addr`；`raddr := Mux(arFire, ar.addr, readBase + 突发递增地址)`
+- **验证**：`shuixianhua` 在 **npc 与 ysyxsoc 两个平台都 PASS**，项目全部回归通过。
+- **附带说明**：这也是此前"dcache 好/坏"结论反复的根源 —— 该 bug 与 dcache 无关，纯属时序巧合。
+
+#### ③ 两个无害的环境告警（供参考）
+
+- `WARNING: Glycin running without sandbox.`（GTKWave，来自 OSS CAD Suite）—— glycin 是它用来加载图片/图标的库，只是"图片解码没跑在沙箱里"，**与仿真无关**。
+- `xkbcommon: ERROR: … unrecognized keysym "dead_hamza"`（surfer 等现代 GUI）—— `libx11 1.8.13` 的 X11 Compose（组合键）表用了 `libxkbcommon 1.13.2` 不认识的旧 keysym，**与设计无关**；`XCOMPOSEFILE=/dev/null surfer xxx.fst` 即可消除。

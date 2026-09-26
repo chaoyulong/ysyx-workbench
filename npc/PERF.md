@@ -33,7 +33,8 @@ make sta STA_PDK=icsprout55  # 换流片工艺综合
 | c252c6c | 同步复位(项目要求) + mcycle/minstret 拆两个32位 + 去掉可省的复位 [nangate45] | 13822167 | 581411 | 0.0421 | 698.6 | 19.78 | 22478.33 | 16522322 | 20.73 | 9005715 | 7750194 | 102.38 | 1255521 | 21.67 | 4.79/4.50 | 7715323 | 53.6 | 22.4 | 17.4 | 6.6 | 0.0 | 0.0 | 91.11 | 59.69 |
 | f9d00c5 | IFU 遇无条件跳转(jal/jalr)立即停取指, 消除错路径取指 [nangate45] | 12975343 | 581826 | 0.0448 | 775.9 | 16.72 | 22460.24 | 15272713 | 19.84 | 9002583 | 7736913 | 102.17 | 1265670 | 21.84 | 4.79/4.50 | 7785677 | 52.9 | 22.6 | 17.7 | 6.8 | 0.0 | 0.0 | 93.14 | 62.05 |
 | 1d85319 | D-Cache(4项x1字 直接映射/写穿/写不分配, 独占AXI; 只缓存 flash+PSRAM/SDRAM) [nangate45] | 12609428 | 581938 | 0.0462 | 832.3 | 15.15 | 24830.83 | 14906021 | 19.39 | 8682790 | 7418092 | 115.44 | 1264698 | 21.82 | 4.80/4.50 | 7595714 | 52.9 | 22.6 | 17.7 | 6.8 | 0.0 | 0.0 | 93.13 | 60.83 |
-
+| f1b8c26 | 异常处理(统一通道 trapEnter+excCause; 各级产生, LSU 生效; mstatus 进出异常) [nangate45] | 12309885 | 582020 | 0.0473 | 989.0 | 12.45 | 24701.03 | 14628529 | 20.69 | 8604974 | 7411890 | 115.34 | 1193084 | 20.58 | 4.80/4.50 | 7482234 | 52.8 | 22.7 | 17.7 | 6.8 | 0.0 | 0.0 | 92.53 | 60.88 |
+ 
 ## 记录步骤
 
 1. `git log --oneline` 确认当前 commit
@@ -115,3 +116,23 @@ defaultConfigForClockDomains = ClockDomainConfig(
   1. **不能用 `rspOut.valid` 判"读命中"** —— 它还包含上一笔 store 的 `b` 响应和上一笔缺失的完成 → 一次 load 会拿别人的响应"当拍完成"、拿到旧数据 → ALU/分支结果错乱 → **死循环**。必须由 dcache 导出真正的 `readHit`。
   2. **`Idle → WaitMem` 必须等 `reqIn.fire`** —— 否则 dcache 忙（还在 `Write`）时这次请求被丢掉，LSU 只能等到一个属于别人的响应。
 - **注意**：本版面积余量只剩 **169 µm²**（再映射抖动本身就有 ±250）→ 后续要加东西（例如 store buffer）必须**先腾面积**。
+
+### f1b8c26：异常处理（**周期零成本**）
+
+- **统一异常通道**：payload 的 `CsrCtrl` 里带两个字段 —— `trapEnter`（"有异常要进"，各阶段都能置）与 `excCause`（4 位异常号）。
+  每级的合并规则统一写成"**上游优先**"：`trapEnter := 上游.trapEnter || 本级异常`，`excCause := Mux(上游.trapEnter, 上游.excCause, 本级cause)`
+  → 更老的指令先到生效点、并且会覆盖更年轻的 → **"最老的异常胜出"自动成立**（正是"多异常同时发生"要求的语义）。
+- **各级产生**：
+
+  | 部件 | 异常号 | 说明 |
+  |---|---|---|
+  | IFU | 0 / 1 / 12 | 0=取指地址未对齐(兜底)｜1=总线读回非 OKAY（icache 新增 `rspErr`，且**错误行不写进 cache**）｜12=页错误（MMU 接口先接 0）|
+  | IDU(Decoder) | 2 / 3 / ecall | 非法指令、ebreak、ecall；`i_illegal` 已改为 `!isLegal`（原先的 `instr =/= 0` 豁免会让"全 0 指令"静默执行）|
+  | EXU | 0 | 跳转/分支**目标**未对齐（`pcNext(1)`）；同时**抑制自己的重定向**，否则会真的跳到非对齐地址并与 trap 的重定向打架 |
+  | LSU | 4 / 5 / 6 / 7 | 4/6=访存地址未对齐（**必须在发请求之前判定**）｜5/7=总线读/写错误（dcache 新导出 `readErr`/`writeErr`）|
+
+- **生效点（LSU）**：`mepc := io.input.pc`（**出错指令自己的 pc**，随指令一路传下来 → 精确异常）、`mcause := Mux(ecall, a5, excCause)`、`mstatus` 的 MIE/MPIE/MPP、重定向到 `mtvec`；同时**抑制该指令的副作用**：不访存（`reqIn.valid && !trapEnter`）、不写回（`regWr && !trapEnter`）、不执行自己的 CSR 写（`csrCmd := 0`）。`trapExit`(mret) 单独一路：不写 mepc/mcause，只恢复 `mstatus` 并跳回 `mepc`。
+- **ecall 的 cause 走 a5（AM 约定，勿改）**：`__am_irq_handle` 把 `mcause` 当"事件号"用（`yield()` 是 `li a5,-1; ecall`），所以不能按规范改成固定 11；因此 `causeIn := Mux(ecall, io.input.rfReadData, excCause.resize(32))` —— ecall 必须取**完整 32 位**，否则 `-1` 就错了。
+- **实测**：周期 **12,309,885 与上一版逐位相同** → 异常机制在**无异常路径上零成本**；面积 24,774.44 → **24,701.03**（余量 298.97）；500MHz slack **+0.989ns**；microbench 与 shuixianhua(npc+ysyxsoc) 全 PASS。
+- **已隐式验证**：cpu-tests 每次 `printf`/`putch` 都是 ecall → trap → handler → mret，等于把"trap 进入 / mepc·mcause 写入 / mstatus 更新 / mret 返回 / 重定向与前端 flush"这条完整回路跑了几万次。
+- **尚待专门验证**：故障类（0/4/5/6/7/12）现有测试不触发，需要自建用例（`.word 0xdeadbeef`、内联汇编造未对齐 lw/sw、ebreak）或在仿真里强制 `rspErr`/`pfFault`。

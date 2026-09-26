@@ -4,15 +4,33 @@ import spinal.core._
 import spinal.core.sim._
 import scala.reflect.runtime.universe
 
-// 配置 CPU 的参数(两平台统一, 直接 CpuConfig() 使用; 综合/STA 时显式 enableSimDebug = false)
+// 配置 CPU 的参数(综合/STA 时显式 enableSimDebug = false)
+// 平台差异用伴生 object 的两个工厂区分(见下面 CpuConfig.ysyxsoc / CpuConfig.npc)
 case class CpuConfig(
-  resetPc:          Long = 0x30000000L,  // 上电后的初始PC(两平台统一)
+  resetPc:          Long = 0x80000000L,  // 上电后的初始PC(默认按 ysyx 规范)
   enableMul:        Boolean = false,  // 乘法器
   enableDiv:        Boolean = false,  // 触发器
   enableInterrupt:  Boolean = false,  // 中断
   enableSimDebug:   Boolean = true    // 仿真专用调试信号(指令退休追踪/mtrace), 综合时关闭
   // 以后继续加选项
 )
+
+object CpuConfig {
+  /** ysyxsoc 平台: 复位由 SoC 的 SPI flash 启动流程决定(镜像在 flash 0x3000_0000) */
+  def ysyxsoc(enableSimDebug: Boolean = true): CpuConfig =
+    CpuConfig(resetPc = 0x30000000L, enableSimDebug = enableSimDebug)
+
+  /** npc 平台: 按 ysyx 规范, 复位向量 0x8000_0000(镜像与主存都在 0x8000_0000) */
+  def npc(enableSimDebug: Boolean = true): CpuConfig =
+    CpuConfig(resetPc = 0x80000000L, enableSimDebug = enableSimDebug)
+
+  /** 按 PARTFORM 环境变量选(生成 verilog 与仿真共用同一套规则) */
+  def forPartform(partform: String, enableSimDebug: Boolean = true): CpuConfig = partform match {
+    case "ysyxsoc" => ysyxsoc(enableSimDebug)
+    case "npc"     => npc(enableSimDebug)
+    case other     => throw new Exception(s"Unknown PARTFORM: $other (expect npc / ysyxsoc)")
+  }
+}
 
 
 object Config {
@@ -46,9 +64,14 @@ object SpinalToVerilog extends App {
   val enableSimDebug = sys.env.getOrElse("SPINAL_SIM_DEBUG", "1") != "0"
 
   Config.spinal.generateVerilog{
-    val top = topName match {
-      case "NPC_TOP" => NPC_TOP(CpuConfig(enableSimDebug = enableSimDebug))
-      case "ysyx_23060082" => ysyx_23060082(CpuConfig(enableSimDebug = enableSimDebug))
+    // 平台选择: make verilog 时由 Makefile 传 PARTFORM(npc / ysyxsoc) 进来
+  val partform = sys.env.getOrElse("PARTFORM", "npc")
+  val config   = CpuConfig.forPartform(partform, enableSimDebug)
+  println(s"[Info] SpinalToVerilog: top=$topName partform=$partform resetPc=0x${config.resetPc.toHexString} simDebug=$enableSimDebug")
+
+  val top = topName match {
+      case "NPC_TOP" => NPC_TOP(config)
+      case "ysyx_23060082" => ysyx_23060082(config)
       case _ => throw new Exception(s"Unknown TOP_NAME: $topName")
     }
     top

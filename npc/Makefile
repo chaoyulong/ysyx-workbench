@@ -83,8 +83,8 @@ $(LIBCAPSTONE):
 	$(MAKE) -C tools/capstone
 
 # 只操作spinal的两条命令:verilog与test
-SPINAL_GEN_ENV := SPINAL_TOPNAME=$(SPINAL_TOPNAME) BUILD_DIR=$(BUILD_DIR)
-SPINAL_SIM_ENV := SPINAL_SIM_DIR=$(BUILD_DIR)/simulations
+SPINAL_GEN_ENV := SPINAL_TOPNAME=$(SPINAL_TOPNAME) BUILD_DIR=$(BUILD_DIR) PARTFORM=$(PARTFORM)
+SPINAL_SIM_ENV := SPINAL_SIM_DIR=$(BUILD_DIR)/simulations PARTFORM=$(PARTFORM)
 
 verilog:
 	$(call git_commit, "generate verilog")

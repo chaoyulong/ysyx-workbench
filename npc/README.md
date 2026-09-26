@@ -556,3 +556,59 @@ npc/tools/make-ysyxsoc-patch.sh                  # 或 BASE=<其它基线> ...
 
 - `WARNING: Glycin running without sandbox.`（GTKWave，来自 OSS CAD Suite）—— glycin 是它用来加载图片/图标的库，只是"图片解码没跑在沙箱里"，**与仿真无关**。
 - `xkbcommon: ERROR: … unrecognized keysym "dead_hamza"`（surfer 等现代 GUI）—— `libx11 1.8.13` 的 X11 Compose（组合键）表用了 `libxkbcommon 1.13.2` 不认识的旧 keysym，**与设计无关**；`XCOMPOSEFILE=/dev/null surfer xxx.fst` 即可消除。
+
+### 追加：异常处理（统一通道 + "最老的胜出"，周期零成本）
+
+#### 设计
+
+沿用 `CsrCtrl` 作为**唯一的异常载体**，只加两个字段（不再单独引入 `excValid`）：
+
+```
+trapEnter : "有异常要进" —— 任何阶段都能置（原来它只表示 IDU 的 ecall|ebreak|illegal）
+excCause  : 4 位异常号
+trapExit  : mret（异常【返回】，语义不同，单独一路）
+```
+
+每级合并规则统一为"**上游优先**"：
+
+```scala
+io.output.csrCtrl.trapEnter := io.input.csrCtrl.trapEnter || 本级异常
+io.output.csrCtrl.excCause  := Mux(io.input.csrCtrl.trapEnter, io.input.csrCtrl.excCause, 本级cause)
+```
+
+→ 更老的指令先到生效点、且不会被更年轻的覆盖 → **"最老的异常胜出"自动成立** ✓
+（题目里"IFU 取指未对齐 + IDU 非法指令 + LSU 访存错误同时发生"的例子：LSU 最老 → 它胜出，另外两个随 flush 消失 ✓）
+
+**注意**：整体赋值 + 分片赋值会触发 SpinalHDL 的 `ASSIGNMENT OVERLAP`，所以凡是"要改某个字段"的地方（EXU 的 `csrCtrl`、LSU 的 `rfCtrl`）都改成**逐字段赋值**。
+
+#### 各级产生
+
+| 部件 | 异常号 | 做法 |
+|---|---|---|
+| IFU | 0 / 1 / 12 | 0=取指地址未对齐（兜底，主检测在 EXU）｜1=AXI 读回非 OKAY（`rspErr`，且**错误行不写进 cache**）｜12=页错误（MMU 接口先接 0）|
+| IDU(Decoder) | 2 / 3 / ecall | `i_illegal` 已改为 **`!isLegal`**（原先 `(instr =/= 0) &&` 的豁免会让内存里的"全 0"静默执行 ✗）|
+| EXU | 0 | 跳转/分支**目标**未对齐（`pcNext(1)`）；并**抑制自己的重定向**（否则真跳到非对齐地址，且年轻的重定向会盖掉 trap）|
+| LSU | 4 / 5 / 6 / 7 | 4/6=访存地址未对齐（**发请求之前**判定）｜5/7=总线错误（dcache 的 `readErr`/`writeErr`）|
+
+#### 生效点与精确异常
+
+- `mepc := io.input.pc` —— **pc 随指令一路传下来**，所以异常生效时拿到的就是**出错那条指令自己的 pc** ✓（题目要求的"精确异常"）
+- `mcause := Mux(ecall, a5, excCause.resize(32))`
+- `mstatus`：进异常 `MIE:=0, MPIE:=MIE, MPP:=M`；`mret` `MIE:=MPIE, MPIE:=1, MPP:=U`
+- 抑制副作用：`reqIn.valid && !trapEnter`（不访存）、`regWr && !trapEnter`（不写回）、`csrCmd := 0`（不执行自己的 CSR 写）
+- 重定向：`takeTrap → mtvec`、`trapExit → mepc`、`fence.i → pc+4`
+
+**"在 LSU 生效"为什么是精确的**：本设计**没有分支预测**，且重定向由 EXU/LSU 产生 → 错误路径的指令最多只到 IDU/EXU，**到达 LSU 之前一定被 flush** → 因此"能到 LSU 的指令必然是确认正确的" ✓。
+⚠️ 这条是**靠距离维持的不变量** ✗：一旦将来加了分支预测（错误路径可以流到 LSU）或流水线变深，就必须把生效点搬到提交点（WBU）。
+
+#### ecall 的 cause 走 a5 —— **不要改成规范的 11**
+
+AM 的 `__am_irq_handle` 把 `mcause` 当"事件号"用，而 `yield()` 是 `#ifdef __riscv_e` → `li a5,-1; ecall`（RV32E 用 a5，非 E 才用 a7）。
+所以 `causeIn := Mux(io.input.csrCtrl.ecall, io.input.rfReadData, excCause.resize(32))` —— ecall 取**完整 32 位 a5**（`-1` 才正确），其余异常才零扩展。
+（LSU 里 `rfReadData` 在 ecall 时正是 rs1=a5：EXU 的 `useRs1 = trapEnter || csrCmd =/= 0` 保证了这一点。）
+
+#### 验证情况
+
+- 周期 **12,309,885 与上一版逐位相同** → 无异常路径**零成本**；microbench + shuixianhua(npc/ysyxsoc) 全 PASS
+- cpu-tests 每次 `printf` 都走 ecall→trap→mret，等于把整条回路跑了几万次 ✓
+- 故障类（0/4/5/6/7/12）需要专门用例（`.word 0xdeadbeef`、内联汇编造未对齐 `lw`/`sw`、`ebreak`）或强制 `rspErr`/`pfFault` ✓

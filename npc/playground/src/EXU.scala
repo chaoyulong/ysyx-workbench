@@ -53,9 +53,22 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
   val pcNextBit0= !banchCond.io.pcBsrc && pcDataTmp(0)          // jalr指令规定要将最后一位清零
   val pcNext    = (pcDataTmp(31 downto 1) ## pcNextBit0).asUInt
 
-  io.redirect.valid  := io.input.valid && banchCond.io.pcAsrc   // 数据有效并且是跳转指令(pcAsrc,pcBsrc有一个为1就是跳转指令，而pcBsrc为1时，pcAsrc也为1)
+  // ================================ 异常检测 ================================ //
+  val pcMisaligned = banchCond.io.pcAsrc && (pcNext(1) || pcNext(0))  // 跳转/分支目标未对齐
+
+  io.output.csrCtrl.csrCmd    := io.input.ctrl.csrCtrl.csrCmd
+  io.output.csrCtrl.ecall     := io.input.ctrl.csrCtrl.ecall
+  io.output.csrCtrl.trapExit  := io.input.ctrl.csrCtrl.trapExit
+
+  // 上级优先
+  io.output.csrCtrl.trapEnter := io.input.ctrl.csrCtrl.trapEnter || pcMisaligned
+  io.output.csrCtrl.excCause  := Mux(io.input.ctrl.csrCtrl.trapEnter, io.input.ctrl.csrCtrl.excCause, U(0, 4 bits)) // 0 = 跳转目标未对齐
+               
+  // ================================ 重定向 ================================ //
+  io.redirect.valid  := io.input.valid && banchCond.io.pcAsrc && !pcMisaligned   // 数据有效并且是跳转指令(pcAsrc,pcBsrc有一个为1就是跳转指令，而pcBsrc为1时，pcAsrc也为1)
   io.redirect.pcNext := pcNext
   io.redirect.fenceI := False                                   // exu中执行的话，如果上一级lsu在写入，那么此时lsu写入的数据就不是icache可见的了，所以要延迟到lsu阶段再执行
+
   // ================================ 用于握手的部分 ================================ //
   val willValid = True
   io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
@@ -69,7 +82,6 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
   io.output.fenceI     := io.input.ctrl.fenceI
   io.output.rfCtrl     := io.input.ctrl.rfCtrl      // 直通数据，在EXU中无作用
   io.output.memCtrl    := io.input.ctrl.memCtrl     // 直通数据，在EXU中无作用
-  io.output.csrCtrl    := io.input.ctrl.csrCtrl     // 直通数据，在EXU中无作用
   // ================================ 数据前递 ================================ //
   val getDataInLsu      = io.input.ctrl.rfCtrl.mem2reg || io.input.ctrl.rfCtrl.csr2reg  // 要在lsu中才会得到的数据
   val wr                = io.input.ctrl.rfCtrl.regWr

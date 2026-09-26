@@ -5,7 +5,11 @@ import spinal.lib._    // 使用spinal的模块库
 
 case class ysyx_23060082_Decoder(config: CpuConfig = CpuConfig()) extends Component {
   val io = new Bundle {
-    val instr       = in  UInt(32 bits)
+    val instr       = in UInt(32 bits)
+    val ifuTrapEnter= in Bool()          // 有异常
+    val ifuExcCause = in UInt(4 bits)    // 异常号
+    val rfReadData1 = in UInt(32 bits)
+
     val ctrl        = out(CtrlSignals())
     val imm         = out UInt(32 bits)
 
@@ -173,13 +177,14 @@ case class ysyx_23060082_Decoder(config: CpuConfig = CpuConfig()) extends Compon
   //           pc_next = CSR[mtvec]
   // mret:     pc_next = CSR[mepc  ]
   // ==================================== ==================================== //
-  io.ctrl.csrCtrl.csrCmd    := Mux(i_csrrw, U"3'd1",              // 0=NOP,1=CSRRW,2=CSRRS
+  io.ctrl.csrCtrl.csrCmd    := Mux(i_csrrw, U"3'd1",                            // 0=NOP,1=CSRRW,2=CSRRS
                                Mux(i_csrrs, U"3'd2", U"3'd0"))
-  io.ctrl.csrCtrl.illegal   := i_illegal
-  io.ctrl.csrCtrl.ebreak    := i_ebreak
-  io.ctrl.csrCtrl.trapEnter := i_ecall | i_ebreak | i_illegal     // 异常进入,主动进入或者出现非法指令
-  io.ctrl.csrCtrl.trapExit  := i_mret                             // 退出异常,MRET
-
+  io.ctrl.csrCtrl.trapEnter := io.ifuTrapEnter | i_ecall | i_ebreak | i_illegal // idu的异常进入,主动进入或者出现非法指令
+  io.ctrl.csrCtrl.excCause  := Mux(io.ifuTrapEnter, io.ifuExcCause,             // 前级的异常优先
+                               Mux(i_illegal, U(2, 4 bits), 
+                               Mux(i_ebreak, U(3, 4 bits), U(0, 4 bits))))
+  io.ctrl.csrCtrl.trapExit  := i_mret                                           // 退出异常,MRET
+  io.ctrl.csrCtrl.ecall     := i_ecall
   // ================================ 指令类别(仅仿真, 性能统计) ================================ //
   if (config.enableSimDebug) {
     io.isCalc   := i_add | i_sub | i_sll | i_slt | i_sltu | i_xor | i_srl | i_sra | i_or | i_and |

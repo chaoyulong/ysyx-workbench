@@ -102,9 +102,16 @@ case class ysyx_23060082_CSR() extends Component {
     }
   }
 
-  when(io.trapEnter){
-    mepc   := io.pcIn
-    mcause := io.causeIn
+  when(io.trapEnter) {
+    mepc                  := io.pcIn; 
+    mcause                := io.causeIn
+    mstatus(3)            := mstatus(7)    // MIE  := MPIE
+    mstatus(7)            := False         // MPIE := 0
+    mstatus(12 downto 11) := U(3, 2 bits)  // MPP  := M
+  } .elsewhen(io.trapExit) {               // mret
+    mstatus(3)            := mstatus(7)    // MIE  := MPIE
+    mstatus(7)            := True          // MPIE := 1
+    mstatus(12 downto 11) := U(0, 2 bits)  // MPP  := U
   }
 
   io.mtvec := mtvec

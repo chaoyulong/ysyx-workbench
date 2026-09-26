@@ -11,7 +11,6 @@ case class Lsu2Wbu_data(config: CpuConfig = CpuConfig()) extends Bundle {
 
   val rfWriteData = UInt(32 bits) 
   val rfCtrl      = RfCtrl()        // 其中的mem2reg信号会作为读内存信号被用到
-  val fenceI      = Bool()          // fence.i(直通, WBU 据此通知 IFU 失效 icache)
 }
 
 
@@ -32,8 +31,21 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   val needRead  = io.input.valid && io.input.rfCtrl.mem2reg   // 需要读内存
   val needWrite = io.input.valid && io.input.memCtrl.memWr    // 需要写内存
   val needMem   = needRead || needWrite                       // 需要访问内存
+    
+  // ================================ 异常检测 ================================ //
+  // 必须在发请求之前判定，否则会真的去访存
+  val sizeCode = io.input.memCtrl.memOp(1 downto 0)                   // 0=B,1=H,2=W
+  val laneMis  = Mux(sizeCode === U(2), memAddr(1) || memAddr(0),     // 字: 4字节对齐
+                 Mux(sizeCode === U(1), memAddr(0),                   // 半字: 2字节对齐
+                                          False))                     // 字节: 永远对齐
+  val lsMisaligned = needMem && laneMis
 
-  val instIllegal = io.input.csrCtrl.illegal      
+  val lsFault = dcache.io.readErr || dcache.io.writeErr
+  val trapEnter = io.input.csrCtrl.trapEnter || lsMisaligned || lsFault   // 上游优先
+  val excCause = Mux(io.input.csrCtrl.trapEnter, io.input.csrCtrl.excCause,
+                  Mux(lsMisaligned, Mux(needRead, U(4, 4 bits), U(6, 4 bits)),        // 4 = load, 6 = store
+                                 Mux(needRead, U(5, 4 bits), U(7, 4 bits))))       // 5 = load, 7 = store
+
   // ================================ 访存通路 ================================ //
   val dataProcess = ysyx_23060082_DataProcess()   // 数据处理
   val dcache  = ysyx_23060082_Dcache(config)   // D-Cache(独占 AXI)
@@ -42,7 +54,7 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   dataProcess.io.wdata  := io.input.rfReadData                              // 写数据为rs2的数据
   // ---- dcache 接入(发送访存请求 + 接收响应) ----
   io.axi4 <> dcache.io.axi4
-  dcache.io.reqIn.valid     := needMem && (state === LsuState.Idle)
+  dcache.io.reqIn.valid     := needMem && (state === LsuState.Idle) && !trapEnter
   dcache.io.reqIn.read      := needRead
   dcache.io.reqIn.write     := needWrite
   dcache.io.reqIn.addr      := memAddr
@@ -59,49 +71,49 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   val wrEnd = ((state === LsuState.WaitMem) && dcache.io.rspOut.valid && io.input.memCtrl.memWr) || wrNow
   dataProcess.io.rdata := dcache.io.rspOut.readData   // dcache 内已有数据寄存器, 不需要再寄存
 
-  // ================================ lsu状态机 ================================ //
-  switch(state) {
-    is(LsuState.Idle) {
-      when(needMem && dcache.io.reqIn.fire) {          // 等 dcache 接受请求后才离开 Idle
-        when(rdHitNow) {                               // 读命中: 当拍完成, 不等访存
-          when(io.output.fire){state := LsuState.Idle}
-          .otherwise          {state := LsuState.Done}
-        } 
-        .elsewhen(wrNow) {                              // 不等写入完成就开始握手，让写操作在后台运行
-          when(io.output.fire){state := LsuState.Idle} 
-          .otherwise{state := LsuState.Done} 
-        } 
-        .otherwise {state := LsuState.WaitMem}
-      }
-      .otherwise{state := state}
-    }
-    is(LsuState.WaitMem) {
-      when(rdEnd || wrEnd) {
-        when(io.output.fire){state := LsuState.Idle}     // 若已经握手成功，则返回到Idle状态
-        .otherwise{state := LsuState.Done}
-      }
-      .otherwise{state := state}
-    }
-    is(LsuState.Done) {
-      when(io.output.fire) {state := LsuState.Idle}   
-      .otherwise{state := state}     
-    }
-  }
   // ================================ CSR寄存器 ================================ //
   val csr = ysyx_23060082_CSR()
   csr.io.csrAddr    := io.input.csrAddr
   csr.io.csrWdata   := io.input.rfReadData
-  csr.io.csrCmd     := io.input.csrCtrl.csrCmd
-  csr.io.trapEnter  := io.input.csrCtrl.trapEnter
+  csr.io.csrCmd     := Mux(trapEnter, U(0, 3 bits), io.input.csrCtrl.csrCmd)      // 异常时不执行本条自己的CSR写
+  csr.io.trapEnter  := trapEnter
   csr.io.trapExit   := io.input.csrCtrl.trapExit
-  csr.io.pcIn       := io.input.pc
-  csr.io.causeIn    := Mux(io.input.csrCtrl.illegal, U(2),
-                       Mux(io.input.csrCtrl.ebreak , U(3), io.input.rfReadData))
+  csr.io.pcIn       := io.input.pc                                                // 出错那条指令的pc
+  csr.io.causeIn    := Mux(io.input.csrCtrl.ecall, io.input.rfReadData,           // ecall指令的cause在a5寄存器中
+                                                   excCause.resize(32 bits))      // 其余零扩展
   csr.io.instrRetire := io.output.fire    // 指令传出LSU即计数(比写回提前1拍, 总数正确)
 
+  // ================================ lsu状态机 ================================ //
+  switch(state) {
+    is(LsuState.Idle) {
+      when(needMem && dcache.io.reqIn.fire && !trapEnter) {          // 等 dcache 接受请求后才离开 Idle
+        when(rdHitNow) {                               // 读命中: 当拍完成, 不等访存
+          when(io.output.fire) { state := LsuState.Idle }
+          .otherwise           { state := LsuState.Done }
+        } 
+        .elsewhen(wrNow) {                              // 不等写入完成就开始握手，让写操作在后台运行
+          when(io.output.fire) { state := LsuState.Idle } 
+          .otherwise           { state := LsuState.Done } 
+        } 
+        .otherwise {state := LsuState.WaitMem}
+      }
+      .otherwise{state := LsuState.Idle}
+    }
+    is(LsuState.WaitMem) {
+      when(rdEnd || wrEnd) {
+        when(io.output.fire) { state := LsuState.Idle }     // 若已经握手成功，则返回到Idle状态
+        .otherwise{state := LsuState.Done}
+      }
+      .otherwise { state := LsuState.WaitMem }
+    }
+    is(LsuState.Done) {
+      when(io.output.fire) {state := LsuState.Idle}   
+      .otherwise{state := LsuState.Done}     
+    }
+  }
   // ================================ 用于握手的部分 ================================ //
   // willValid的意义就是当前周期就可以完成任务
-  val willValid = (rdEnd || wrEnd) ||                       // 需要访存并且访存成功
+  val willValid = trapEnter || (rdEnd || wrEnd) ||                       // 有异常，或需要访存并且访存成功
                   (state === LsuState.Done) ||
                   (state === LsuState.Idle && io.input.valid && !needMem)
   io.output.valid := io.input.valid && willValid  
@@ -112,8 +124,9 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
     io.output.instr    := io.input.instr
   }
        
-  io.output.rfCtrl     := io.input.rfCtrl    
-  io.output.fenceI     := io.input.fenceI
+  io.output.rfCtrl.mem2reg := io.input.rfCtrl.mem2reg
+  io.output.rfCtrl.csr2reg := io.input.rfCtrl.csr2reg
+  io.output.rfCtrl.regWr   := io.input.rfCtrl.regWr && !trapEnter      // ★ 异常时不写回
 
   val memDataOut    = Mux(io.input.csrCtrl.csrCmd =/= U"3'd0", csr.io.csrRdata, dataProcess.io.rdataReal) // 借用mem_data_out来输出读出的值
   val aluDataOut    = io.input.aluResult
@@ -129,11 +142,12 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   // ================================ 重定向 ================================ //
   // trap/mret 的目标是CSR寄存器输出, 当拍就有; fence.i的目标是pc+4
   // fence.i放在LSU: LSU顺序处理访存, fence进到LSU时最多有一个后台访存，只要等待访存完成，之后的取指必然看得到新指令
-  io.redirect.valid  := io.input.valid && (io.input.csrCtrl.trapEnter || io.input.csrCtrl.trapExit || (io.input.fenceI && !dcache.io.writeBusy))
-  io.redirect.pcNext := Mux(io.input.csrCtrl.trapEnter, csr.io.mtvec,
-                        Mux(io.input.csrCtrl.trapExit , csr.io.mepc,
-                                                        io.input.pc + 4))    // fence.i只是冲刷，pcNext依旧是pc+4
+  io.redirect.valid  := io.input.valid && (trapEnter || io.input.csrCtrl.trapExit || (io.input.fenceI && !dcache.io.writeBusy))
+  io.redirect.pcNext := Mux(trapEnter, csr.io.mtvec,
+                        Mux(io.input.csrCtrl.trapExit, csr.io.mepc,
+                                                      io.input.pc + 4))    // fence.i只是冲刷，pcNext依旧是pc+4
   io.redirect.fenceI := io.input.fenceI
+
   // ==================== 仿真专用: LSU 访存性能统计(仅仿真, 4 组: mem/dev × 读/写) ====================
   // 内存范围(两平台统一): flash 0x30000000-0x3fffffff + psram 0x80000000-0x9fffffff + sdram 0xa0000000-0xbfffffff
   if (config.enableSimDebug) {

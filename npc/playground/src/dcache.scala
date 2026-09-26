@@ -36,9 +36,11 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   val io = new Bundle {
     val reqIn    = slave  Stream(DcacheReqData())
     val rspOut   = master Flow(DcacheRspData())
-    val readHit  = out Bool()      // 本拍这次读真的命中(load 用它判"当拍完成")
+    val readHit  = out Bool()       // 本拍这次读真的命中(load 用它判"当拍完成")
     val writeAccept = out Bool()    // dcache接收了写数据，正在执行写
-    val writeBusy= out Bool()   // 正在后台写
+    val writeBusy= out Bool()       // 正在后台写
+    val readErr   = out Bool()
+    val writeErr   = out Bool() 
     val miss     = if (config.enableSimDebug) out Bool() else null   // 缺失脉冲(供 perf 计数)
     val missDone = if (config.enableSimDebug) out Bool() else null   // 缺失完成脉冲
     val axi4     = master(Axi4(AxiConfig.axiConfig))
@@ -115,6 +117,10 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   axi4Ctrler.io.writeMask := io.reqIn.writeMask
   axi4Ctrler.io.size      := io.reqIn.size
 
+  val readErr  = axi4Ctrler.io.axi4.r.fire && (axi4Ctrler.io.axi4.r.payload.resp =/= B"2'b00")
+  val writeErr = axi4Ctrler.io.axi4.b.fire && (axi4Ctrler.io.axi4.b.payload.resp =/= B"2'b00")
+  io.readErr  := readErr
+  io.writeErr := writeErr
   // ================================ 写穿更新 / 缺失填回 ================================ //
   // store 命中: 按字节使能改 cache 里那一个字(与发给内存的 data/mask 完全一致)
   val storeData = UInt(32 bits)
@@ -125,7 +131,7 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
     }
   }
 
-  when(readMissDone && cacheable) {                            // 读缺失填回(只有可缓存地址才占 cache)
+  when(readMissDone && cacheable && !readErr) {               // 读缺失填回(只有可缓存地址才占 cache)
     dataMem(index)  := axi4Ctrler.io.readData
     tagMem(index)   := tag
     validReg(index) := True

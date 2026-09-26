@@ -64,12 +64,13 @@ case class IcacheRspData() extends Bundle {
 
 case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Component {
   val io = new Bundle {
-    val reqIn  = slave  Stream(IcacheReqData())
-    val rspOut = master Flow(IcacheRspData())
-    val axi4   = master(Axi4ReadOnly(AxiConfig.axiConfig))
-    val fenceI = in Bool()    // fence.i: 清空有效位(后续取指缺失重读)
-    val miss   = out Bool()   // 缺失拍脉冲(每次缺失一次), 供 IFU 的性能计数器统计命中率; STA 时无人使用会被剪掉
-    val missDone = out Bool() // 缺失完成拍脉冲, 与 miss 配对可测出平均缺失代价(即 TMT 里的那一项)
+    val reqIn    = slave  Stream(IcacheReqData())
+    val rspOut   = master Flow(IcacheRspData())
+    val axi4     = master(Axi4ReadOnly(AxiConfig.axiConfig))
+    val fenceI   = in Bool()    // fence.i: 清空有效位(后续取指缺失重读)
+    val miss     = out Bool()   // 缺失拍脉冲(每次缺失一次), 供 IFU 的性能计数器统计命中率; STA 时无人使用会被剪掉
+    val missDone = out Bool()   // 缺失完成拍脉冲, 与 miss 配对可测出平均缺失代价(即 TMT 里的那一项)
+    val rspErr   = out Bool()   // 总线读取有错误
   }
 
   // ================================ ifu的axi交给icache控制 ================================ //
@@ -149,9 +150,12 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
     discardMiss := False
   }
 
+  val rspErr = axi4Ctrler.io.axi4.r.fire && (axi4Ctrler.io.axi4.r.payload.resp =/= B"2'b00")
+  io.rspErr := rspErr
+
   when(io.fenceI) {
     validReg := 0
-  } elsewhen(missDone && !discardMiss) {  // 如果是卡住的话，vaild不会置起，所以会开始下一次访存
+  } elsewhen(missDone && !discardMiss && !rspErr) {  // 如果是卡住的话，vaild不会置起，所以会开始下一次访存
     validReg(indexReg) := True
   } otherwise {
     validReg := validReg
@@ -199,8 +203,7 @@ case class ysyx_23060082_Axi4_Ctrler_ReadOnly_Burst(param: IcacheParams = Icache
   io.axi4.r.ready := io.axi4.r.valid
   
   io.readEnd  := io.axi4.r.fire && io.axi4.r.last     // 突发结束(r.last)才算读完
-  io.readData := (if (param.words > 1) io.axi4.r.data ## lineReg else io.axi4.r.data).asUInt  // 拼接成一行数据
-                                    
+  io.readData := (if (param.words > 1) io.axi4.r.data ## lineReg else io.axi4.r.data).asUInt  // 拼接成一行数据                              
 
   when(readOnce) {
     val chain = when(wordCnt === 0) { lineReg(31 downto 0)  := io.axi4.r.data }
@@ -220,8 +223,4 @@ case class ysyx_23060082_Axi4_Ctrler_ReadOnly_Burst(param: IcacheParams = Icache
     wordCnt := wordCnt
   }
 
-  // 读响应错误检查: 从机返回非 OKAY 时仿真报错
-  when(io.axi4.r.fire && io.axi4.r.resp =/= Axi4Define.resp.OKAY) {
-    report(Seq("[IFU] read resp error! resp =", io.axi4.r.resp, "addr =", io.axi4.ar.addr))
-  }
 }

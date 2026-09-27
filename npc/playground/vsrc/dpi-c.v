@@ -59,7 +59,7 @@ module ItraceReg(
     end
     else if (valid) begin
       itraceRetirePc     <= pc;
-      itraceRetirePcNext <= pcNext
+      itraceRetirePcNext <= pcNext;
       itraceRetireInstr  <= instr;
       itraceRetireValid  <= 1'b1;
     end

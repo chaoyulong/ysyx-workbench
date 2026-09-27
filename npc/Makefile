@@ -36,7 +36,6 @@ STA_OUT=$(abspath $(BUILD_DIR)/sta)
 # 综合工艺: nangate45(教程基准, 面积限制按此工艺) / icsprout55(流片工艺)
 STA_PDK=nangate45
 
-
 ifneq ($(words $(CURDIR)),1)
   $(error Unsupported: GNU Make cannot build in directories containing spaces, build elsewhere: '$(CURDIR)')
 endif
@@ -58,7 +57,7 @@ include $(NVBOARD_HOME)/scripts/nvboard.mk
 VERILATOR = verilator
 GTKWAVE = gtkwave
 
-VERILATOR_CFLAGS += -MMD --build -cc  \
+VERILATOR_CFLAGS += -MMD --build -cc --lint-only \
 				-O3 --x-assign fast --x-initial fast --noassert \
 				--trace-fst --relative-includes	\
 				--no-timing --timescale "1ns/1ns"	\
@@ -116,7 +115,6 @@ define build_target
 	$(BIN) $(ARGS) $(IMG) && \
 	echo "[sim] done ($$(printf "%.1f" $$(echo "$$(date +%s.%N) - $$_t" | bc))s)"
 endef
-
 
 # 直接在nvboard上运行，直接查看现象
 run: $(CSRCS) $(VSRCS) $(NVBOARD_ARCHIVE) $(SRC_AUTO_BIND)

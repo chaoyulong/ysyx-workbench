@@ -179,7 +179,7 @@ static void difftest_reg_display(cpu_base_state_t *ref, vaddr_t pc, vaddr_t pcNe
   }
   Log_nohead("-- %-2d -- %-3s    0x%08x   0x%08x  %s",
              REG_NUM, "pc", pcNext, ref->pc, (pcNext != ref->pc) ? "<-- diff" : "");
-  Log_nohead("(pc 列比的是【执行后】的 pc：dut 用 itraceRetirePcNext，ref 用执行完一条后的 pc)");
+  Log_nohead("(pc 列比的是[执行后]的 pc: dut 用 itraceRetirePcNext, ref 用执行完一条后的 pc)");
 }
 
 // 比对：返回是否一致。pcNext 是【执行后】的 pc(见文件头 ★(1))

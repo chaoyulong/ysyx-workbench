@@ -30,3 +30,7 @@ test_run_dir/
 # (正常应走 make verilog 生成到 build/, 那里已被忽略)
 /NPC_TOP.v
 /ysyx_23060082.v
+
+# 编辑器(Metals / Scala LSP)的状态与报告目录, 与工程无关
+# 注意: 上面的 !*.md 会把 .metals/ 里的 .md 报告重新放行, 所以这里要单独排除整个目录
+.metals/

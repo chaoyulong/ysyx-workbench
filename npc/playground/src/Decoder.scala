@@ -8,7 +8,6 @@ case class ysyx_23060082_Decoder(config: CpuConfig = CpuConfig()) extends Compon
     val instr       = in UInt(32 bits)
     val ifuTrapEnter= in Bool()          // 有异常
     val ifuExcCause = in UInt(4 bits)    // 异常号
-    val rfReadData1 = in UInt(32 bits)
 
     val ctrl        = out(CtrlSignals())
     val imm         = out UInt(32 bits)

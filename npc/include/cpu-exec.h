@@ -30,6 +30,7 @@ typedef struct {
 typedef struct cpu_state{
   cpu_base_state_t base;// 基础的pc与寄存器        
   word_t instr;         // 指令
+  word_t pcNext;
 #ifdef CONFIG_ITRACE    
   Decode decode;        // 指令译码
 #endif

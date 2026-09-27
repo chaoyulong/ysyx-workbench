@@ -66,8 +66,9 @@ static void exec_once()
   g_nr_guest_inst++;   // 完成一条指令
 
   // 状态更新: 用退休指令的 PC (ifu.pc 可能已指向流水线后续)
-  cpu.base.pc    = itraceRetirePc;
-  cpu.instr = itraceRetireInstr;
+  cpu.base.pc = itraceRetirePc;
+  cpu.instr   = itraceRetireInstr;
+  cpu.pcNext  = itraceRetirePcNext;
   for (int i = 0; i < REG_NUM; i++) cpu.base.gpr[i] = gpr(i);
 
   // 检测程序结束

@@ -93,7 +93,9 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
   // ================================ 仿真专用 ================================ //
   if (config.enableSimDebug) {
     val pcDataA = Mux(banchCond.io.pcAsrc, io.input.imm, U"32'd4")
-    io.output.pcNextTrace := pcDataA + pcDataB
+    val pcDataTmpTrace  = pcDataA + pcDataB
+    val pcNextBit0Rtace = !banchCond.io.pcBsrc && pcDataTmpTrace(0) 
+    io.output.pcNextTrace := (pcDataTmpTrace(31 downto 1) ## pcNextBit0Rtace).asUInt
     io.output.instr   := io.input.instr
   }
   // EXU 运算周期统计(isCalc && willValid; 当前单周期, 每条计算指令占1拍)

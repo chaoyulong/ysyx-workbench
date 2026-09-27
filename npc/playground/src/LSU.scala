@@ -125,7 +125,10 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   if (config.enableSimDebug) { 
     io.output.pc     := io.input.pc
     io.output.instr  := io.input.instr
-    io.output.pcNext := io.input.pcNextTrace
+    // 退休指令的"下一条 pc": 异常->mtvec, mret->mepc, 其余用 EXU 算的(顺序/跳转目标)
+    io.output.pcNext := Mux(trapEnter,                 csr.io.mtvec,
+                        Mux(io.input.csrCtrl.trapExit, csr.io.mepc,
+                                                       io.input.pcNextTrace))
   }
   io.output.rfCtrl.rfWriteAddr := io.input.rfCtrl.rfWriteAddr
   io.output.rfCtrl.mem2reg := io.input.rfCtrl.mem2reg

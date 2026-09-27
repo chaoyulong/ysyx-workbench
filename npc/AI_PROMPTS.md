@@ -262,3 +262,232 @@ abstract-machine/ 与 am-kernels/ 提供裸机运行时和测试程序。
 并与 RTL 的 Icache access 缺失次数对拍验证。
 详细背景见 npc/README.md 与 npc/PERF.md。
 ```
+
+---
+
+## 提示词 8：工程全貌 + 当前交接状态（**接手请先整段读完**）
+
+```
+我在做 ysyx（一生一芯）的 NPC 处理器。下面这段是【自包含】的工程说明与当前进度，
+读完请先复述你的理解与下一步计划，再动手改代码；改完必须按第 6 节的流程自验。
+
+════════════════════════════════════
+一、仓库与目录（有两个嵌套的 git 仓库，别搞混）
+════════════════════════════════════
+工作区: /home/cyl/Desktop/ysyx-workbench/
+  npc/                ★ 主战场。独立 git 仓库, 远端 github.com/chaoyulong/npc, 分支 main
+  nemu/               NEMU 参考模拟器(difftest 的 ref 侧就在这里改)
+  abstract-machine/   AM 裸机运行时; 各平台设备驱动在 am/src/riscv/{npc,ysyxsoc}/
+  am-kernels/         测试程序(cpu-tests / benchmarks/microbench)
+  ysyxSoC/            SoC(外设/内存/AXI 互连), npc 平台不用它
+  nvboard/            板级仿真(FPGA)
+★ 外层 ysyx-workbench/ 也是一个 git 仓库(包含 AM/NEMU/ysyxSoC 等)。
+  npc/ 的代码改动要在 npc/ 里 commit + push origin main;
+  改 AM/NEMU 则在外层仓库(注意: ysyxSoC 的本地改动推不上去, 远端被课程锁定)。
+
+npc/ 内部结构:
+  playground/src/*.scala     处理器 RTL(IFU/IDU/EXU/LSU/WBU/icache/dcache/CSR/Decoder/...)
+  playground/Config.scala    CpuConfig(按平台选) + SpinalToVerilog 入口
+  playground/vsrc/dpi-c.v    DPI-C 黑盒(PerfReg/ItraceReg/MtraceReg 的 Verilog 侧)
+  csrc/                      仿真主程序: cpu-exec.c(退休/主循环) monitor.c(命令行/SDB)
+                             difftest.c(新, 进行中) pmem.c regfile.c trace/*.c
+  include/                   h 头: cpu-exec.h(CPU_state) trace.h(Verilator 层次路径宏) pmem.h
+  constr/npc.sdc             时序约束(500MHz)
+  PERF.md / README.md        ★ 性能数据与设计原因的正式记录, 改完必须更新
+
+════════════════════════════════════
+二、处理器结构（都是 SpinalHDL 1.12.3 / Scala 2.13）
+════════════════════════════════════
+五级顺序流水:  IFU | IDU | EXU | LSU | WBU
+  - 级间用 pipelineConnect(prevOut, thisIn, thisOut, flush, block); Flow 没有 ready
+  - IDU 是组合逻辑(译码 + RF 读 + 前递), 其它级有寄存器
+  - 退休(提交)点 = WBU; itrace 黑盒挂在 WBU, 用 itraceRetireValid/Pc/Instr/PcNext 暴露给 C 侧
+  - icache: 8 行 × 16B, 4 拍突发, 独占一条 AXI 读通道
+  - dcache: 4 项 × 1 字(4B), 直接映射, 写穿 + 写不分配, 独占 LSU 的 AXI 口
+  - CSR: mepc/mcause/mtvec/mstatus(+ mcycle/minstret, 32 位拆分)
+  - 异常: 统一通道 CsrCtrl.trapEnter(任何阶段的异常) + CsrCtrl.excCause(4 位异常号)
+  - 两个顶层: NPC_TOP(npc 平台, 只有 CPU) / ysyx_23060082(ysyxsoc 平台, 接 SoC)
+  - ISA: RV32E(16 个通用寄存器) + Zicsr + fence.i; 无 M/A/F/D(enableMul/enableDiv 都是 false)
+
+平台差异(Config.scala):
+  CpuConfig.forPartform(PARTFORM) → npc: resetPc=0x80000000(规范值) / ysyxsoc: resetPc=0x30000000(SPI flash 启动)
+  Makefile 已经把 PARTFORM 传进 SpinalHDL 生成环境(SPINAL_GEN_ENV / SPINAL_SIM_ENV);
+  生成时会打印一行 [Info] SpinalToVerilog: top=... partform=... resetPc=0x... , 用来确认平台选对了。
+
+════════════════════════════════════
+三、常用命令（★ 是最常用的）
+════════════════════════════════════
+cd npc
+  ./mill playground.compile        ★ 只做 Scala 编译/elaborate 检查(最快, 改 RTL 后先跑这个)
+  make verilog                     ★ 生成 RTL(会重新 elaborate); 失败时先看 build/v.log
+  make perf                        ★ ysyxsoc 平台跑 microbench 并打印全部性能计数器
+  make sta                         ★ yosys-sta(nangate45, 500MHz): 面积 + slack, 结果在 build/sta/
+  make sim / make wave             npc 平台仿真(/波形); make wave 会开 gtkwave(make wave GTKWAVE=surfer 可换)
+  make test                        SpinalSim 自测
+
+跑 AM 测试(在 am-kernels 里):
+  cd am-kernels/tests/cpu-tests && make ARCH=riscv32e-npc     ALL=shuixianhua    # npc 平台
+  cd am-kernels/tests/cpu-tests && make ARCH=riscv32e-ysyxsoc ALL=shuixianhua    # ysyxsoc 平台
+  结果看同目录的 .result 文件(日志 *-log.txt 常常是空的, 不要被骗)
+
+✗ 两个高频坑:
+  1) make wave 与 make perf 之间必须 `rm -rf build/obj_dir`
+     (wave 用 -D__GET_WAVE__ 编译, 产物与 perf 不兼容; 否则报 "打开依赖文件 xxx.d 失败")
+  2) 在受限沙箱里构建时 ccache 会写不了 ~/.ccache → 用 CCACHE_DISABLE=1 make ...
+     (正常终端里不需要)
+
+════════════════════════════════════
+四、当前性能(已记录在 PERF.md, 以那里为准)
+════════════════════════════════════
+最新提交 f1b8c26(异常处理) / 复核提交 f292f79:
+  周期 12,309,885 | 指令 582,020 | IPC 0.0473 | 面积 24,701.03 um2 | slack +0.989ns(约 989MHz)
+  microbench PASS; shuixianhua 在 riscv32e-npc 与 riscv32e-ysyxsoc 双平台均 PASS
+关键计数器: Icache miss 52,810(avg 60.83) | LSU mem rd 64,258(avg 115.34) | LSU mem wr 57,963(avg 20.58)
+            Dcache access 75,728 / miss 64,258 / 命中率 15.14%
+
+★ 硬约束(不要越界):
+  - 面积上限 25,000 um2(nangate45), 当前 24,701 → 只剩约 299 um2!
+    (同一份 RTL 的 STA 结果是确定的, 不会因为重跑而变; 但只要改了 RTL 就必须重跑 make sta)
+  - AXI 突发长度 ≤ 4 拍(8 拍会让 icache 缺失代价暴涨, 已实测否决)
+  - 评分 = 周期 + 面积; 频率只要 slack > 0 即可, 不要用"可达频率"的数字做判断(它随重映射抖动 ±10%)
+  - 周期预算几乎可加: LSU 读等待 7.4M(60%) + icache 缺失 3.2M(26%) + LSU 写等待 1.2M(10%)
+    → 机器是【访存延迟受限】, 任何优化都要先问"它减少的是哪一块"
+
+════════════════════════════════════
+五、已完成的工作(按提交)
+════════════════════════════════════
+519cf4f  五级流水线
+0690d2c  icache 8 行 × 16B(4 拍突发)
+...
+f9d00c5  IFU 遇到 jal/jalr 立即停取指, 消除错路径取指            → 周期 -6.1%
+1d85319  D-Cache(4 项 × 1 字, 写穿/写不分配, 独占 AXI)           → 周期 -2.8%, 命中率 15.14%
+21e3319  fix(npc平台): NpcMemRW 拆分读写地址(同一拍可同时读+写)   → 修复 npc 平台随机挂死
+f1b8c26  异常处理(统一通道 trapEnter+excCause, 各级产生, LSU 生效) + mstatus  → 零周期成本
+c252c6c  同步复位 + mcycle/minstret 32 位拆分
+
+★ 三个必须记住的设计结论:
+  1) 在 LSU 生效异常是【精确】的, 因为本设计没有分支预测、且重定向由 EXU/LSU 产生,
+     错路径指令在到达 LSU 之前一定被 flush。
+     ⚠ 这是靠"距离"维持的不变量: 一旦加了分支预测或流水线变深, 必须把生效点搬到 WBU。
+  2) ecall 的 mcause 走 a5(AM 约定), 不能改成规范的 11:
+     AM 的 __am_irq_handle 把 mcause 当"事件号"(yield() = li a5,-1; ecall),
+     而且它对 0~19 一律 ev.event = EVENT_SYSCALL 且 c->mepc += 4。
+     所以 causeIn := Mux(csrCtrl.ecall, rfReadData /*完整32位*/, excCause.resize(32))
+  3) dcache 的两个握手坑(症状都是"错数据"而不是挂死):
+     - 不能用 rspOut.valid 判"读命中"(它含上一笔 store 的 b 响应/上一笔缺失的完成) → 必须用 readHit
+     - Idle → WaitMem 必须等 dcache.io.reqIn.fire, 否则请求被丢掉
+
+════════════════════════════════════
+六、当前主战场: difftest 接入（进行中, 接手重点）
+════════════════════════════════════
+目标: 每条指令退休时与 NEMU 比对 {gpr[32], pc}, 立刻定位错误指令。
+原理/契约(NEMU 的 src/cpu/difftest/dut.c 就是标准模板):
+  DUT 侧                              ref(.so) 侧
+  init_difftest(so, img_size, port) → dlopen + dlsym 5 个函数
+                                    → ref_difftest_init(port)
+                                    → ref_difftest_memcpy(地址, 镜像, 大小, TO_REF)
+                                    → ref_difftest_regcpy(&状态, TO_REF)   ★ 含 pc → 复位值由此对齐
+  每条指令退休:  difftest_step(pc, npc)
+                                    → 若 skip: regcpy(TO_REF) 重新同步后 return
+                                    → 否则 ref_difftest_exec(1); regcpy(TO_DUT); 比对
+
+── NEMU 侧(己方已改好, 位置在 nemu/) ──
+  ✓ include/memory/paddr.h : 加了 in_flash/in_sram/in_sdram/in_mem_region 与 FLASH/SRAM/SDRAM 宏
+  ✓ src/memory/paddr.c     : 三块内存数组(flash 256M / sram 8K / sdram 128M, 尺寸取自
+                             abstract-machine/scripts/linker_ysyxsoc.ld 的 MEMORY)、
+                             guest_to_host/host_to_guest 区域化、paddr_read/write 用 in_mem_region
+  ✓ src/cpu/difftest/ref.c : difftest_memcpy / difftest_regcpy 已实现
+  ✓ 已用 TARGET_SHARE=y 编出 build/riscv32-nemu-interpreter-so, 5 个符号已导出
+     (menuconfig: ISA=riscv32, MODE_SYSTEM, TARGET_SHARE=y; 设备菜单会自动消失
+      —— 因为 src/device/Kconfig 有 `depends on !TARGET_SHARE`, 正好躲开 NEMU 设备落在
+      0xa000_0000 与 sdram 冲突的问题)
+  ✗ 待做 1: ref.c 的 difftest_exec 要加 `nemu_state.state = NEMU_RUNNING;` 再 cpu_exec(n)
+            (否则 ref 一旦到 END/ABORT, 后续 exec 不前进, 会报一堆假 diff)
+  ✗ 待做 2(可选): 想用 difftest 验异常, 两边同步给状态结构体加 mepc/mcause/mtvec/mstatus 字段
+
+── NPC 侧 ──
+  ✓ csrc/difftest.c 已从 NEMU 的 dut.c 抄了一份(骨架在)
+  ✗ 但它【直接照抄, 还没适配本工程】, 至少要处理这几处:
+     1) ref_difftest_regcpy(&cpu, TO_REF) → 必须改成 &cpu.base
+        本工程的 CPU_state 是包装过的(见下), difftest 只允许传 base
+     2) checkregs 里的 isa_difftest_checkregs 是 NEMU 的函数 → 要写成自己的比对:
+          比 ref->gpr[i] 与 cpu.base.gpr[i](i<32) 以及 ref->pc 与【DUT 执行后的 pc】
+     3) nemu_state → 本工程叫 npc_state(NPCState, NPC_ABORT/NPC_END/NPC_STOP)
+     4) 打开 CONFIG_DIFFTEST(include/config.h 或 Makefile 里定义)
+     5) init_difftest 里那句 memcpy 用的 RESET_VECTOR / guest_to_host 要用【本工程的】
+        (npc/include/pmem.h 里有, npc 平台 RESET_VECTOR 就是 0x80000000)
+  ✗ monitor.c:111 那行 `// init_difftest(diff_so_file, img_size, difftest_port);` 要取消注释
+     (线索已就绪: diff_so_file 变量 + 命令行 'd' 选项都在)
+  ✗ csrc/cpu-exec.c 的 trace_and_difftest() 里要插入调用, 建议:
+        difftest_step(cpu.base.pc, itraceRetirePcNext);
+     (那一行注释就是预留位置; 注意第一个参数是【刚退休那条】的 pc, 第二个是【下一条】的 pc)
+  ✗ 设备访问要 skip: 建议在 LSU 里用现成的判据(内存之外即设备)算一个 devAccess 位,
+     随 payload 传到退休点, 胶水里 `if (devAccess) difftest_skip_ref();`
+     (否则 ysyxsoc 的 UART/CLINT 轮询会与 NEMU 行为不同, 必报 diff)
+
+── 三个关键不变量(搞错就一定会 diff) ──
+  1) 接口结构体只有 { word_t gpr[32]; paddr_t pc; } = 132 字节(NEMU 的 riscv32_CPU_state,
+     CPU_state 就是它的 typedef)。本工程把它包在 CPU_state 里当第一个成员 base:
+        typedef struct { word_t gpr[32]; paddr_t pc; } cpu_base_state_t;
+        typedef struct cpu_state { cpu_base_state_t base; word_t instr; Decode decode; } CPU_state;
+     → difftest 一律只碰 &cpu.base; 绝不能用 sizeof(CPU_state)(那是 280+ 字节, 会越界)
+     → 建议加 _Static_assert(sizeof(cpu_base_state_t) == 132, ...)
+     → gpr[16..31] 永远保持 0(NPC 的 REG_NUM=16, 与 NEMU 的 RV32E 行为一致)
+  2) pc 的比对方式: 两边都比【执行后】的 pc ——
+       ref 侧 regcpy 回来的 ref_r->pc 就是"执行后";
+       DUT 侧要用 itraceRetirePcNext(= 刚退休那条的"下一条 pc", 已在 WBU 黑盒里接好:
+       EXU 算顺序/跳转目标, LSU 覆盖 异常→mtvec、mret→mepc)。
+     不要拿 cpu.base.pc 去比 pc(那是【本条】的 pc, 与 ref 天然差一条)
+  3) 计时类 CSR(mcycle/minstret)与 mtime 不要纳入比对; 而 ecall 那拍的 mcause 两边
+     约定不同(a5 vs 11), 要比 CSR 就得在那一步 skip
+
+── 验证顺序建议 ──
+  ① 先只比 {gpr, pc} 在 npc 平台上跑 cpu-tests(内存映射天然一致: npc 的
+     CONFIG_MBASE=0x80000000 + 128M 正好等于 NEMU 的 MBASE+MSIZE)
+  ② 再接 devAccess → skip_ref, 上 ysyxsoc 平台
+  ③ 最后加 CSR 字段, 用它验异常(0/2/3/4/6 等)
+  ⚠ 加 difftest 后仿真会慢很多(每条都跑一遍 NEMU), 只当调试开关用
+
+════════════════════════════════════
+七、血泪坑清单(SpinalHDL / 流程类, 能省几小时)
+════════════════════════════════════
+  1) Scala 的 val 是"先用后声明 = 拿到 null": 任何 `val x = 某组件.io` 必须写在那个组件
+     实例化【之后】。编译能过, 运行时 NullPointerException(本工程已踩过 3 次:
+     IFU 的 tryFetch/stopFetch、EXU、LSU 的 dcache)。
+  2) LATCH DETECTED: 新加的 Bundle 字段若没人赋值(或只在仿真分支里赋值), elaborate 会报错。
+  3) ASSIGNMENT OVERLAP: 同一信号【整体赋值 + 分片赋值】会冲突。要改某个字段, 就
+     逐字段赋值(Decoder 里给 csrCtrl 各字段赋值、EXU 里拆开 csrCtrl、LSU 里拆开 rfCtrl,
+     都是这个原因); 条件赋值放在 when 的互斥分支里则没问题。
+  4) 位宽/字面量: UInt 赋值时脊髓HDL 会自动扩位, 但 `B(0,32 bits)` 赋给 UInt 会报类型错
+     (要写 U(0,32 bits))。
+  5) 回归验证: 改完 RTL 至少跑 `make perf`(周期不许退化) + `make sta`(面积/slack) +
+     shuixianhua 双平台(make ARCH=riscv32e-npc / -ysyxsoc)。
+  6) 备份/中间文件不要放 build/(AM 的 make 会清掉), 放在工作区里或直接提交。
+
+════════════════════════════════════
+八、当前未提交的改动(交接时必须知道)
+════════════════════════════════════
+npc/ 仓库 git status(在写这段时):
+  M  Makefile, playground/Config.scala            ← 平台配置拆分(PARTFORM 传递)
+  M  include/pmem.h                               ← npc 平台复位/内存改到 0x80000000
+  M  csrc/{cpu-exec.c,trace/{itrace,mtrace,ftrace}.c} include/cpu-exec.h
+                                                  ← CPU_state 包装成 base + 全部 cpu.pc→cpu.base.pc
+  M  include/trace.h, playground/src/{DPI-C,EXU,LSU,WBU}.scala, playground/vsrc/dpi-c.v
+                                                  ← 新增 itraceRetirePcNext(退休指令的下一条 pc)
+  ?? csrc/difftest.c                              ← difftest 胶水(照抄 NEMU 的 dut.c, 待适配)
+  (?? .metals/ 是编辑器产物, 与工程无关)
+★ 这一批还没提交, 建议分 2~3 个提交整理掉(平台拆分 / npc 复位+内存 / cpu.base+pcNext+difftest)。
+
+外层 ysyx-workbench/ 仓库里还有 AM 的改动(am/src/riscv/npc/* 与 ysyxsoc/* 的设备驱动增删改),
+其中包括一次 ysyxsoc/keyboard.c → keybord.c 的改名, 接手时确认是不是笔误。
+
+════════════════════════════════════
+九、下一步优先级
+════════════════════════════════════
+  P0 把 difftest 跑通(第六节的 ✗ 逐条清掉): npc 平台 cpu-tests 能比对通过
+  P1 接 devAccess → skip_ref, 上 ysyxsoc; 再用 CSR 比对验异常(0/2/3/4/6)
+  P2 零面积优化(还有空间): IDU 提前解析分支(约 -1.5~2%)、请求早一拍发出(约 -0.5~1%)
+  P3 想再吃 store 的那 ~7%: 需要 dcache 读写解耦 + 低位地址比较(约 250~400 um2),
+     但面积只剩 299 → 必须先腾面积(例如 dcache 4 项减到 3 项, 代价约 +0.8% 周期)
+  P4 整理提交 + 更新 PERF.md/README.md(每完成一项都要记)
+```

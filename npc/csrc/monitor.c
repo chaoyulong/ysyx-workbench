@@ -8,6 +8,7 @@
 #include "monitor.h"
 #include "sdb.h"
 #include "trace.h"
+#include "difftest.h"
 
 static char *log_file = NULL;
 static char *img_file = NULL;
@@ -108,7 +109,7 @@ void monitor_init(int argc, char *argv[]) {
   cpu_state_init();
   pmem_init();
   long img_size = load_img();
-  // init_difftest(diff_so_file, img_size, difftest_port);
+  init_difftest(diff_so_file, img_size, difftest_port);
   init_sdb();
   sim_init(argc, argv);
   welcome();

@@ -13,8 +13,9 @@ CFLAGS    += -fdata-sections -ffunction-sections
 LDSCRIPTS += $(AM_HOME)/scripts/linker.ld
 LDFLAGS   += --defsym=_pmem_start=0x80000000 --defsym=_entry_offset=0x0
 LDFLAGS   += --gc-sections -e _start
-NPCFLAGS += -l $(shell dirname $(IMAGE).elf)/npc-log.txt
-NPCFLAGS += -f $(IMAGE).elf
+NPCFLAGS  += -l $(shell dirname $(IMAGE).elf)/npc-log.txt
+NPCFLAGS  += -f $(IMAGE).elf
+NPCFLAGS  += -d $(NPC_HOME)/tools/riscv32-nemu-interpreter-so
 
 SDB_VAL := $(SDB) $(sdb)
 ifneq ($(filter N n, $(SDB_VAL)),)

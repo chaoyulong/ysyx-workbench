@@ -22,7 +22,12 @@ static void trace_and_difftest() {
   IFDEF(CONFIG_ITRACE, itrace_trace());
   IFDEF(CONFIG_MTRACE, mtrace_trace());
   IFDEF(CONFIG_FTRACE, func_trace());
-  // IFDEF(CONFIG_DIFFTEST, void difftest_step(vaddr_t pc, vaddr_t npc); if(reg_updated && npc_state.state != NPC_END) {difftest_step(cpu.base.pc, cpu.base.pc); });
+#ifdef CONFIG_DIFFTEST
+  void difftest_step(vaddr_t pc, vaddr_t npc);
+  if(reg_updated && npc_state.state != NPC_END) {
+    difftest_step(cpu.base.pc, cpu.pcNext);
+  }
+#endif
 
 #ifdef CONFIG_WATCHPOINT
   if(watchpoint_update()) {

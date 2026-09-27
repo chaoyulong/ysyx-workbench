@@ -105,7 +105,6 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   val readDataReg = RegNextWhen(axi4Ctrler.io.readData, readMissDone)
   io.rspOut.readData := Mux(readHit, dataMem(index),
                         Mux(readMissDone, axi4Ctrler.io.readData, readDataReg))
-  // io.rspOut.valid    := readHit || readMissDone || writeDone
   io.readHit         := readHit
 
   // ================================ AXI ================================ //

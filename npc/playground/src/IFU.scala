@@ -32,7 +32,7 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   // 曾试过等容量的 4 行 × 32B(8 拍突发): cachesim 预测命中率 91.82%->93.77%, 但实测直接崩
   // (icache 缺失 avg 2615 拍、LSU 读 avg 732 拍 -> 平台不支持 8 拍突发, boot 阶段就 ABORT)
   // => 这个平台上 icache 的行长不能超过 16B(4 拍突发), 保持 8 行 × 16B
-  val icache = ysyx_23060082_Icache()
+  val icache = ysyx_23060082_Icache(config, IcacheParams = IcacheParams())
   // ============================== 用于确定复位结束 ============================== //
   val rstEnd = RegNext(True) init(False)
   // =================================== PC寄存器 =================================== //

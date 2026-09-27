@@ -55,7 +55,7 @@ case class ysyx_23060082_Clint() extends Component {
   // 读取协议: 先读低位(mtime), 硬件锁存当时的高位; 再读高位(mtimeh)返回锁存值
   // 与 mcycle 的"先读低再读高"协议保持一致
   val readLow  = addrReg === MTIME
-  val readHigh = addrReg === MTIMEH
+  // val readHigh = addrReg === MTIMEH
   val timeCountHighSnap = RegNextWhen(timeCountHigh, arFireDelay && readLow)    // 读低那一拍锁存高位
 
   when(arFireDelay) {

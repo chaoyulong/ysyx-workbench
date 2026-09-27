@@ -62,14 +62,14 @@ case class IcacheRspData() extends Bundle {
   val rdata = UInt(32 bits)
 }
 
-case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Component {
+case class ysyx_23060082_Icache(config: CpuConfig = CpuConfig(), param: IcacheParams = IcacheParams()) extends Component {
   val io = new Bundle {
     val reqIn    = slave  Stream(IcacheReqData())
     val rspOut   = master Flow(IcacheRspData())
     val axi4     = master(Axi4ReadOnly(AxiConfig.axiConfig))
     val fenceI   = in Bool()    // fence.i: 清空有效位(后续取指缺失重读)
-    val miss     = out Bool()   // 缺失拍脉冲(每次缺失一次), 供 IFU 的性能计数器统计命中率; STA 时无人使用会被剪掉
-    val missDone = out Bool()   // 缺失完成拍脉冲, 与 miss 配对可测出平均缺失代价(即 TMT 里的那一项)
+    val miss     = if (config.enableSimDebug) out Bool() else null   // 缺失拍脉冲(每次缺失一次), 供 IFU 的性能计数器统计命中率; STA 时无人使用会被剪掉
+    val missDone = if (config.enableSimDebug) out Bool() else null   // 缺失完成拍脉冲, 与 miss 配对可测出平均缺失代价(即 TMT 里的那一项)
     val rspErr   = out Bool()   // 总线读取有错误
   }
 
@@ -113,7 +113,7 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
   // 命中 或 缺失但是读取完成
   val missDone = (state === IcacheState.Miss) && axi4Ctrler.io.readEnd
   io.rspOut.valid := (io.reqIn.fire && hit) || missDone
-  io.missDone := missDone
+  
 
   // 把一个 dataBits 位的"行"拆成 words 个 32 位字, 用动态索引选(SpinalHDL 会生成 mux 树)
   val hitWordVec  = Vec(UInt(32 bits), param.words)
@@ -131,10 +131,6 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
   val enterMiss = (state === IcacheState.Idle) && io.reqIn.valid && !hit
   axi4Ctrler.io.readReq  := enterMiss
   axi4Ctrler.io.readAddr := (io.reqIn.pc(31 downto param.lineBits) ## U(0, param.lineBits bits)).asUInt // 地址对齐
-
-  // 缺失脉冲: 每一次缺失拉高一拍(交给 IFU 的 PerfReg 计数, 用于统计命中率)
-  // 等价于 io.reqIn.fire && !hit —— 因为 reqIn.ready 只在 Idle 时拉高
-  io.miss := enterMiss
 
   // 缺失完成: 写回cache(valid/tag/data)
   when(missDone) {
@@ -160,6 +156,14 @@ case class ysyx_23060082_Icache(param: IcacheParams = IcacheParams()) extends Co
   } otherwise {
     validReg := validReg
   }
+
+  if (config.enableSimDebug) {
+    // 缺失脉冲: 每一次缺失拉高一拍(交给 IFU 的 PerfReg 计数, 用于统计命中率)
+    // 等价于 io.reqIn.fire && !hit —— 因为 reqIn.ready 只在 Idle 时拉高
+    io.miss := enterMiss
+    io.missDone := missDone
+  }
+  
 }
 
 /* ****************************************************************

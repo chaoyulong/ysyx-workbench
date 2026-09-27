@@ -15,8 +15,7 @@ module NpcMemRW(
   import "DPI-C" function int pmem_read(input int raddr);
   import "DPI-C" function void pmem_write(input int waddr, input int wdata, input byte wmask);
   always @(posedge clock) begin
-    if (reset) begin 
-      rdata <= 32'h0;
+    if (reset) begin
     end
     else if(valid) begin
       if(wen) begin   // 写

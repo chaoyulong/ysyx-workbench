@@ -26,7 +26,7 @@ case class ysyx_23060082_Decoder(config: CpuConfig = CpuConfig()) extends Compon
   val instr = io.instr
   val i     = io.instr.asBits
 
-  val op   = instr( 6 downto  0)     
+  // val op   = instr( 6 downto  0)     
   val func3= instr(14 downto 12)
   // val func7= instr(31 downto 25) // 用不到
 

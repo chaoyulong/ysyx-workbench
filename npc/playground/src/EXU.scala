@@ -207,7 +207,7 @@ case class ysyx_23060082_ALU() extends Component {
     U"3'b100" -> resultXor  ,
     U"3'b101" -> resultShift,
     U"3'b110" -> resultOr   ,
-    U"3'b111" -> resultAnd  
+    U"3'b111" -> resultOr  
   )
 }
 

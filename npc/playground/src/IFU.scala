@@ -9,6 +9,7 @@ case class Ifu2Idu_data() extends Bundle {
   val instr        = UInt(32 bits)
   val ifuTrapEnter = Bool()          // 有异常
   val ifuExcCause  = UInt(4 bits)    // 异常号
+  val predictTaken = Bool()          // 本条取指已按"预测跳转"去取目标(后向条件分支), 由 EXU 判对错
 }
 
 case class RedirectReq() extends Bundle {  // 真实的在exu中运算出来，或者lsu的csr中取出来的pc,同时需要一个valid信号
@@ -35,12 +36,33 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   val icache = ysyx_23060082_Icache(config, IcacheParams())
   // ============================== 用于确定复位结束 ============================== //
   val rstEnd = RegNext(True) init(False)
+
+  // ==================== 分支预测: BTFN(后向跳 / 前向不跳) ==================== //
+  // 规则: 后向条件分支(imm<0, 即循环回边)预测【跳转】; 前向分支预测【不跳转】(= 顺序取指)。
+  // 依据(tools/cachesim/traces/microbench.log 实测 113,766 条条件分支):
+  //   跳转率 60.2%(后向 81.3% / 前向 29.3%) => 本规则错误率 23.0%
+  //   对比: 现状"总是预测不跳转" = 60.2% 错; "总是预测跳转" = 39.8% 错
+  // 做法: 预测"跳转"时直接把 pcFetch 指向目标 —— 等价于提前一拍完成重定向, 错路径取指不再发生。
+  // 对错由 EXU 在解析分支后判定(预测位随指令一路传下去):
+  //   预测对          -> EXU 不重定向(不冲刷, 这是收益来源)
+  //   预测跳但实际不跳 -> EXU 重定向回 pc+4(这一路是本次新增的, 见 EXU.scala)
+  // 注意: 条件分支【不能】用下面那个 stopFetch 闸门 —— 闸门只被 io.redirect.valid 解开,
+  //       而"不成立"的分支不产生任何重定向, 会把前端永久卡死; 预测方案天然没有这个问题。
+  val instrOut     = io.output.instr
+  val i_branch     = instrOut(6 downto 0) === U"1100011"                             // 6 条条件分支共用 opcode
+  val bImm         = ((instrOut(31) #* 20) ## instrOut(7) ## instrOut(30 downto 25) ##
+                      instrOut(11 downto 8) ## B"0").asUInt                          // B 型立即数(符号扩展, bit0 恒 0)
+  val predTarget   = io.output.pc + bImm                                             // 预测目标 = 分支自己的 pc + imm
+  val predictTaken = i_branch && instrOut(31) && !(predTarget(1) || predTarget(0))   // 后向 且 目标 4 字节对齐
+
   // =================================== PC寄存器 =================================== //
-  // pcFetch: 下一次要取的地址(重定向优先, 否则顺序+4),因为与icache握手之后，pcFetch就会+4以便于下一次取指
+  // pcFetch: 下一次要取的地址(重定向 > 预测跳转 > 顺序+4),因为与icache握手之后，pcFetch就会+4以便于下一次取指
   // 所以需要一个额外的pcOfReq记录取指时的pc,如果icache未命中时，icache输入输出不在同一拍，那时就需要传递pcOfReq
   val pcFetch = Reg(UInt(32 bits)) init(U(config.resetPc, 32 bits))
   when(io.redirect.valid) {
     pcFetch := io.redirect.pcNext
+  } elsewhen(io.output.valid && predictTaken) {   // ★ 预测"跳转": 覆盖顺序 +4, 直接去目标
+    pcFetch := predTarget
   } elsewhen(icache.io.reqIn.fire) {
     pcFetch := pcFetch + 4
   } otherwise {
@@ -77,16 +99,12 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   val rdataReg           = RegNextWhen(icache.io.rspOut.rdata, icache.io.rspOut.valid)// 响应时更新数据
   val rspIsCurrentHit    = icache.io.reqIn.fire && icache.io.rspOut.valid             // icache直接命中
   // =================================== 预先译码出跳转指令 =================================== //
-  val instrOut  = io.output.instr
+  // 只对 jal/jalr 关取指闸门: 它们【必然】重定向, 所以闸门一定能被 io.redirect.valid 解开。
+  // ⚠ 条件分支绝不能加进这里: 分支"不成立"时不产生任何重定向 -> 闸门永远解不开 -> 前端死锁。
+  //   (条件分支的错路径取指改由上面的 BTFN 预测处理)
   val i_jalr = instrOut === M"-----------------000-----1100111"
   val i_jal  = instrOut === M"-------------------------1101111"
-  val i_beq  = instrOut === M"-----------------000-----1100011"
-  val i_bne  = instrOut === M"-----------------001-----1100011"
-  val i_blt  = instrOut === M"-----------------100-----1100011"
-  val i_bge  = instrOut === M"-----------------101-----1100011"
-  val i_bltu = instrOut === M"-----------------110-----1100011"
-  val i_bgeu = instrOut === M"-----------------111-----1100011"
-  val isJump = i_jalr | i_jal | i_beq | i_bne | i_blt | i_bge | i_bltu | i_bgeu
+  val isJump = i_jalr | i_jal
   // 取到无条件跳转就关闭取指，直到重定向把前端重启
   when(io.redirect.valid) {   // 靠重定向信号来关闭阻塞
     stopFetch := False
@@ -131,6 +149,7 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   io.output.instr := Mux(fetchExc, U"32'b0", normalInstr)
   io.output.ifuTrapEnter := fetchExc
   io.output.ifuExcCause  := excCause
+  io.output.predictTaken := predictTaken          // 本次取指是否已按"预测跳转"去取目标(异常那拍 instr=0, 自然是 False)
 
   // ================================ 仿真 ================================ //
   // 仿真专用: 取指性能统计(请求 -> 响应 延迟, 含命中/缺失)

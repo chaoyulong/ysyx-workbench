@@ -66,8 +66,20 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
   io.output.csrCtrl.excCause  := Mux(io.input.ctrl.csrCtrl.trapEnter, io.input.ctrl.csrCtrl.excCause, U(0, 4 bits)) // 0 = 跳转目标未对齐
                
   // ================================ 重定向 ================================ //
-  io.redirect.valid  := io.input.valid && banchCond.io.pcAsrc && !pcMisaligned   // 数据有效并且是跳转指令(pcAsrc,pcBsrc有一个为1就是跳转指令，而pcBsrc为1时，pcAsrc也为1)
-  io.redirect.pcNext := pcNext
+  // 分支预测(BTFN)的对错在这里判定: 预测位随指令从 IFU 一路传下来(见 IFU.scala / IDU.scala)
+  //   actualTaken  = 真实是否跳转(jal/jalr 恒为 1; 条件分支由比较器给出; 其它指令恒为 0)
+  //   predictTaken = IFU 的预测(只有"后向条件分支"为 1; jal/jalr 与其它指令恒为 0)
+  // 只有【预测与真实不一致】才重定向:
+  //   预测不跳 + 实际跳   -> 重定向到目标      (与改动前完全一致)
+  //   预测跳   + 实际不跳 -> 重定向回 pc+4     ★ 本次新增的一路
+  //   预测 == 实际        -> 不重定向          (预测对时不冲刷 => 收益来源;
+  //                                            预测不跳且真不跳本来也不重定向)
+  // jal/jalr: predictTaken=0 而 actualTaken=1 => 仍然无条件重定向, 与改动前行为一致
+  val actualTaken    = banchCond.io.pcAsrc
+  val mispredict     = actualTaken =/= io.input.predictTaken
+  val pcPlus4        = io.input.pc + 4                          // 预测"跳转"但实际不跳时, 回到顺序路径
+  io.redirect.valid  := io.input.valid && mispredict && !pcMisaligned
+  io.redirect.pcNext := Mux(actualTaken, pcNext, pcPlus4)
   io.redirect.fenceI := False                                   // exu中执行的话，如果上一级lsu在写入，那么此时lsu写入的数据就不是icache可见的了，所以要延迟到lsu阶段再执行
 
   // ================================ 用于握手的部分 ================================ //

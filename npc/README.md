@@ -1,5 +1,65 @@
 # NPC RISC-V32E CPU
 
+## 2026-09-27 difftest 接入 + "无用信号 → ABC 映射"实验
+
+### difftest：与 NEMU 逐指令对拍（`csrc/difftest.c` + `include/difftest.h`）
+
+- **参考实现**：`npc/tools/riscv32-nemu-interpreter-so`（在 `nemu/` 里 `make SHARE=1` 编出）。NEMU 侧配置必须满足：`ISA=riscv32 / MODE_SYSTEM / TARGET_SHARE=y`，**`CONFIG_RVE` 必须关闭**（打开会让 `riscv32_CPU_state` 变成 68 字节，与本工程的契约不符），建议再关掉 `CONFIG_MEM_RANDOM`（否则 ref 的 pmem 是随机值、镜像之外的未初始化内存会报假 diff）。
+- **移植 NEMU `dut.c` 时 5 处必须改**（文件头有逐条注释，全部是"照抄必错"）：
+  1. **比对必须用 `pcNext`** —— NEMU 里 `cpu.pc` 在调用时已是"执行后"的 pc，而本工程的 `cpu.base.pc` 是"本条指令"的 pc（`cpu.pcNext = itraceRetirePcNext` 才是 ref 意义上的 pc）；用 `cpu.base.pc` 比会**每条都 diff**。
+  2. **skip 回灌的 pc 也要用 `pcNext`**，否则 ref 退回本条重跑 → 之后全线 diff。
+  3. **镜像首址直接用 `flash[]`** —— NEMU 用 `guest_to_host(RESET_VECTOR)`，但本工程 `CONFIG_MBASE` 恒为 0x8000_0000 而 ysyxsoc 的 `RESET_VECTOR` = 0x3000_0000，会**指针下溢**。
+  4. **没传 `-d` 视为关闭 difftest**（打一条警告），不再 `assert` —— 这样 `CONFIG_DIFFTEST` 可以常开而不会把 `make perf` 带崩。
+  5. **删掉 `skip_dut`**（QEMU"指令打包"追赶）—— ref 是 NEMU 解释器，`exec(1)` 恒等于一条指令。
+- **接口契约**：`cpu_base_state_t = {gpr[32], pc}` = **132 字节**，与 NEMU 的 `riscv32_CPU_state`（`CONFIG_RVE` 关闭时）逐字节一致，也是 `difftest_regcpy` 的 `sizeof`。两道防线：编译期 `static_assert(sizeof==132 && offsetof(pc)==128)`；启动时 `difftest_abi_check()` 给 ref 一个 256 字节缓冲区、用 0xCC 哨兵量它到底写多少字节 → **ref 一旦换成 68 字节的版本会当场报错**，而不是跑几百条指令后给出"看起来像 CPU 跳飞了"的假 diff。
+- **ref 的跳过判据 `difftestSkip`**（在 **LSU 合成 1 bit**，经 `Lsu2Wbu_data → WBU → ItraceReg` 黑盒锁存给 C 侧；全部在 `if (enableSimDebug)` 内 → STA 零面积）：
+  `trapEnter | mret | CSR 指令 | fence.i | 设备访存`
+  - 三类必须跳过的原因：**设备访存**在 ref 里不存在（NEMU 无设备 → `out_of_bound` panic，而 `putch` 就是 `sb` 到 0x1000_0000，每个 printf 字符都会触发）；**CSR 指令** ref 只实现 4 个，而 `_trm_init → ysyxsoc_dis_id()` **每条程序开头**都读 `mvendorid/marchid`；**系统指令/异常**的约定不同（ecall 的 mcause：dut 走 a5，NEMU 走 a7）。
+  - ⚠ **被跳过的指令只能没有内存副作用**（回灌只同步 `{gpr, pc}`，**不同步内存**）→ 所以设备判据必须与 NEMU 的 `in_mem_region` **完全一致**，其中 **SRAM 要算内存**（ysyxsoc 的 ssbl 在 SRAM 里执行、并且拿 SRAM 当栈），**不能复用 perf/mtrace 那个把 SRAM 当设备的 `isDevAddr`**。
+- **用法**：`-d <ref.so>`（AM 的 `platform/npc.mk` 与 `platform/ysyxsoc.mk` 都已带上；注意 ysyxsoc 那侧要加在 `YSYXSOCFLAGS` 上，加在 `NPCFLAGS` 上传不进去）；开关在 `include/config.h` 的 `CONFIG_DIFFTEST`（关掉时 `difftest.c` 退化为空实现）；不一致时在退休点打印 dut/ref 并排的寄存器表并置 `NPC_ABORT`。
+- **实测**：同一份镜像、同一份 RTL，**带 / 不带 `-d` 的周期与指令数逐位相同**（12,235,206 / 555,737）→ **difftest 对 DUT 完全透明**，只影响宿主墙钟时间。
+
+### "无用信号"会改变综合结果（**结论：不保留**）
+
+三个无人读的信号（`readHigh`/CLINT、`normalPc`/IFU、`writeDone`/dcache）对综合结果的影响（每行各跑 2 次，结果逐位相同）：
+
+| 变体 | 面积 (µm²) | slack | 频率 | 生成 RTL md5 |
+|---|---|---|---|---|
+| 带这 3 个信号 | 24981.39 | +1.008 | **1007.65 MHz** | `ecdde12522` |
+| **删掉（当前 main）** | **24457.64** | **+0.920** | **925.66 MHz** | `e43a3480d5` |
+| 删掉 + **另外 3 个完全无关**的无用信号 | 24803.44 | +0.986 | **986.23 MHz** | `7faf4fa66d` |
+
+- **机制**：这些信号虽然"无人读"，但仍会进入综合流程、改变交给 ABC 的网表结构；而 ABC 的 `resyn2 / choice / map` 是**全局启发式** —— 输入节点顺序一变，它就给整个设计换一套映射，于是**面积、关键路径、频率一起跳**（最差路径甚至会在 `ifu.icache.axi4Ctrler.io_readAddr_30` 与 `lsu.csr.minstreth_23` 之间整类切换）。所以"删掉三个死信号少了 524 µm²"**不是那几个门本身的面积**。
+- **可复现性**：同一份源码的 STA 结果是**确定的**（同一变体跑两次，连 RTL md5 都相同）；但**换源码就会重新抽签**（哪怕只是增删一个无害信号）。
+- **为什么不留**：① 收益是"抽签式"的、不可预测（换别的信号是 986 MHz，也可能更差）；② 带信号时面积距 25,000 硬上限只剩 **18.6 µm²**（删掉后有 **542.4 µm²**），之后再加任何东西都会超；③ 评分口径是 **周期 + 面积**，频率只要求 500MHz 通过（925 MHz 已是 1.85 倍余量），而这三个版本的**周期与指令数逐位相同**。
+- ⚠ **别再把它们加回来**（我上一轮就"顺手"删过一次然后又被加回去）。真要提频，应该动**真瓶颈**：当前最差路径是 `ifu.icache.axi4Ctrler.io_readAddr_30__reg_p:D`，即 **IFU 的 pc 选择 mux（重定向/pcFetch/pcOfReq）→ icache `ar.addr` 寄存器** —— 这是文档里记录过的老瓶颈（`bbd3432` 时代就是它，`92a825d` 把 `ar.valid/addr` 改回打拍才切开）。
+- **三个信号的精确位置与内容**（复现用；基线 = `103146f`，行号为删除前）：
+
+  | 文件 | 行 | 内容 |
+  |---|---|---|
+  | `playground/src/CLINT.scala` | 58 | `val readHigh = addrReg === MTIMEH` |
+  | `playground/src/IFU.scala` | 121 | `val normalPc    = Mux(icache.io.reqIn.fire, pcFetch, pcOfReq)` |
+  | `playground/src/dcache.scala` | 93 | `val writeDone    = (state === DcacheState.Write)    && axi4Ctrler.io.writeEnd` |
+
+  插入锚点、V3 那组"无关扰动"信号、以及校验值都在 **PERF.md 的「复现方法：三个信号的精确位置与内容」** 一节。复现成功的判据是生成 RTL 的 md5（过滤注释行后）：带信号 `ecdde12522` / 删掉 `e43a3480d5` / 等价扰动 `7faf4fa66d`。
+- 顺带：这次还清掉了 verilator `-Wall` 的几条真警告 —— `NpcMemRW.rdata` 的 **MULTIDRIVENPROC**（写块里那句复位是死赋值）、Decoder 那个无人驱动的 `rfReadData1` 端口（**PINCONNECTEMPTY**）、以及 icache 的 `miss/missDone` 改为条件生成。
+
+### 附：条件分支方向统计（下一步优化的依据）
+
+用 `tools/cachesim/traces/microbench.log`（58 万条退休指令的 itrace，**下一行的 pc 就是本条的后继**，所以能直接判定 taken/not-taken）离线统计：
+
+| | 条数 | 跳转率 |
+|---|---|---|
+| 条件分支（B 型）总计 | 113,766（占退休指令 19.5%） | **60.2%** |
+| 后向（imm<0，循环回边） | 67,614 | **81.3%** |
+| 前向（imm>0，if 语句） | 46,152 | **29.3%** |
+
+静态预测的错误率：**总是预测不跳转（现状）= 60.2% / 总是预测跳转 = 39.8% / 后向跳+前向不跳(BTFN) = 23.0%**。
+
+- 所以"总是预测跳转"确实**比现状好**（错误率 60.2% → 39.8%），但 **BTFN 更好、成本还一样**（只需多看一个 imm 符号位）→ 要做就直接做 BTFN。
+- **代价不在"预测方向"，而在"目标地址"**：预测跳转就必须在 IFU 算 `pc + B型imm`（B 型立即数是打散的位拼接 → 多一个加法器 + 立即数提取），而当前最差路径恰好在 IFU 的 pc → `ar.addr` 上；另外还必须**抑制"预测正确时的 flush"**（EXU 现在一旦判定跳转就 `redirectAny`），所以要把一个 predicted-taken 位随指令过流水线 —— 是中等规模改动，不是几行 hack。
+- 收益量级可参照 f9d00c5 的标定：**≈31 周期 / 次错路径取指**（砍掉 27,231 次取指省了 846,824 周期）。
+
 ## 2026-09-16 五级流水线（数据前递 + 重定向与冲刷）
 
 ### 结构

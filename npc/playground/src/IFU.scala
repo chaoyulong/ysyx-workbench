@@ -80,7 +80,13 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   val instrOut  = io.output.instr
   val i_jalr = instrOut === M"-----------------000-----1100111"
   val i_jal  = instrOut === M"-------------------------1101111"
-  val isJump = i_jalr || i_jal
+  val i_beq  = instrOut === M"-----------------000-----1100011"
+  val i_bne  = instrOut === M"-----------------001-----1100011"
+  val i_blt  = instrOut === M"-----------------100-----1100011"
+  val i_bge  = instrOut === M"-----------------101-----1100011"
+  val i_bltu = instrOut === M"-----------------110-----1100011"
+  val i_bgeu = instrOut === M"-----------------111-----1100011"
+  val isJump = i_jalr | i_jal i_beq | i_bne | i_blt | i_bge | i_bltu | i_bgeu
   // 取到无条件跳转就关闭取指，直到重定向把前端重启
   when(io.redirect.valid) {   // 靠重定向信号来关闭阻塞
     stopFetch := False

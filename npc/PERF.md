@@ -34,6 +34,8 @@ make sta STA_PDK=icsprout55  # 换流片工艺综合
 | f9d00c5 | IFU 遇无条件跳转(jal/jalr)立即停取指, 消除错路径取指 [nangate45] | 12975343 | 581826 | 0.0448 | 775.9 | 16.72 | 22460.24 | 15272713 | 19.84 | 9002583 | 7736913 | 102.17 | 1265670 | 21.84 | 4.79/4.50 | 7785677 | 52.9 | 22.6 | 17.7 | 6.8 | 0.0 | 0.0 | 93.14 | 62.05 |
 | 1d85319 | D-Cache(4项x1字 直接映射/写穿/写不分配, 独占AXI; 只缓存 flash+PSRAM/SDRAM) [nangate45] | 12609428 | 581938 | 0.0462 | 832.3 | 15.15 | 24830.83 | 14906021 | 19.39 | 8682790 | 7418092 | 115.44 | 1264698 | 21.82 | 4.80/4.50 | 7595714 | 52.9 | 22.6 | 17.7 | 6.8 | 0.0 | 0.0 | 93.13 | 60.83 |
 | f1b8c26 | 异常处理(统一通道 trapEnter+excCause; 各级产生, LSU 生效; mstatus 进出异常) [nangate45] | 12309885 | 582020 | 0.0473 | 989.0 | 12.45 | 24701.03 | 14628529 | 20.69 | 8604974 | 7411890 | 115.34 | 1193084 | 20.58 | 4.80/4.50 | 7482234 | 52.8 | 22.7 | 17.7 | 6.8 | 0.0 | 0.0 | 92.53 | 60.88 |
+| 103146f | difftest 接入(与 NEMU 逐指令对拍; ref 跳过判据在 LSU 合成) + 平台配置拆分 + 退休 pc 下一条 + 删掉 4 处无用信号 [nangate45] | 12235206 | 555737 | 0.0454 | 925.7 | 13.22 | 24457.64 | 14488730 | 21.11 | 8589153 | 7399562 | 115.81 | 1189591 | 20.87 | 4.81/4.50 | 7435088 | 52.0 | 23.4 | 17.9 | 6.7 | 0.0 | 0.0 | 92.27 | 59.17 |
+| (实验) | 未提交的实验状态: 在 103146f 的树上把 3 个无用信号(readHigh/normalPc/writeDone)加回来 —— 逻辑与 103146f **完全相同**(周期/指令数逐位相同), 只用来量化"语义中性扰动对 ABC 映射的影响"; 详见下面 103146f 小节 [nangate45] | 12235206 | 555737 | 0.0454 | 1007.7 | 12.14 | 24981.39 | 14488730 | 21.11 | 8589153 | 7399562 | 115.81 | 1189591 | 20.87 | 4.81/4.50 | 7435088 | 52.0 | 23.4 | 17.9 | 6.7 | 0.0 | 0.0 | 92.27 | 59.17 |
  
 ## 记录步骤
 
@@ -44,6 +46,7 @@ make sta STA_PDK=icsprout55  # 换流片工艺综合
 
 ## 说明
 
+- **commit 列为 `(实验)` 的行**：表示**未提交**的实验状态（只在 PERF.md 里存档，无法用 `git checkout` 复现）。例如"把 3 个无用信号加回去"那一行 —— 它的 RTL **逻辑**与相邻的 `103146f` **完全相同**（周期/指令数逐位相同），存在的意义只是量化"**语义中性的扰动会让 ABC 换一套映射、从而改变面积与频率**"这件事。
 - **工艺**：`综合面积` **只在同一工艺内可比**（各行在"说明"列注明工艺）。教程的面积限制按 **nangate45** 判定；`make sta STA_PDK=icsprout55` 可切回 icsprout55 流片工艺，同一份 RTL 两者相差约 30%
 - **真实时间(ms)**：`仿真周期数 ÷ 综合频率(MHz)`，单位 ms。用途是**把"降周期"和"提频率"两类优化放在同一个尺子上**（例如 `d1cdfe4→92a825d` 是周期 +0.78%、频率 +12%，净结果 15.25ms → 13.91ms，赚 8.8%）。
   两个注意：① 它同样**只在同一工艺内可比**（频率随工艺变，`[icsprout55]` 行不能和 `[nangate45]` 行直接比）；② 它按 STA 的**可达频率**换算，不是"评分口径"——评分只要求 500MHz 通过，若按 500MHz 算则是 `周期数 × 2ns`，那一列与周期数完全同序，所以这里不单列。
@@ -136,3 +139,92 @@ defaultConfigForClockDomains = ClockDomainConfig(
 - **实测**：周期 **12,309,885 与上一版逐位相同** → 异常机制在**无异常路径上零成本**；面积 24,774.44 → **24,701.03**（余量 298.97）；500MHz slack **+0.989ns**；microbench 与 shuixianhua(npc+ysyxsoc) 全 PASS。
 - **已隐式验证**：cpu-tests 每次 `printf`/`putch` 都是 ecall → trap → handler → mret，等于把"trap 进入 / mepc·mcause 写入 / mstatus 更新 / mret 返回 / 重定向与前端 flush"这条完整回路跑了几万次。
 - **尚待专门验证**：故障类（0/4/5/6/7/12）现有测试不触发，需要自建用例（`.word 0xdeadbeef`、内联汇编造未对齐 lw/sw、ebreak）或在仿真里强制 `rspErr`/`pfFault`。
+
+### 103146f：difftest 接入（**周期零成本**）+ "无用信号 → ABC 映射"实验
+
+#### difftest：与 NEMU 逐指令对拍
+
+移植 NEMU 的 `src/cpu/difftest/dut.c` 与 `include/cpu/difftest.h`（`csrc/difftest.c` / `include/difftest.h`），有 5 处**必须适配**：
+
+| # | NEMU 的写法 | 本工程为什么不能照抄 | 改法 |
+|---|---|---|---|
+| 1 | `checkregs` 比 `cpu.pc` | NEMU 调用时 `cpu.pc` 已是**执行后**的 pc；本工程的 `cpu.base.pc` 是**本条**指令的 pc | 比 `cpu.pcNext`（`itraceRetirePcNext`）—— 用 `cpu.base.pc` 会"每条都 diff" |
+| 2 | skip 回灌 `&cpu` | 回灌的 pc 若用 `cpu.base.pc`，ref 会退回本条重跑 → 之后全线 diff | 用 `pc = pcNext` 的副本回灌 |
+| 3 | `guest_to_host(RESET_VECTOR)` | `CONFIG_MBASE` 恒为 0x8000_0000，而 ysyxsoc 的 `RESET_VECTOR` = 0x3000_0000 → **指针下溢** | 直接用 `flash[]` 数组首址（两平台都对）|
+| 4 | 没传 `-d` 就 `assert` | 会把 `make perf` 带崩 | 视为"关闭 difftest"并打一条警告 |
+| 5 | `skip_dut`（QEMU 指令打包追赶）| ref 是 NEMU 解释器，`exec(1)` 恒等于一条指令 | 删掉 |
+
+- **接口契约**：`cpu_base_state_t = {gpr[32], pc}` = **132 字节**（与 NEMU `CONFIG_RVE` 关闭时的 `riscv32_CPU_state` 一致，也是 `difftest_regcpy` 的 `sizeof`）。编译期 `static_assert(sizeof==132 && offsetof(pc)==128)`；启动时再跑 `difftest_abi_check()`（给 ref 一个 256 字节缓冲区、用 0xCC 哨兵量它到底写多少字节）→ **NEMU 那边一旦打开 `CONFIG_RVE`（变 68 字节）会当场报错，而不是静默错位**。
+- **ref 跳过判据 `difftestSkip`（在 LSU 合成 1 bit，经 `Lsu2Wbu_data → WBU → ItraceReg` 给 C 侧）**：`trapEnter | mret | CSR 指令 | fence.i | 设备访存`。三类必须跳过的原因：设备访存在 ref 里不存在（`out_of_bound` → panic）；ref 只实现 4 个 CSR，而 `_trm_init → ysyxsoc_dis_id()` **每条程序开头**都读 `mvendorid/marchid`；ecall 的 mcause 约定不同（dut 走 a5，NEMU 走 a7）。
+  ⚠ **被跳过的指令只能没有内存副作用**（回灌只同步 `{gpr, pc}`，不同步内存）→ 设备判据必须与 NEMU 的 `in_mem_region` 一致，**SRAM 要算内存**（ysyxsoc 的 ssbl 在 SRAM 里执行、拿 SRAM 当栈），**不能复用 perf/mtrace 那个把 SRAM 当设备的 `isDevAddr`**。整段在 `if (enableSimDebug)` 内 → `make sta` 一行都不生成（零面积）。
+- **实测**：同一份镜像、同一份 RTL，**带 / 不带 `-d` 的周期与指令数逐位相同（12,235,206 / 555,737）** → difftest 对 DUT 完全透明，只影响宿主墙钟时间（不带 `-d` 14.2s，带 difftest 会慢很多倍）。面积 24,457.64 vs `f1b8c26` 的 24,701.03（差 243 µm²，在 ±100~250 抖动内）。
+
+#### 与 `f1b8c26` 不可直接比
+
+本行的树同时含"平台配置拆分（`PARTFORM` / npc 复位 0x8000_0000）+ 退休 pc 下一条（仿真专用）+ difftest + 删无用信号"。指令数 582,020 → 555,737（**−4.5%**）而周期只 **−0.6%** —— 差额来自 ysyxsoc 的**引导装载**与**设备轮询**这类"时序/镜像敏感"路径，**与 difftest 无关**：
+
+- `_second_stage_bootloader` 按 **4 字节/次**循环搬镜像，反汇编实测循环体**正好 6 条指令** → **≈1.5 条指令/字节镜像**；当前镜像 31,208 字节 → 约 **4.7 万条指令（占 8.4%）**。
+- 每次 `putch` 都要 `while(!(UART->LSR & 0x20));`（本行 `LSU dev rd cnt = 712`、总 3,422 周期）。
+
+#### "无用信号 → ABC 映射"实验（**结论：不保留**）
+
+`readHigh`(CLINT) / `normalPc`(IFU) / `writeDone`(dcache) 三个**无人读**的信号：
+
+| 变体 | 面积 (µm²) | slack | 频率 | 最差路径 | 生成 RTL md5 |
+|---|---|---|---|---|---|
+| 带这 3 个信号 | 24981.39 | +1.008 | **1007.65 MHz** | `ifu.icache.axi4Ctrler.io_readAddr_30__reg_p:D` | `ecdde12522` |
+| **删掉（本行）** | **24457.64** | **+0.920** | **925.66 MHz** | `lsu.csr.minstreth_23__reg_p:D` | `e43a3480d5` |
+| 删掉 + **另外 3 个完全无关**的无用信号 | 24803.44 | +0.986 | **986.23 MHz** | `ifu.icache.axi4Ctrler.io_readAddr_30__reg_p:D` | `7faf4fa66d` |
+
+- **每行各跑 2 次，area / slack / freq / 最差路径 / RTL md5 全部逐位相同** → 同一份源码的 STA 结果是**确定的**；但换源码（哪怕只增删一个无害信号）就会**重新抽一次签**。
+- **换成完全无关的无用信号同样得到 986 MHz** → 起作用的是"给 ABC 的输入网表加一点语义中性扰动"，**与具体是哪几个信号无关**（ABC 的 `resyn2/choice/map` 是全局启发式，输入节点顺序一变，面积/关键路径/频率整体换一套）。
+- 也正因如此：**面积差 524 µm² 不是那几个门本身的面积**，而是映射被整体改变的结果 —— 这也解释了为什么"删掉三个死信号"会同时掉 524 µm² 面积与 82 MHz 频率。
+- **删掉的理由**：① 收益是"抽签式"的、不可预测，也可能变差；② 带信号时面积距 25,000 硬上限只剩 **18.6 µm²**（删掉后有 **542.4 µm²**）；③ 评分口径是 **周期 + 面积**，频率只要求 500MHz 通过（925 MHz 已是 1.85 倍余量）；三者的**周期与指令数逐位相同**。
+- ⚠ 想"提频"应该去动真瓶颈（当前最差路径 = IFU 的 pc 选择 mux → icache `ar.addr` 寄存器），而不是靠无用信号扰动映射。
+
+#### 复现方法：三个信号的精确位置与内容
+
+基线 = `103146f`（下表行号是**删除前**的行号）：
+
+| 文件 | 行 | 内容（删除前的工作区版本）| 在 `103146f` 里的插入锚点 |
+|---|---|---|---|
+| `playground/src/CLINT.scala` | 58 | `val readHigh = addrReg === MTIMEH` | 插在 `val readLow  = addrReg === MTIME` 与 `val timeCountHighSnap = RegNextWhen(...)` **之间** |
+| `playground/src/IFU.scala` | 121 | `val normalPc    = Mux(icache.io.reqIn.fire, pcFetch, pcOfReq)` | 插在 `val normalInstr = Mux(icache.io.rspOut.valid, ...)` **之前**（紧跟 `val normalValid = ...` 那段之后）|
+| `playground/src/dcache.scala` | 93 | `val writeDone    = (state === DcacheState.Write)    && axi4Ctrler.io.writeEnd` | 插在 `val readMissDone = (state === DcacheState.ReadMiss) && axi4Ctrler.io.readEnd` 与 `if (config.enableSimDebug) {` **之间** |
+
+（`dcache.scala` 同时还删掉了紧随 `writeDone` 之后的一行注释 `// io.rspOut.valid := readHit || readMissDone || writeDone`，它对结果无影响。原工作区在这两行末尾还各带一句中文注释，**注释对综合结果无影响**，见下。）
+
+**三个变体的做法**：
+
+1. **V1 = 1007.65 MHz / 24,981.39 µm²**：在 `103146f` 上按上表把 3 行加回去 → `make sta`。
+2. **V2 = 925.66 MHz / 24,457.64 µm²**：就是 `103146f` 本身，什么都不加 → `make sta`。
+3. **V3 = 986.23 MHz / 24,803.44 µm²**：不加上面 3 行，改插下面 3 个**完全无关**的无用信号（等价扰动）：
+
+   ```scala
+   // CLINT.scala: 插在 "val readLow  = addrReg === MTIME" 之后
+   val deadProbeA = timeCountLow(0) === timeCountHigh(0)
+   // IFU.scala:   插在 "val normalInstr = Mux(" 之前
+   val deadProbeB = pcFetch === pcOfReq
+   // dcache.scala: 插在 "io.readHit         := readHit" 之后
+   val deadProbeC = writeAccept === readHit
+   ```
+
+**跑完这样读结果**（每次 `make sta` 之后）：
+
+```bash
+grep -i "Chip area for module" build/sta/ysyx_23060082-500MHz/synth_stat.txt          # 面积
+grep core_clock build/sta/ysyx_23060082-500MHz/ysyx_23060082.rpt | head -1           # 最差路径 + slack + 频率
+grep -v '^//' build/sta/ysyx_23060082.v | md5sum | cut -c1-10                         # 确认综合的是哪份 RTL
+```
+
+**校验值**（对上了就说明复现成功）：V1 = `ecdde12522`、V2 = `e43a3480d5`、V3 = `7faf4fa66d`。
+
+**注意事项**：
+- 一次只跑一个 `make sta`（**不要并行**，`build/sta/` 会互相覆盖）；同一份源码的结果是**确定的**，连跑两次数字应当完全一致。
+- 源码注释不影响结果：yosys 会忽略注释，`grep -v '^//'` 也正是为此而加 → **只要代码逐字一致，行号/注释可以不同**。
+- 实验用到的临时脚本与备份在 `npc/build/dse-backup/`（`run.sh` / `result.txt` / `sta-V*-*.log` / 三个 `.scala` 备份），但 `build/` 是 gitignore 的、随时可能被清掉 —— **配方以本节为准**。
+
+#### 附：条件分支方向统计（下一步优化的依据）
+
+用 `tools/cachesim/traces/microbench.log`（58 万条退休指令的 itrace）离线统计：条件分支 **113,766 条（占退休指令 19.5%）**，**跳转率 60.2%**（后向/循环回边 **81.3%**，前向/if **29.3%**）。静态预测错误率：**总是预测不跳转（现状）60.2% / 总是预测跳转 39.8% / 后向跳+前向不跳(BTFN) 23.0%**。
+→ 想减少条件分支的错路径取指，**BTFN 优于"总是预测跳转"且成本相同**（只需多看一个 imm 符号位）；但两者都要求在 IFU 里算 `pc + B型imm`（多一个 32 位加法器），而**当前最差路径恰好在 IFU 的 pc → `ar.addr` 上** → 动它之前应先松开这条路径。

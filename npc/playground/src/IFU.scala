@@ -118,7 +118,6 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   val normalValid = ((state === IfuState.Done) ||                                     // icache已经取出指令，或刚刚取出，或同一拍命中。并且没有重定向
                      (icache.io.rspOut.valid && state === IfuState.WaitMem) || 
                       rspIsCurrentHit) && !io.redirect.valid
-  val normalPc    = Mux(icache.io.reqIn.fire, pcFetch, pcOfReq)                       // 同拍命中，直接用pcFetch，否则用请求时锁存的pc
   val normalInstr = Mux(icache.io.rspOut.valid, icache.io.rspOut.rdata, rdataReg)
 
   io.output.valid := normalValid || fetchExc                                          // 正常有效信号，或者取指错误

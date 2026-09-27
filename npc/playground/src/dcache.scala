@@ -90,7 +90,6 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   io.reqIn.ready := (state === DcacheState.Idle)
 
   val readMissDone = (state === DcacheState.ReadMiss) && axi4Ctrler.io.readEnd
-  val writeDone    = (state === DcacheState.Write)    && axi4Ctrler.io.writeEnd
   if (config.enableSimDebug) {
     io.miss     := (state === DcacheState.Idle) && reqRead && cacheable && !hit
     io.missDone := readMissDone

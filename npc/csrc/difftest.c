@@ -131,9 +131,8 @@ void init_difftest(char *ref_so_file, long img_size, int port) {
          "difftest: %s 中缺少 difftest_* 符号(是否用 make SHARE=1 编译了 NEMU?)", ref_so_file);
 
   Log("Differential testing: %s", ANSI_FMT("ON", ANSI_FG_GREEN));
-  Log("The result of every instruction will be compared with %s. "
-      "This will help you a lot for debugging, but also significantly reduce the performance.",
-      ref_so_file);
+  Log("The result of every instruction will be compared with %s. ", ref_so_file);
+  Log("This will help you a lot for debugging, but also significantly reduce the performance.");
 
   ref_difftest_init(port);   // ref 侧：init_mem() + init_isa()
 

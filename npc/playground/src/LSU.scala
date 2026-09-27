@@ -8,6 +8,7 @@ import javax.net.ssl.TrustManager
 case class Lsu2Wbu_data(config: CpuConfig = CpuConfig()) extends Bundle {
   val pc          = if (config.enableSimDebug) UInt(32 bits) else null   // 仅仿真可见
   val instr       = if (config.enableSimDebug) UInt(32 bits) else null
+  val pcNext      = if (config.enableSimDebug) UInt(32 bits) else null
 
   val rfWriteData = UInt(32 bits) 
   val rfCtrl      = RfCtrl()        // 其中的mem2reg信号会作为读内存信号被用到
@@ -122,8 +123,9 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
 
   // ================================ 数据传输部分 ================================ //
   if (config.enableSimDebug) { 
-    io.output.pc       := io.input.pc
-    io.output.instr    := io.input.instr
+    io.output.pc     := io.input.pc
+    io.output.instr  := io.input.instr
+    io.output.pcNext := io.input.pcNextTrace
   }
   io.output.rfCtrl.rfWriteAddr := io.input.rfCtrl.rfWriteAddr
   io.output.rfCtrl.mem2reg := io.input.rfCtrl.mem2reg

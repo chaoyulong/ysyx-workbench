@@ -42,20 +42,24 @@ module ItraceReg(
   input             reset,
   input             valid,
   input      [31:0] pc,
+  input      [31:0] pcNext,
   input      [31:0] instr
 );
   reg [31:0] itraceRetirePc;
+  reg [31:0] itraceRetirePcNext;
   reg [31:0] itraceRetireInstr;
   reg        itraceRetireValid;
 
   always @(posedge clock or posedge reset) begin
     if (reset) begin
       itraceRetirePc     <= 32'h0;
+      itraceRetirePcNext <= 32'h0;
       itraceRetireInstr  <= 32'h0;
       itraceRetireValid  <= 1'b0;
     end
     else if (valid) begin
       itraceRetirePc     <= pc;
+      itraceRetirePcNext <= pcNext
       itraceRetireInstr  <= instr;
       itraceRetireValid  <= 1'b1;
     end
@@ -70,11 +74,16 @@ module ItraceReg(
     if (reset) begin
       ebreak  <= 1'b0;
     end
-    else if (valid && instr == 32'b00000000000100000000000001110011) begin
-      ebreak  <= 1'b1;
+    else if (valid) begin
+      if(instr == 32'b00000000000100000000000001110011) begin
+        ebreak  <= 1'b1;
+      end
+      else begin
+        ebreak  <= 1'b0;
+      end
     end
-    else if(valid) begin
-      ebreak  <= 1'b0;
+    else begin
+      ebreak <= ebreak;
     end
   end
 

@@ -35,6 +35,7 @@ case class ItraceReg() extends BlackBox{
     val reset = in Bool()
     val valid = in Bool()
     val pc    = in UInt(32 bits)
+    val pcNext= in UInt(32 bits)
     val instr = in UInt(32 bits)
   }
   noIoPrefix()

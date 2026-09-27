@@ -6,6 +6,7 @@ import spinal.lib._    // 使用spinal的模块库
 case class Exu2Lsu_data(config: CpuConfig = CpuConfig()) extends Bundle {
   val pc          = UInt(32 bits) 
   val instr       = if (config.enableSimDebug) UInt(32 bits) else null
+  val pcNextTrace = if (config.enableSimDebug) UInt(32 bits) else null
   
   val rfCtrl      = RfCtrl()        // 直通数据，在EXU中无作用
   val memCtrl     = MemCtrl()       // 直通数据，在EXU中无作用
@@ -84,14 +85,15 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
   io.output.memCtrl    := io.input.ctrl.memCtrl     // 直通数据，在EXU中无作用
   // ================================ 数据前递 ================================ //
   val getDataInLsu      = io.input.ctrl.rfCtrl.mem2reg || io.input.ctrl.rfCtrl.csr2reg  // 要在lsu中才会得到的数据
-  val wr                = io.input.ctrl.rfCtrl.regWr
-  io.forward.state     := Mux(!io.input.valid || !wr, FwdState.NoWriter,                    // 还没有有效数据，或者不是写寄存器的信号时
+  io.forward.state     := Mux(!io.input.valid || !io.input.ctrl.rfCtrl.regWr, FwdState.NoWriter,  // 还没有有效数据，或者不是写寄存器的信号时
                           Mux(getDataInLsu, FwdState.DataPendingLater, FwdState.DataReady)) // 如果要在lsu中才能得到数据，就WaitLater，如果在本级就能得到数据，Ready
   io.forward.writeAddr := io.input.ctrl.rfCtrl.rfWriteAddr
   io.forward.writeData := alu.io.aluResult
 
   // ================================ 仿真专用 ================================ //
   if (config.enableSimDebug) {
+    val pcDataA   = Mux(banchCond.io.pcAsrc, io.input.imm, U"32'd4")
+    io.output.pcNextTrace = pcDataA + pcDataB
     io.output.instr   := io.input.instr
   }
   // EXU 运算周期统计(isCalc && willValid; 当前单周期, 每条计算指令占1拍)

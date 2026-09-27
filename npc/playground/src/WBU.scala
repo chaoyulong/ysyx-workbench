@@ -27,5 +27,6 @@ case class ysyx_23060082_WBU(config: CpuConfig = CpuConfig()) extends Component 
     itrace.io.pc     := io.input.pc
     itrace.io.instr  := io.input.instr
     itrace.io.pcNext := io.input.pcNext
+    itrace.io.difftestSkip := io.input.difftestSkip
   }
 }

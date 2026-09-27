@@ -17,7 +17,7 @@ LDSCRIPTS 	 += $(AM_HOME)/scripts/linker_ysyxsoc.ld
 LDFLAGS   	 += --gc-sections -e _bootloader
 YSYXSOCFLAGS += -l $(shell dirname $(IMAGE).elf)/ysyxsoc-log.txt
 YSYXSOCFLAGS += -f $(IMAGE).elf
-NPCFLAGS  	 += -d $(NPC_HOME)/tools/riscv32-nemu-interpreter-so
+YSYXSOCFLAGS += -d $(NPC_HOME)/tools/riscv32-nemu-interpreter-so
 
 SDB_VAL := $(SDB) $(sdb)
 ifneq ($(filter N n, $(SDB_VAL)),)

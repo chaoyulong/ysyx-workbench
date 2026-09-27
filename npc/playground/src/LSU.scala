@@ -9,6 +9,7 @@ case class Lsu2Wbu_data(config: CpuConfig = CpuConfig()) extends Bundle {
   val pc          = if (config.enableSimDebug) UInt(32 bits) else null   // 仅仿真可见
   val instr       = if (config.enableSimDebug) UInt(32 bits) else null
   val pcNext      = if (config.enableSimDebug) UInt(32 bits) else null
+  val difftestSkip= if (config.enableSimDebug) Bool() else null          // difftest,本条是否跳过ref
 
   val rfWriteData = UInt(32 bits) 
   val rfCtrl      = RfCtrl()        // 其中的mem2reg信号会作为读内存信号被用到
@@ -122,14 +123,6 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   io.output.valid := io.input.valid && willValid  
 
   // ================================ 数据传输部分 ================================ //
-  if (config.enableSimDebug) { 
-    io.output.pc     := io.input.pc
-    io.output.instr  := io.input.instr
-    // 退休指令的"下一条 pc": 异常->mtvec, mret->mepc, 其余用 EXU 算的(顺序/跳转目标)
-    io.output.pcNext := Mux(trapEnter,                 csr.io.mtvec,
-                        Mux(io.input.csrCtrl.trapExit, csr.io.mepc,
-                                                       io.input.pcNextTrace))
-  }
   io.output.rfCtrl.rfWriteAddr := io.input.rfCtrl.rfWriteAddr
   io.output.rfCtrl.mem2reg := io.input.rfCtrl.mem2reg
   io.output.rfCtrl.csr2reg := io.input.rfCtrl.csr2reg
@@ -154,6 +147,23 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
                                                       io.input.pc + 4))    // fence.i只是冲刷，pcNext依旧是pc+4
   io.redirect.fenceI := io.input.fenceI
 
+  // ================================ 调试专用信号 ================================ //
+  if (config.enableSimDebug) { 
+    io.output.pc     := io.input.pc
+    io.output.instr  := io.input.instr
+    // 退休指令的"下一条 pc": 异常->mtvec, mret->mepc, 其余用 EXU 算的(顺序/跳转目标)
+    io.output.pcNext := Mux(trapEnter,                 csr.io.mtvec,
+                        Mux(io.input.csrCtrl.trapExit, csr.io.mepc,
+                                                       io.input.pcNextTrace))
+    val inMemRegion = (memAddr >= U"32'h0f000000" && memAddr < U"32'h0f002000") ||  // sram    8K
+                      (memAddr >= U"32'h30000000" && memAddr < U"32'h40000000") ||  // flash 256M
+                      (memAddr >= U"32'h80000000" && memAddr < U"32'h88000000") ||  // pmem  128M
+                      (memAddr >= U"32'ha0000000" && memAddr < U"32'ha8000000")     // sdram 128M
+    val devAccess = needMem && !inMemRegion
+    io.output.difftestSkip := trapEnter || io.input.csrCtrl.trapExit ||
+                              (io.input.csrCtrl.csrCmd =/= U(0, 3 bits)) ||
+                              io.input.fenceI || devAccess
+  }
   // ==================== 仿真专用: LSU 访存性能统计(仅仿真, 4 组: mem/dev × 读/写) ====================
   // 内存范围(两平台统一): flash 0x30000000-0x3fffffff + psram 0x80000000-0x9fffffff + sdram 0xa0000000-0xbfffffff
   if (config.enableSimDebug) {

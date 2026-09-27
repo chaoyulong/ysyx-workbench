@@ -7,6 +7,7 @@
 #include "device.h"
 #include "trace.h"
 #include "sdb.h"
+#include "difftest.h"
 
 #define DEVICE_UPDATE_CYCLE 20000   // 每多少个周期更新一次外设(SDL事件/屏幕刷新)    
 #define ITRACE_TIMEOUT_CYCLE 10000   // 单条指令周期上限(防卡死)
@@ -23,8 +24,11 @@ static void trace_and_difftest() {
   IFDEF(CONFIG_MTRACE, mtrace_trace());
   IFDEF(CONFIG_FTRACE, func_trace());
 #ifdef CONFIG_DIFFTEST
-  void difftest_step(vaddr_t pc, vaddr_t npc);
-  if(reg_updated && npc_state.state != NPC_END) {
+  // 设备访存/CSR 指令/系统指令与异常: 让 ref 跳过这条, 直接把 DUT 的 {gpr, pc} 抄过去,判据由RTL在LSU合成
+  if(npc_state.state == NPC_RUNNING) {
+    if (itraceRetireSkip) {
+      difftest_skip_ref();
+    }
     difftest_step(cpu.base.pc, cpu.pcNext);
   }
 #endif
@@ -51,8 +55,7 @@ void cpu_state_init() {
 #endif
 }
 
-static void exec_once() 
-{
+static void exec_once() {
   // 执行一条指令: 循环周期直到 WBU 退休(itraceRetireValid), 上限防卡死
   // 用 do-while: 至少先跑1拍, 清掉上一条退休的残留脉冲, 再等新指令退休
   uint64_t cycle_cnt = 0;
@@ -98,8 +101,7 @@ static void execute(uint64_t n) {
 }
 
 static void statistic();
-void assert_fail_msg() 
-{
+void assert_fail_msg() {
   isa_reg_display();
   statistic();
 }

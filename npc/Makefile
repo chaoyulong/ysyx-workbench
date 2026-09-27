@@ -57,7 +57,7 @@ include $(NVBOARD_HOME)/scripts/nvboard.mk
 VERILATOR = verilator
 GTKWAVE = gtkwave
 
-VERILATOR_CFLAGS += -MMD --lint-only -Wall -cc \
+VERILATOR_CFLAGS += -MMD --lint-only -Wall -Werror -cc \
 				-O3 --x-assign fast --x-initial fast --noassert \
 				--trace-fst --relative-includes	\
 				--no-timing --timescale "1ns/1ns"	\

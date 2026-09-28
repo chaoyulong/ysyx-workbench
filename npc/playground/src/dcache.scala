@@ -83,7 +83,7 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig(), param: DcachePa
   val cacheable = inDcache(io.reqIn.addr)
   val hit       = validReg(index) && (tagMem(index) === tag) && cacheable
   // 这次读缺失是否要突发填整行(单字行时退化为原来的单拍读)
-  val burstFill = if (param.words > 1) cacheable && burstable(io.reqIn.addr) else False
+  val burstFill = False  // [二分定位] 临时关闭突发
 
   // 命中的字: 行内每个字先取出来, 再用 wordSel 选(动态切片不能直接做, 需要 mux 树)
   val hitWordVec = Vec(UInt(32 bits), param.words)

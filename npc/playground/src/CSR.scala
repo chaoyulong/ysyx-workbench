@@ -48,46 +48,23 @@ case class ysyx_23060082_CSR() extends Component {
 
   val readMcycle  = io.csrAddr === CSR.mcycle
   val readMcycleh = io.csrAddr === CSR.mcycleh
-  val readMcycleNext = RegNext(readMcycle)
 
-  // mcycle，周期计数器
-  val mcycleCarry = RegInit(False)   // 进位标志
   mcycle := mcycle + 1
-
-  when(io.csrCmd === 1 && (io.csrAddr === CSR.mcycle || io.csrAddr === CSR.mcycleh)) {  // 要写入mcycle时
-    mcycleCarry := False
-  } elsewhen(mcycle === U"32'hffffffff") {
-    mcycleCarry := True
-  } otherwise {
-    mcycleCarry := False
-  }
-
-  when(mcycleCarry) {
+  when(mcycle === U"32'hffffffff") {
     mcycleh := mcycleh + 1
   }
-  val mcyclehTmp = RegNextWhen(mcycleh, readMcycleNext)        // 规定先读低位，再至少间隔1个周期读高位
 
-  // minstret，指令计数器
-  val minstretCarry = RegInit(False)   // 进位标志
+  val mcyclehTmp = RegNextWhen(mcycleh, readMcycle)        // 规定先读低位，再立刻读高位
+
   val readMinstret  = io.csrAddr === CSR.minstret
   val readMinstreth = io.csrAddr === CSR.minstreth
-  val readMinstretNext = RegNext(readMinstret)
-  when(io.csrCmd === 1 && (io.csrAddr === CSR.minstret || io.csrAddr === CSR.minstreth)) {  // 要写入minstret时
-    minstretCarry := False
-  } elsewhen(io.instrRetire && minstret === U"32'hffffffff") {  // 要进位时置高一个周期
-    minstretCarry := True
-  } otherwise {
-    minstretCarry := False
-  }
-
   when(io.instrRetire) { 
     minstret := minstret + 1
+    when(minstret === U"32'hffffffff") {
+      minstreth := minstreth + 1
+    }
   }
-
-  when(minstretCarry) {
-    minstreth := minstreth + 1
-  }
-  val minstrethTmp = RegNextWhen(minstreth, readMinstretNext)  // 规定先读低位，再间隔至少一个周期读高位
+  val minstrethTmp = RegNextWhen(minstreth, readMinstret)  // 规定先读低位，再立刻读高位
 
   io.csrRdata := io.csrAddr.mux(
     CSR.mstatus   -> mstatus,

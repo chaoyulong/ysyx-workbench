@@ -75,3 +75,20 @@ case class PerfReg() extends BlackBox{
   mapClockDomain(clock = io.clock, reset = io.reset)
   addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/dpi-c.v")
 }
+
+// 仿真专用: LSU 数据访存 trace 黑盒(dcache【请求侧】, 只有 enableSimDebug 时实例化)
+// 与 MtraceReg 的区别: 那个截的是 dcache 之后的 AXI 事务(只有缺失流), 这个记 CPU 发出的
+// 每一次数据访存(含命中) —— 给 dcache 做 DSE 用的输入序列。STA 时黑盒整体不生成(零面积)。
+case class LsuTrace() extends BlackBox{
+  val io = new Bundle{
+    val clock = in Bool()
+    val reset = in Bool()
+    val valid = in Bool()
+    val wen   = in Bool()
+    val addr  = in UInt(32 bits)
+    val size  = in UInt(32 bits)
+  }
+  noIoPrefix()
+  mapClockDomain(clock = io.clock, reset = io.reset)
+  addRTLPath(s"${sys.env("NPC_HOME")}/playground/vsrc/dpi-c.v")
+}

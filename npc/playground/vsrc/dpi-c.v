@@ -195,7 +195,7 @@ module LsuTrace(
   import "DPI-C" function void lsu_trace(input int addr, input int wen, input int size);
   always @(posedge clock) begin
     if (!reset && valid) begin
-      lsu_trace(addr, wen, size);
+      lsu_trace(addr, {31'b0, wen}, {29'b0, size});   // 实参显式补零到 32 位(verilator 对 DPI-C 实参宽度严格)
     end
   end
 endmodule

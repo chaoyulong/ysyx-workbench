@@ -32,31 +32,24 @@ object Axi4Define {
 }
 
 // ================================ 简易指令缓存 (icache) ================================ //
-// 组相联(ways: 1=直接映射 / 2=2路组相联), 寄存器实现, 参数化(块大小/总块数/相联度)
+// 直接映射(direct-mapped), 寄存器实现, 参数化(块大小/块数)
 // 接口:
 //   reqIn  : Stream 取指请求(pc) —— IFU 发请求, icache 接受(fire)后处理
 //   rspOut : Flow   指令返回(rdata) —— 命中一拍返回; 缺失访存完成后返回
-//   axi4   : Axi4ReadOnly —— 缺失时经只读控制器访问内存(4 拍突发读回一整行)
-// 命中: 请求拍组合判断(任一 way 的 valid && tag 匹配), 同拍返回 rdata
-// 缺失: 进入 Miss 状态, 读回后写入"受害路"(2 路时由每 set 一位的 LRU 选), 完成后返回
-// 替换: 2 路用 LRU —— cachesim 实测【必需】: 同一 2 路结构下
-//       LRU 缺失 -7.0% / rand -1.7% / FIFO 反而 +3.4%(比直接映射还差)
+//   axi4   : Axi4ReadOnly —— 缺失时经只读控制器访问内存(单次读, len=0)
+// 命中: 请求拍组合判断(tag匹配 && valid), 同拍返回 rdata
+// 缺失: 进入 Miss 状态, 经 AXI 读回并写回 cache(valid/tag/data), 完成后返回
 case class IcacheParams(
-  lineBytes: Int = 16,      // 块大小(字节)
-  lines:     Int = 8,       // 总块数(容量 = lines × lineBytes)
-  ways:      Int = 2        // 相联度: 1=直接映射, 2=2路组相联
+  lineBytes: Int = 16,      // 块大小(字节), 4B 起步(后续可加大配合突发)
+  lines:     Int = 8        // 块数(直接映射组数)
 ) {
-  require(lines % ways == 0, s"lines($lines) 必须能被 ways($ways) 整除")
-  require(ways == 1 || ways == 2, "icache 只实现 ways ∈ {1,2}(LRU 按 2 路设计)")
   // ---- 派生常量  ----
-  val sets      = lines / ways                   // 组数
   val lineBits  = log2Up(lineBytes)              // 块内偏移位宽
-  val indexBits = log2Up(sets)                   // 索引位宽(按【组数】算)
+  val indexBits = log2Up(lines)                  // 索引位宽
   val tagBits   = 32 - lineBits - indexBits      // tag 位宽
   val words     = lineBytes / 4                  // 每行字数 = 突发拍数
   val wordBits  = log2Up(words)                  // 字索引位宽
   val dataBits  = lineBytes * 8                  // 每行数据位宽
-  val wayBits   = scala.math.max(log2Up(ways), 1)  // way 号位宽(log2Up(1)=0, 兜到 1)
 }
 
 // valid ready pc 三个信号
@@ -84,22 +77,15 @@ case class ysyx_23060082_Icache(config: CpuConfig = CpuConfig(), param: IcachePa
   val axi4Ctrler = ysyx_23060082_Axi4_Ctrler_ReadOnly_Burst(param)
   io.axi4 <> axi4Ctrler.io.axi4
   // ================================ 参数与地址划分 ================================ //
-  // 2 路时 index/tag 按【组数】划分(容量仍是 lines × lineBytes); "行地址"仍是 pc(31 downto lineBits)
-  val tag    = io.reqIn.pc(31 downto param.indexBits + param.lineBits)
-  val index  = io.reqIn.pc(param.indexBits + param.lineBits - 1 downto param.lineBits)
-  // ================================ 存储阵列 (寄存器, 按 way 分开以便并行比较 tag) ================================ //
-  val dataMem  = Vec(Vec(Reg(UInt(param.dataBits bits)), param.sets), param.ways)  // data[way][set]
-  val tagMem   = Vec(Vec(Reg(UInt(param.tagBits  bits)), param.sets), param.ways)  // tag [way][set]
-  val validReg = Vec(Reg(Bits(param.sets bits)) init(0), param.ways)               // 每 way 每 set 一位有效位
-  // LRU: 每个 set 一位, 记录"下次该替换哪一路"(只有 ways>1 需要)
-  val lruReg   = if (param.ways > 1) Reg(Bits(param.sets bits)) init(0) else null
+  val tag    = io.reqIn.pc(31 downto param.indexBits + param.lineBits)                  // 按照每块8字节，8块来计算的话，tag = io.reqIn.pc(31 downto 5)
+  val index  = io.reqIn.pc(param.indexBits + param.lineBits - 1 downto param.lineBits)  // 按照每块8字节，8块来计算的话，index = io.reqIn.pc(4 downto 2)
+  // ================================ 存储阵列 (寄存器) ================================ //
+  val dataMem  = Reg(Vec(UInt(param.dataBits bits), param.lines)) // 数据
+  val tagMem   = Reg(Vec(UInt(param.tagBits bits), param.lines))  // 标签
+  val validReg = Reg(Bits(param.lines bits)) init(0)              // 每块1位有效位
 
-  // 命中判断: 任一 way 的 (valid && tag 相等); ways>1 时各路并行比较
-  val wayHit = Vec(Bool(), param.ways)
-  for (w <- 0 until param.ways) {
-    wayHit(w) := validReg(w)(index) && (tagMem(w)(index) === tag)
-  }
-  val hit = wayHit.reduce(_ || _)
+  // 命中判断，当前索引位有效并且tag相等
+  val hit = validReg(index) && (tagMem(index) === tag)
 
   val wordSel = if (param.words > 1) io.reqIn.pc(param.lineBits - 1 downto 2) else U(0, 1 bits)
   val wordSelReg = RegNextWhen(wordSel, io.reqIn.fire)            // 本次请求的是块内第几个字
@@ -127,31 +113,30 @@ case class ysyx_23060082_Icache(config: CpuConfig = CpuConfig(), param: IcachePa
   // 命中 或 缺失但是读取完成
   val missDone = (state === IcacheState.Miss) && axi4Ctrler.io.readEnd
   io.rspOut.valid := (io.reqIn.fire && hit) || missDone
+  
 
-  // 命中数据: 每路先按 wordSel 选出本路的字(32 位), 再按命中的 way 选一路 —— 不用 128 位 mux
-  val hitWord = Vec(UInt(32 bits), param.ways)
-  for (w <- 0 until param.ways) {
-    val wayWordVec = Vec(UInt(32 bits), param.words)
-    for (i <- 0 until param.words) {
-      wayWordVec(i) := dataMem(w)(index)(i*32 + 31 downto i*32)
-    }
-    hitWord(w) := wayWordVec(wordSel)
-  }
-  val hitRdata = if (param.ways > 1) Mux(wayHit(1), hitWord(1), hitWord(0)) else hitWord(0)
-
+  // 把一个 dataBits 位的"行"拆成 words 个 32 位字, 用动态索引选(SpinalHDL 会生成 mux 树)
+  val hitWordVec  = Vec(UInt(32 bits), param.words)
   val missWordVec = Vec(UInt(32 bits), param.words)
   for (i <- 0 until param.words) {
+    hitWordVec (i) := dataMem(index)(i*32 + 31 downto i*32)
     missWordVec(i) := axi4Ctrler.io.readData(i*32 + 31 downto i*32)
   }
 
   io.rspOut.rdata := Mux(io.reqIn.fire && hit,
-                        hitRdata,                  // 命中: 命中路 + 当前pc的字
+                        hitWordVec (wordSel),      // 命中: 当前pc的字
                         missWordVec(wordSelReg))   // 缺失: 请求时锁存的字
-
+                          
   // readReq要求只持续一个周期
   val enterMiss = (state === IcacheState.Idle) && io.reqIn.valid && !hit
   axi4Ctrler.io.readReq  := enterMiss
-  axi4Ctrler.io.readAddr := (io.reqIn.pc(31 downto param.lineBits) ## U(0, param.lineBits bits)).asUInt // 整行对齐地址
+  axi4Ctrler.io.readAddr := (io.reqIn.pc(31 downto param.lineBits) ## U(0, param.lineBits bits)).asUInt // 地址对齐
+
+  // 缺失完成: 写回cache(valid/tag/data)
+  when(missDone) {
+    dataMem (indexReg) := axi4Ctrler.io.readData
+    tagMem  (indexReg) := tagReg
+  }
 
   // fence.i: 清空全部有效位(后续取指缺失重读新指令)
   val discardMiss = RegInit(False)        // fence到达时正在读取的miss
@@ -164,36 +149,12 @@ case class ysyx_23060082_Icache(config: CpuConfig = CpuConfig(), param: IcachePa
   val rspErr = axi4Ctrler.io.axi4.r.fire && (axi4Ctrler.io.axi4.r.payload.resp =/= B"2'b00")
   io.rspErr := rspErr
 
-  // ================================ 受害路 & 填充 ================================ //
-  // ways=1: 恒为 way0(等价直接映射); ways>1: 由该 set 的 LRU 位选(0=替换way0, 1=替换way1)
-  val victimWay = if (param.ways > 1) lruReg(indexReg).asUInt else U(0, 1 bits)
-
-  // 缺失完成: 整行写进受害路的 data/tag(valid 单独处理, 被丢弃的 miss 不置 valid)
-  when(missDone) {
-    for (w <- 0 until param.ways) {
-      when(victimWay === U(w, param.wayBits bits)) {
-        dataMem(w)(indexReg) := axi4Ctrler.io.readData
-        tagMem (w)(indexReg) := tagReg
-      }
-    }
-  }
-
-  // LRU 更新: 被访问的那一路成为 MRU, 另一路成为下次的受害路
-  if (param.ways > 1) {
-    when(io.reqIn.fire && hit) {                    // 命中(含同拍命中): 另一路变 LRU
-      lruReg(index) := ~wayHit(1)
-    } elsewhen(missDone && !discardMiss) {          // 填充完成: 刚填入的那一路不是 LRU
-      lruReg(indexReg) := ~victimWay(0)
-    }
-  }
-
-  when(io.fenceI) {                                 // fence.i: 全部失效 + LRU 复位(等价冷 cache)
-    for (w <- 0 until param.ways) validReg(w) := 0
-    if (param.ways > 1) lruReg := 0
-  } elsewhen(missDone && !discardMiss && !rspErr) { // 如果是卡住的话，vaild不会置起，所以会开始下一次访存
-    for (w <- 0 until param.ways) {
-      when(victimWay === U(w, param.wayBits bits)) { validReg(w)(indexReg) := True }
-    }
+  when(io.fenceI) {
+    validReg := 0
+  } elsewhen(missDone && !discardMiss && !rspErr) {  // 如果是卡住的话，vaild不会置起，所以会开始下一次访存
+    validReg(indexReg) := True
+  } otherwise {
+    validReg := validReg
   }
 
   if (config.enableSimDebug) {

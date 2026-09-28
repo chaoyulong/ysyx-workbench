@@ -54,6 +54,24 @@ void ysyxsoc_dis_id()
   putch('\n');
 }
 
+uint64_t read_mcycle64(void) {
+  uint32_t lo, hi;
+  asm volatile("csrr %0, mcycle\n\t"    // 先读低, 硬件在下一拍锁存当时的高位
+               "nop\n\t"                // 协议要求的最小间隔(>=1 条指令 = 2 拍)
+               "csrr %1, mcycleh"       // 再读高, 返回锁存值
+               : "=r"(lo), "=r"(hi));
+  return ((uint64_t)hi << 32) | lo;     // 合并成 64 位
+}
+
+uint64_t read_minstret64(void) {
+  uint32_t lo, hi;
+  asm volatile("csrr %0, minstret\n\t"
+               "nop\n\t"
+               "csrr %1, minstreth"
+               : "=r"(lo), "=r"(hi));
+  return ((uint64_t)hi << 32) | lo;
+}
+
 void putch(char ch) {
   outb(SERIAL_PORT, ch);
 }

@@ -53,7 +53,7 @@ case class ysyx_23060082_CSR() extends Component {
   val mcycleCarry = RegInit(False)   // 进位标志
   mcycle := mcycle + 1
 
-  when(writeEnable && csrCmd === 1 && (io.csrAddr === CSR.mcycle || io.csrAddr === CSR.mcycleh)) {  // 要写入mcycle时
+  when(writeEnable && io.csrCmd === 1 && (io.csrAddr === CSR.mcycle || io.csrAddr === CSR.mcycleh)) {  // 要写入mcycle时
     mcycleCarry := False
   } elsewhen(mcycle === U"32'hffffffff") {
     mcycleCarry := True
@@ -71,7 +71,7 @@ case class ysyx_23060082_CSR() extends Component {
   val readMinstret  = io.csrAddr === CSR.minstret
   val readMinstreth = io.csrAddr === CSR.minstreth
 
-  when(writeEnable && csrCmd === 1 && (io.csrAddr === CSR.minstret || io.csrAddr === CSR.minstreth)) {  // 要写入minstret时
+  when(writeEnable && io.csrCmd === 1 && (io.csrAddr === CSR.minstret || io.csrAddr === CSR.minstreth)) {  // 要写入minstret时
     minstretCarry := False
   } elsewhen(io.instrRetire && minstret === U"32'hffffffff") {  // 要进位时置高一个周期
     minstretCarry := True

@@ -190,7 +190,7 @@ module LsuTrace(
   input             valid,
   input             wen,
   input      [31:0] addr,
-  input      [31:0] size
+  input      [ 2:0] size
 );
   import "DPI-C" function void lsu_trace(input int addr, input int wen, input int size);
   always @(posedge clock) begin

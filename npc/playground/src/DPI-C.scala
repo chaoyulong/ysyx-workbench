@@ -86,7 +86,7 @@ case class LsuTrace() extends BlackBox{
     val valid = in Bool()
     val wen   = in Bool()
     val addr  = in UInt(32 bits)
-    val size  = in UInt(32 bits)
+    val size  = in UInt(3 bits)      // dcache 请求的 size = (False ## memOp[1:0]), 3 位
   }
   noIoPrefix()
   mapClockDomain(clock = io.clock, reset = io.reset)

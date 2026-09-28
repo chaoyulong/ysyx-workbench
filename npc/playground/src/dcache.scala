@@ -89,8 +89,11 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   val bPending    = RegInit(False)                     // 有 b 未回(挂起的写还没落到内存)
   val pwAddr      = Reg(UInt(32 bits))                 // 挂起写的地址(接受请求时锁存)
   val pwCacheable = RegInit(False)                     // 挂起写是否可缓存
+  // ⚠ writeSent 是【粘性】的(aw/w 可能不同拍握手), 所以置位 bPending 必须只在
+  //   "发完就走"那一拍(= 还在 Write 态的那一拍)发一次脉冲, 否则 b 回来后会被再次置起 -> 死锁
+  val writePostDone = (state === DcacheState.Write) && writeSent && pwCacheable
   when(axi4Ctrler.io.axi4.b.fire) { bPending := False }
-  .elsewhen(writeSent && pwCacheable) { bPending := True }
+  .elsewhen(writePostDone)        { bPending := True }
 
   val sameWord   = io.reqIn.addr(31 downto 2) === pwAddr(31 downto 2)
   val writeGuard = bPending && (reqWrite || (reqRead && sameWord && !hit))
@@ -104,7 +107,7 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
     .otherwise                   { state := DcacheState.ReadMiss }
   } elsewhen(state === DcacheState.Write) {
     // 可缓存写: aw/w 发完就回 Idle(posted); 设备写: 必须等 b
-    when(axi4Ctrler.io.writeEnd || (writeSent && pwCacheable)) { state := DcacheState.Idle }
+    when(axi4Ctrler.io.writeEnd || writePostDone) { state := DcacheState.Idle }
     .otherwise { state := DcacheState.Write }
   }
 

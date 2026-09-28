@@ -49,8 +49,10 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
   // val pcDataB   = Mux(banchCond.io.pcBsrc, io.input.rfReadData1, io.input.pc)
   // val pcDataTmp = pcDataA + pcDataB
   // 由于pcAsrc到达较晚，所以选择去掉，并且pc+4这个pcnext不需要得出，因为默认运行的就是这个
-  val pcDataB   = Mux(banchCond.io.pcBsrc, io.input.rfReadData1, io.input.pc)      
-  val pcDataTmp = io.input.imm + pcDataB
+  // val pcDataB   = Mux(banchCond.io.pcBsrc, io.input.rfReadData1, io.input.pc)      
+  // val pcDataTmp = io.input.imm + pcDataB
+  val pcDataTmp   = Mux(banchCond.io.pcBsrc, io.input.imm + io.input.rfReadData1, 
+                                             io.input.imm + io.input.pc)   
   val pcNextBit0= !banchCond.io.pcBsrc && pcDataTmp(0)          // jalr指令规定要将最后一位清零
   val pcNext    = (pcDataTmp(31 downto 1) ## pcNextBit0).asUInt
 

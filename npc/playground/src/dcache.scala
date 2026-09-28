@@ -80,14 +80,12 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   // 改法: 【可缓存】写只要 aw/w 都发出去就回 Idle; 设备/MMIO 写仍严格等 b(不能乱序)。
   // 顺序性: 挂起的写还没落到内存 => 紧接着的【同字地址未命中读】和任何【新写】都必须先等 b,
   //         否则会从内存读到旧值 / 出现两笔写同时挂起(控制器只有一套 aw/w)。
-  val awSentReg = RegInit(False)                       // aw 已发出
-  val wSentReg  = RegInit(False)                       // w  已发出
-  when(axi4Ctrler.io.axi4.aw.fire) { awSentReg := True }
-  when(axi4Ctrler.io.axi4.w.fire)  { wSentReg  := True }
-  val writeSent = awSentReg && wSentReg                // 地址+数据都已发出
+  // aw/w 都已发出: 控制器里这两个 valid 是寄存器, 发出后自己清 0 => 两个都 0 即"发完了"
+  // (Write 态第一拍它们必定还是 1, 不会误判; 这样省掉两个粘性标志, 也避免"粘性重触发"那类坑)
+  val writeSent = !axi4Ctrler.io.axi4.aw.valid && !axi4Ctrler.io.axi4.w.valid
 
   val bPending    = RegInit(False)                     // 有 b 未回(挂起的写还没落到内存)
-  val pwAddr      = Reg(UInt(32 bits))                 // 挂起写的地址(接受请求时锁存)
+  val pwAddr      = Reg(UInt(20 bits))                 // 挂起写的地址[21:2](同字必然相同, 只需比到这一位)
   val pwCacheable = RegInit(False)                     // 挂起写是否可缓存
   // ⚠ writeSent 是【粘性】的(aw/w 可能不同拍握手), 所以置位 bPending 必须只在
   //   "发完就走"那一拍(= 还在 Write 态的那一拍)发一次脉冲, 否则 b 回来后会被再次置起 -> 死锁
@@ -95,7 +93,7 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   when(axi4Ctrler.io.axi4.b.fire) { bPending := False }
   .elsewhen(writePostDone)        { bPending := True }
 
-  val sameWord   = io.reqIn.addr(31 downto 2) === pwAddr(31 downto 2)
+  val sameWord   = io.reqIn.addr(21 downto 2) === pwAddr   // 低位相同就当成可能同字(保守, 只会多停顿)
   val writeGuard = bPending && (reqWrite || (reqRead && sameWord && !hit))
 
   // ★ "请求被接受"的统一口径: ready / 状态迁移 / readReq / writeReq 必须用同一个条件,
@@ -128,10 +126,8 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   // ================================ 响应 ================================ //
   val writeAccept = reqAccept && reqWrite                         // 请求被接受
   when(writeAccept) {                                             // 锁存这一笔写的信息
-    pwAddr      := io.reqIn.addr
+    pwAddr      := io.reqIn.addr(21 downto 2)
     pwCacheable := cacheable
-    awSentReg   := False
-    wSentReg    := False
   }
   io.rspOut.valid := readHit || readMissDone || writeAccept       // 不等到写完
   io.writeAccept  := writeAccept                                  //

@@ -178,24 +178,3 @@ module PerfReg(
     end
   end
 endmodule
-
-// ------------- 仿真专用: LSU 数据访存 trace (dcache 请求侧, 供 dcache 的 DSE) ------------- //
-// 与上面 MtraceReg 的区别: MtraceReg 截的是 dcache【之后】的 AXI 事务(只有缺失流),
-// 这里截的是 dcache【请求侧】—— CPU 发出的每一次数据访存(命中/缺失都记), 正是
-// "换个 dcache 组织会怎样"所需要的输入序列。
-// 直接 DPI-C 写出(不做计数器轮询), 所以不会丢事件。
-module LsuTrace(
-  input             clock,
-  input             reset,
-  input             valid,
-  input             wen,
-  input      [31:0] addr,
-  input      [ 2:0] size
-);
-  import "DPI-C" function void lsu_trace(input int addr, input int wen, input int size);
-  always @(posedge clock) begin
-    if (!reset && valid) begin
-      lsu_trace(addr, {31'b0, wen}, {29'b0, size});   // 实参显式补零到 32 位(verilator 对 DPI-C 实参宽度严格)
-    end
-  end
-endmodule

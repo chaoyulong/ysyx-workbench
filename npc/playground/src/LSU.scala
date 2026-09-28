@@ -203,14 +203,6 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
                                       isDevAddr(io.axi4.aw.addr))
     mtrace.io.addr  := Mux(lsuArFire, io.axi4.ar.addr, io.axi4.aw.addr)
     mtrace.io.wdata := io.axi4.w.data.asUInt
-    // ================================ dtrace (dcache 请求侧, 供 dcache 的 DSE) ================================ //
-    // mtrace 只能看到 dcache 【之后】的 AXI 事务(86% 的缺失流), 做 dcache 的 DSE 需要
-    // CPU 侧的完整数据访存流(含命中) -> 挂一个请求侧的 trace 黑盒(纯观察, 不影响时序/功能)
-    val lsuTrace = LsuTrace()
-    lsuTrace.io.valid := dcache.io.reqIn.fire        // 被 dcache 接受的每一次数据访存(命中/缺失都算)
-    lsuTrace.io.wen   := dcache.io.reqIn.write
-    lsuTrace.io.addr  := dcache.io.reqIn.addr
-    lsuTrace.io.size  := dcache.io.reqIn.size
   }
 }
 // ================================ 数据处理单元 ================================ //

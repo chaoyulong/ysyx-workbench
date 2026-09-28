@@ -98,9 +98,13 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   val sameWord   = io.reqIn.addr(31 downto 2) === pwAddr(31 downto 2)
   val writeGuard = bPending && (reqWrite || (reqRead && sameWord && !hit))
 
+  // ★ "请求被接受"的统一口径: ready / 状态迁移 / readReq / writeReq 必须用同一个条件,
+  //   否则会出现"dcache 发了 ar 进了 ReadMiss, 但 LSU 因 ready=0 没被接受"的不一致 -> 指令永不完成
+  val reqAccept = (state === DcacheState.Idle) && !writeGuard
+
   when(state === DcacheState.Idle) {
-    when(reqRead && !hit) { state := DcacheState.ReadMiss }   // 读缺失
-    .elsewhen(reqWrite)   { state := DcacheState.Write    }   // 写: 命中也要写内存
+    when(reqAccept && reqRead && !hit) { state := DcacheState.ReadMiss }   // 读缺失
+    .elsewhen(reqAccept && reqWrite)   { state := DcacheState.Write    }   // 写: 命中也要写内存
     .otherwise            { state := DcacheState.Idle     }
   } elsewhen(state === DcacheState.ReadMiss) {
     when(axi4Ctrler.io.readEnd)  { state := DcacheState.Idle }
@@ -113,16 +117,16 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
 
   // 只在 Idle 接受请求(忙时下游会等; LSU 也必须等 reqIn.fire 才离开 Idle);
   // 有挂起写时, 新写/同字未命中读要等它落内存
-  io.reqIn.ready := (state === DcacheState.Idle) && !writeGuard
+  io.reqIn.ready := reqAccept
 
   val readMissDone = (state === DcacheState.ReadMiss) && axi4Ctrler.io.readEnd
   if (config.enableSimDebug) {
-    io.miss     := (state === DcacheState.Idle) && reqRead && cacheable && !hit
+    io.miss     := reqAccept && reqRead && cacheable && !hit
     io.missDone := readMissDone
   }
 
   // ================================ 响应 ================================ //
-  val writeAccept = (state === DcacheState.Idle) && reqWrite      // 请求被接受
+  val writeAccept = reqAccept && reqWrite                         // 请求被接受
   when(writeAccept) {                                             // 锁存这一笔写的信息
     pwAddr      := io.reqIn.addr
     pwCacheable := cacheable
@@ -139,9 +143,9 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   io.readHit         := readHit
 
   // ================================ AXI ================================ //
-  axi4Ctrler.io.readReq   := (state === DcacheState.Idle) && reqRead && !hit   // 只持续一拍
+  axi4Ctrler.io.readReq   := reqAccept && reqRead && !hit                     // 只持续一拍
   axi4Ctrler.io.readAddr  := io.reqIn.addr
-  axi4Ctrler.io.writeReq  := (state === DcacheState.Idle) && reqWrite
+  axi4Ctrler.io.writeReq  := reqAccept && reqWrite
   axi4Ctrler.io.writeAddr := io.reqIn.addr
   axi4Ctrler.io.writeData := io.reqIn.writeData
   axi4Ctrler.io.writeMask := io.reqIn.writeMask

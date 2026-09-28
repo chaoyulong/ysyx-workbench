@@ -6,7 +6,6 @@ import spinal.lib._    // 使用spinal的模块库
 case class Idu2Exu_data(config: CpuConfig = CpuConfig()) extends Bundle {
   val pc          = UInt(32 bits)
   val instr       = if (config.enableSimDebug) UInt(32 bits) else null
-  val predictTaken= Bool()          // 分支预测位(IFU 判定): 随指令传到 EXU, 用于判断预测对错 —— 真实字段, STA 也生成
 
   val ctrl        = CtrlSignals()
   val imm         = UInt(32 bits)
@@ -139,7 +138,6 @@ case class ysyx_23060082_IDU(config: CpuConfig = CpuConfig()) extends Component 
   io.output.pc          := io.input.pc
   io.output.ctrl        := decoder.io.ctrl
   io.output.imm         := decoder.io.imm
-  io.output.predictTaken:= io.input.predictTaken     // 分支预测位透传(EXU 判预测对错用)
 
   if (config.enableSimDebug) {
     io.output.isCalc    := decoder.io.isCalc

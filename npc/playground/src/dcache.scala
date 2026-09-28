@@ -74,6 +74,27 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   val reqWrite = io.reqIn.valid && io.reqIn.write
   val readHit  = (state === DcacheState.Idle) && reqRead && hit
 
+  // ================================ 写穿"不等 b"(posted write) ================================ //
+  // 问题: 一次 store 原本要把 dcache 占住整个 aw/w -> b 往返(~20 拍)才回 Idle,
+  //       期间 reqIn.ready=0 => 下一笔访存被挡住(读写本来不冲突, 是这里把它串行化了)。
+  // 改法: 【可缓存】写只要 aw/w 都发出去就回 Idle; 设备/MMIO 写仍严格等 b(不能乱序)。
+  // 顺序性: 挂起的写还没落到内存 => 紧接着的【同字地址未命中读】和任何【新写】都必须先等 b,
+  //         否则会从内存读到旧值 / 出现两笔写同时挂起(控制器只有一套 aw/w)。
+  val awSentReg = RegInit(False)                       // aw 已发出
+  val wSentReg  = RegInit(False)                       // w  已发出
+  when(axi4Ctrler.io.axi4.aw.fire) { awSentReg := True }
+  when(axi4Ctrler.io.axi4.w.fire)  { wSentReg  := True }
+  val writeSent = awSentReg && wSentReg                // 地址+数据都已发出
+
+  val bPending    = RegInit(False)                     // 有 b 未回(挂起的写还没落到内存)
+  val pwAddr      = Reg(UInt(32 bits))                 // 挂起写的地址(接受请求时锁存)
+  val pwCacheable = RegInit(False)                     // 挂起写是否可缓存
+  when(axi4Ctrler.io.axi4.b.fire) { bPending := False }
+  .elsewhen(writeSent && pwCacheable) { bPending := True }
+
+  val sameWord   = io.reqIn.addr(31 downto 2) === pwAddr(31 downto 2)
+  val writeGuard = bPending && (reqWrite || (reqRead && sameWord && !hit))
+
   when(state === DcacheState.Idle) {
     when(reqRead && !hit) { state := DcacheState.ReadMiss }   // 读缺失
     .elsewhen(reqWrite)   { state := DcacheState.Write    }   // 写: 命中也要写内存
@@ -82,12 +103,14 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
     when(axi4Ctrler.io.readEnd)  { state := DcacheState.Idle }
     .otherwise                   { state := DcacheState.ReadMiss }
   } elsewhen(state === DcacheState.Write) {
-    when(axi4Ctrler.io.writeEnd) { state := DcacheState.Idle }
-    .otherwise                   { state := DcacheState.Write }
+    // 可缓存写: aw/w 发完就回 Idle(posted); 设备写: 必须等 b
+    when(axi4Ctrler.io.writeEnd || (writeSent && pwCacheable)) { state := DcacheState.Idle }
+    .otherwise { state := DcacheState.Write }
   }
 
-  // 只在 Idle 接受请求(忙时下游会等; LSU 也必须等 reqIn.fire 才离开 Idle)
-  io.reqIn.ready := (state === DcacheState.Idle)
+  // 只在 Idle 接受请求(忙时下游会等; LSU 也必须等 reqIn.fire 才离开 Idle);
+  // 有挂起写时, 新写/同字未命中读要等它落内存
+  io.reqIn.ready := (state === DcacheState.Idle) && !writeGuard
 
   val readMissDone = (state === DcacheState.ReadMiss) && axi4Ctrler.io.readEnd
   if (config.enableSimDebug) {
@@ -97,9 +120,15 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
 
   // ================================ 响应 ================================ //
   val writeAccept = (state === DcacheState.Idle) && reqWrite      // 请求被接受
+  when(writeAccept) {                                             // 锁存这一笔写的信息
+    pwAddr      := io.reqIn.addr
+    pwCacheable := cacheable
+    awSentReg   := False
+    wSentReg    := False
+  }
   io.rspOut.valid := readHit || readMissDone || writeAccept       // 不等到写完
   io.writeAccept  := writeAccept                                  //
-  io.writeBusy    := (state === DcacheState.Write)
+  io.writeBusy    := (state === DcacheState.Write) || bPending    // fence.i 要等"写真正完成"
 
   val readDataReg = RegNextWhen(axi4Ctrler.io.readData, readMissDone)
   io.rspOut.readData := Mux(readHit, dataMem(index),

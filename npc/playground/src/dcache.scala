@@ -185,7 +185,9 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig(), param: DcachePa
     lineNew(w*32 + 31 downto w*32) := m
   }
 
-  when(readMissDone && cacheable && !readErr) {         // 读缺失: 数据已逐拍写入, 这里只置 tag/valid
+  when(readMissDone && burstFill && !readErr) {         // ★ 只有【整行突发】才分配: 数据是逐拍写进去的,
+                                                        //   单拍读(flash/设备)只填了 1 个字, 若也置 valid,
+                                                        //   行内另外 3 个字就是垃圾 -> 之后命中会读到脏数据
     tagMem(index)   := tag
     validReg(index) := True
   } elsewhen((state === DcacheState.Idle) && reqWrite && hit) {

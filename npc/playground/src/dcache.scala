@@ -115,9 +115,6 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   }
 
 
-  
-
-
   io.reqIn.ready         := (state === DcacheState.Idle)  && !writeGuard
   axi4Ctrler.io.readReq  := (state === DcacheState.Idle)  && !writeGuard && reqRead  && !hit
   axi4Ctrler.io.writeReq := (state === DcacheState.Idle)  && !writeGuard && reqWrite

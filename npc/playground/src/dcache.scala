@@ -123,13 +123,18 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   io.writeErr := writeErr
   // ================================ 写穿更新 / 缺失填回 ================================ //
   // store 命中: 按字节使能改 cache 里那一个字(与发给内存的 data/mask 完全一致)
-  val storeData = UInt(32 bits)
-  storeData := dataMem(index)                                  // 默认保持
-  for (b <- 0 until 4) {
-    when(io.reqIn.writeMask(b)) {
-      storeData(b * 8 + 7 downto b * 8) := io.reqIn.writeData(b * 8 + 7 downto b * 8)
-    }
-  }
+  // val storeData = UInt(32 bits)
+  // storeData := dataMem(index)                                  // 默认保持
+  // for (b <- 0 until 4) {
+  //   when(io.reqIn.writeMask(b)) {
+  //     storeData(b * 8 + 7 downto b * 8) := io.reqIn.writeData(b * 8 + 7 downto b * 8)
+  //   }
+  // }
+
+  val writeMaskFull = (io.reqIn.writeMask(3) #* 8) ## (io.reqIn.writeMask(2) #* 8) ##
+                      (io.reqIn.writeMask(1) #* 8) ## (io.reqIn.writeMask(0) #* 8)
+
+  val storeData = (dataMem(index) & ~writeMaskFull) | (io.reqIn.writeData & writeMaskFull)
 
   when(readMissDone && cacheable && !readErr) {                   // 读缺失填回(只有可缓存地址才占 cache)
     dataMem(index)  := axi4Ctrler.io.readData

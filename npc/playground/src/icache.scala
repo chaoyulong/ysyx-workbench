@@ -147,7 +147,6 @@ case class ysyx_23060082_Icache(config: CpuConfig = CpuConfig(), param: IcachePa
 
 
   when((state === IcacheState.Miss) && axi4Ctrler.io.readOnce) {
-    
     for (i <- 0 until param.words) {
       if(i == readCnt) {
         dataMem(indexReg)(i * 32 + 31 downto i * 32) := axi4Ctrler.io.readDataOnce

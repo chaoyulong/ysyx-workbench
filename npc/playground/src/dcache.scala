@@ -134,7 +134,7 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   val writeMaskFull = (io.reqIn.writeMask(3) #* 8) ## (io.reqIn.writeMask(2) #* 8) ##
                       (io.reqIn.writeMask(1) #* 8) ## (io.reqIn.writeMask(0) #* 8)
 
-  val storeData = ((dataMem(index).asBits & writeMaskFull) | (io.reqIn.writeData.asBits & writeMaskFull)).asUInt
+  val storeData = ((dataMem(index).asBits & ~writeMaskFull) | (io.reqIn.writeData.asBits & writeMaskFull)).asUInt
 
   when(readMissDone && cacheable && !readErr) {                   // 读缺失填回(只有可缓存地址才占 cache)
     dataMem(index)  := axi4Ctrler.io.readData

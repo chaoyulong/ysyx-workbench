@@ -159,10 +159,8 @@ sta:
 #                  以及 `ifndef SYNTHESIS 包起来的枚举调试字符串(共约 35 个)
 #     UNUSEDPARAM  枚举的 localparam(只被上面那些调试字符串引用)
 #     DECLFILENAME 一个 .v 里放了 18 个模块
-#   想看**全部**警告(含噪声)就手动跑:
-#     verilator --lint-only -Wall --top-module $(STA_DESIGN) $(BUILD_DIR)/sta/$(STA_DESIGN).v
-# LINT_WAIVER = -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM -Wno-DECLFILENAME
-LINT_WAIVER =
+#   想看**全部**警告(含噪声)用: make lint-all
+LINT_WAIVER = -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM -Wno-DECLFILENAME
 
 lint:
 	@SPINAL_TOPNAME=$(STA_DESIGN) BUILD_DIR=$(BUILD_DIR)/sta SPINAL_SIM_DEBUG=0 \
@@ -171,10 +169,17 @@ lint:
 		$(BUILD_DIR)/sta/$(STA_DESIGN).v
 	@echo "[lint] OK: 无'真问题'类警告(位宽/锁存/组合环/多驱动/未驱动/隐式线网)"
 
+# lint-all: 同上, 但**不屏蔽任何警告**(含 SpinalHDL 生成物噪声), 只用来人工查看全部警告
+lint-all:
+	@SPINAL_TOPNAME=$(STA_DESIGN) BUILD_DIR=$(BUILD_DIR)/sta SPINAL_SIM_DEBUG=0 \
+		./mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog
+	-verilator --lint-only -Wall --top-module $(STA_DESIGN) $(BUILD_DIR)/sta/$(STA_DESIGN).v
+	@echo "[lint-all] 以上为全部警告(含噪声); 只挑真问题用 make lint"
+
 clean:
 	-rm -rf $(BUILD_DIR) ./simulations ./*.v
 
-.PHONY: $(SRC_AUTO_BIND) $(SPINAL_VFILE) test verilog run sim wave help reformat checkformat clean sta lint
+.PHONY: $(SRC_AUTO_BIND) $(SPINAL_VFILE) test verilog run sim wave help reformat checkformat clean sta lint lint-all
 
 
 -include ../Makefile

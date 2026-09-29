@@ -73,7 +73,7 @@ module ItraceReg(
 
   reg ebreak;
 
-  always @(posedge clock or posedge reset) begin
+  always @(posedge clock) begin
     if (reset) begin
       ebreak  <= 1'b0;
     end
@@ -110,7 +110,7 @@ module MtraceReg(
   reg [31:0] mtraceAddr;
   reg [31:0] mtraceWdata;
 
-  always @(posedge clock or posedge reset) begin
+  always @(posedge clock) begin
     if (reset) begin
       mtraceCnt    <= 64'h0;
       mtraceWen    <= 1'b0;
@@ -148,7 +148,7 @@ module PerfReg(
   reg [63:0] evtCnt0, evtCnt1, evtCnt2, evtCnt3;
   reg [63:0] evtCnt4, evtCnt5, evtCnt6, evtCnt7;
 
-  always @(posedge clock or posedge reset) begin
+  always @(posedge clock) begin
     if (reset) begin
       perfCyc <= 64'h0;
       dlyReqTime0 <= 64'h0; dlyReqTime1 <= 64'h0; dlyReqTime2 <= 64'h0; dlyReqTime3 <= 64'h0;

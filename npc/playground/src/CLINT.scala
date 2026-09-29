@@ -35,13 +35,14 @@ case class ysyx_23060082_Clint() extends Component {
     readActive := readActive
   }
 
-  val addrReg     = RegNextWhen(io.clintAxi4.ar.addr, io.clintAxi4.ar.fire)     // 地址暂存一下，打断从icache到clint这条不会存在的关键路径
+  // 地址暂存一下，打断从icache到clint这条不会存在的关键路径，之记录低4位，区分高低位即可
+  val addrReg     = RegNextWhen(io.clintAxi4.ar.addr(3 downto 0), io.clintAxi4.ar.fire)
   val dataReg     = Reg(UInt(32 bits))
   val arFireDelay = RegNext(io.clintAxi4.ar.fire) // 握手后的下一周期
   val dataFinish  = RegInit(False)
 
   // 读取协议: 先读低位(mtime), 硬件锁存当时的高位; 再读高位(mtimeh)返回锁存值
-  val readLow  = addrReg === MTIME
+  val readLow  = addrReg === U"4'h0"
   val timeCountHighSnap = RegNextWhen(timeCountHigh, arFireDelay && readLow)    // 读低那一拍锁存高位
 
   when(arFireDelay) {    
@@ -54,8 +55,8 @@ case class ysyx_23060082_Clint() extends Component {
 
   when(arFireDelay) {
     dataReg := addrReg.mux(
-      MTIMEH  -> timeCountHighSnap,
-      MTIME   -> timeCountLow,
+      U"4'h4"  -> timeCountHighSnap,  // 高位
+      U"4'h0"  -> timeCountLow,       // 低位
       default -> U(0)
     )
   }

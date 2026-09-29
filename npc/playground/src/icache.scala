@@ -144,8 +144,15 @@ case class ysyx_23060082_Icache(config: CpuConfig = CpuConfig(), param: IcachePa
   } elsewhen((state === IcacheState.Miss) && axi4Ctrler.io.readOnce) {
     readCnt := readCnt + 1
   }
+
+
   when((state === IcacheState.Miss) && axi4Ctrler.io.readOnce) {
-    dataMem (indexReg)(readCnt * 32 + 31 downto readCnt * 32) := axi4Ctrler.io.readDataOnce
+    
+    for (i <- 0 until param.words) {
+      if(i == readCnt) {
+        dataMem(indexReg)(i * 32 + 31 downto i * 32) := axi4Ctrler.io.readDataOnce
+      }
+    }
   }
 
   // fence.i: 清空全部有效位(后续取指缺失重读新指令)

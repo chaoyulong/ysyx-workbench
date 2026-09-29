@@ -123,14 +123,6 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   io.writeErr := writeErr
   // ================================ 写穿更新 / 缺失填回 ================================ //
   // store 命中: 按字节使能改 cache 里那一个字(与发给内存的 data/mask 完全一致)
-  // val storeData = UInt(32 bits)
-  // storeData := dataMem(index)                                  // 默认保持
-  // for (b <- 0 until 4) {
-  //   when(io.reqIn.writeMask(b)) {
-  //     storeData(b * 8 + 7 downto b * 8) := io.reqIn.writeData(b * 8 + 7 downto b * 8)
-  //   }
-  // }
-
   val writeMaskFull = (io.reqIn.writeMask(3) #* 8) ## (io.reqIn.writeMask(2) #* 8) ##
                       (io.reqIn.writeMask(1) #* 8) ## (io.reqIn.writeMask(0) #* 8)
 
@@ -159,29 +151,12 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
     val axi4 = master(Axi4(AxiConfig.axiConfig))
   }
   // ================================ 读操作 ================================ //
-  // io.axi4.ar.valid.setAsReg() init(False)
-  // io.axi4.ar.addr .setAsReg()
-
   // 加不加突发，这些数值都会是常量，不需要寄存器锁存
   io.axi4.ar.id   := U"4'b0"
   io.axi4.ar.len  := U"8'b0"          // 突发长度1  
   io.axi4.ar.size := io.size  
   io.axi4.ar.burst:= B"2'b01"         // 突发类型INCR
   // ================================ 读地址 ================================ //
-  // when(io.readReq) {
-  //   io.axi4.ar.valid := True
-  // } elsewhen(io.axi4.ar.fire) {
-  //   io.axi4.ar.valid := False
-  // } otherwise {
-  //   io.axi4.ar.valid := io.axi4.ar.valid
-  // }
-
-  // when(io.readReq) {
-  //   io.axi4.ar.addr := io.readAddr
-  // } otherwise {
-  //   io.axi4.ar.addr := io.axi4.ar.addr 
-  // }
-
   val arValidReg = RegInit(False)
   val arAddrReg  = RegNextWhen(io.readAddr, io.readReq)
   val arValidOut = io.readReq || arValidReg    // 提前一周期发出arvalid信号
@@ -213,48 +188,53 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
   }
 
   // ================================ 写操作 ================================ //
-  io.axi4.aw.valid.setAsReg() init(False)
-  io.axi4.aw.addr .setAsReg()
-
-  io.axi4.w.valid .setAsReg() init(False)
-  io.axi4.w.data  .setAsReg()
-  io.axi4.w.strb  .setAsReg()
-  // io.axi4.w.last  .setAsReg()
-  io.axi4.w.last := True  
-
   io.axi4.aw.id   := U"4'b0"
   io.axi4.aw.len  := U"8'b0"          // 突发长度1  
   io.axi4.aw.size := io.size       
   io.axi4.aw.burst:= B"2'b01"         // 突发类型INCR
-  // ================================ 写地址 ================================ //
-  when(io.writeReq) {
-    io.axi4.aw.valid := True
-  } elsewhen(io.axi4.aw.fire) {
-    io.axi4.aw.valid := False
-  } otherwise {
-    io.axi4.aw.valid := io.axi4.aw.valid
-  }
 
-  when(io.writeReq) {
-    io.axi4.aw.addr := io.writeAddr
+  io.axi4.w.last  := True             // lsu没有加突发
+  // ================================ 写地址 ================================ //
+  val awValidReg = RegInit(False)
+  val awAddrReg  = RegNextWhen(io.writeAddr, io.writeReq)
+  val awValidOut = io.writeReq || awValidReg    // 提前一周期发出valid信号
+  io.axi4.aw.valid := awValidOut
+  io.axi4.aw.addr  := Mux(io.writeReq, io.writeAddr, awAddrReg)
+
+  when(awValidReg) {
+    when(io.axi4.aw.fire) {
+      awValidReg := False
+    } otherwise {
+      awValidReg := True
+    }
   } otherwise {
-    io.axi4.aw.addr := io.axi4.aw.addr 
+    when(io.writeReq && !io.axi4.aw.fire) {
+      awValidReg := True
+    } otherwise {
+      awValidReg := False
+    }
   }
   // ================================ 写数据 ================================ //
-  when(io.writeReq) {
-    io.axi4.w.valid := True
-  } elsewhen(io.axi4.w.fire) {
-    io.axi4.w.valid := False
-  } otherwise {
-    io.axi4.w.valid := io.axi4.w.valid
-  }
+  val wValidReg = RegInit(False)
+  val wDataReg  = RegNextWhen(io.writeData.asBits, io.writeReq)
+  val wStrbReg  = RegNextWhen(io.writeMask.asBits, io.writeReq)
+  val wValidOut = io.writeReq || wValidReg    // 提前一周期发出valid信号
+  io.axi4.w.valid := wValidOut
+  io.axi4.w.data  := Mux(io.writeReq, io.writeData.asBits, wDataReg)
+  io.axi4.w.strb  := Mux(io.writeReq, io.writeMask.asBits, wStrbReg)
 
-  when(io.writeReq) {
-    io.axi4.w.data := io.writeData.asBits
-    io.axi4.w.strb := io.writeMask.asBits
+  when(wValidReg) {
+    when(io.axi4.w.fire) {
+      wValidReg := False
+    } otherwise {
+      wValidReg := True
+    }
   } otherwise {
-    io.axi4.w.data := io.axi4.w.data
-    io.axi4.w.strb := io.axi4.w.strb
+    when(io.writeReq && !io.axi4.w.fire) {
+      wValidReg := True
+    } otherwise {
+      wValidReg := False
+    }
   }
   // ================================ 写响应 ================================ //
   io.axi4.b.ready := io.axi4.b.valid

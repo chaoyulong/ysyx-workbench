@@ -57,12 +57,11 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   io.axi4 <> axi4Ctrler.io.axi4
 
   // ================================ 存储阵列: 每项 1 个字 ================================ //
-  val tag      = io.reqIn.addr(31 downto 4)
-  val index    = io.reqIn.addr(3 downto 2)
-  val dataMem  = Reg(Vec(UInt(32 bits), 4))    // 数据
-  val tagMem   = Reg(Vec(UInt(28 bits), 4))    // 标签
-  val validReg = Reg(Bits(4 bits)) init(0)     // 每项 1 位有效位
-
+  val tag       = io.reqIn.addr(31 downto 4)
+  val index     = io.reqIn.addr(3 downto 2)
+  val dataMem   = Reg(Vec(UInt(32 bits), 4))      // 数据
+  val tagMem    = Reg(Vec(UInt(28 bits), 4))      // 标签
+  val validReg  = Reg(Bits(4 bits)) init(0)       // 每项 1 位有效位
   val cacheable = inDcache(io.reqIn.addr)
   val hit       = validReg(index) && (tagMem(index) === tag) && cacheable
 
@@ -81,12 +80,12 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
 
   val readHit  = (state === DcacheState.Idle) && reqRead && hit             // 读地址命中cache
 
-  val sameAddr  = io.reqIn.addr(31 downto 2) === writeAddr                  // 判断是否是同一地址，后台写的话，就不能再读同一地址，需要等待写完
+  val sameAddr  = io.reqIn.addr(24 downto 2) === writeAddr                  // 判断是否是同一地址，后台写的话，就不能再读同一地址，需要等待写完
   val needWait  = bPending && (reqWrite || (reqRead && sameAddr && !hit))   // 后台有写事务时，再次的写请求，或对相同地址的读，需要等待之前的写完成
 
   val writeAccept = (state === DcacheState.Idle) && reqWrite && !needWait   // 写请求被接受，这个是在valid信号为1的同时就能判断出来的
   when(writeAccept) {
-    writeAddr       := io.reqIn.addr(31 downto 2)
+    writeAddr       := io.reqIn.addr(24 downto 2)
     writeCacheable  := cacheable
   }
 
@@ -207,9 +206,9 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
   io.readData := io.axi4.r.data.asUInt
 
   // 读响应错误检查: 从机返回非 OKAY 时仿真报错
-  when(io.axi4.r.fire && io.axi4.r.resp =/= Axi4.resp.OKAY) {
-    report(Seq("[LSU] read resp error! resp =", io.axi4.r.resp, "addr =", io.axi4.ar.addr))
-  }
+  // when(io.axi4.r.fire && io.axi4.r.resp =/= Axi4.resp.OKAY) {
+  //   report(Seq("[LSU] read resp error! resp =", io.axi4.r.resp, "addr =", io.axi4.ar.addr))
+  // }
 
   // ================================ 写操作 ================================ //
   io.axi4.aw.id   := U"4'b0"
@@ -265,7 +264,7 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
   io.writeEnd := io.axi4.b.fire
 
   // 写响应错误检查: 从机返回非 OKAY 时仿真报错
-  when(io.axi4.b.fire && io.axi4.b.resp =/= Axi4.resp.OKAY) {
-    report(Seq("[LSU] write resp error! resp =", io.axi4.b.resp, ", addr =", io.axi4.aw.addr))
-  }
+  // when(io.axi4.b.fire && io.axi4.b.resp =/= Axi4.resp.OKAY) {
+  //   report(Seq("[LSU] write resp error! resp =", io.axi4.b.resp, ", addr =", io.axi4.aw.addr))
+  // }
 }

@@ -84,7 +84,7 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   val needWait  = bPending && (reqWrite || (reqRead && sameAddr && !hit))   // 后台有写事务时，再次的写请求，或对相同地址的读，需要等待之前的写完成
 
   val writeAccept = (state === DcacheState.Idle) && reqWrite && !needWait   // 写请求被接受，这个是在valid信号为1的同时就能判断出来的
-  val readAccept  = (state === DcacheState.Idle) && reqRead  && !needWait
+  // val readAccept  = (state === DcacheState.Idle) && reqRead  && !needWait
   when(writeAccept) {
     writeAddr       := io.reqIn.addr(31 downto 2)
     writeCacheable  := cacheable

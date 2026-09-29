@@ -97,7 +97,7 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
     .otherwise                   { state := DcacheState.ReadMiss }
   } elsewhen(state === DcacheState.Write) {                         // 写可以先写进cache寄存器，然后后台继续控制axi
     when(axi4Ctrler.io.writeEnd) {
-      when(readBusy) {  // 当有写完发现有数据在读时，进入读状态
+      when(readBusy && !axi4Ctrler.io.readEnd) {  // 当有写完发现有数据在读时，进入读状态
         state := DcacheState.ReadMiss
       } otherwise {
         state := DcacheState.Idle 

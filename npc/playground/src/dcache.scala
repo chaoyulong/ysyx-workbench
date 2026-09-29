@@ -82,7 +82,7 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   when(reqRead && !hit) {         // 读缺失，需要使用总线，进入忙碌状态
     readBusy := True
   } elsewhen(axi4Ctrler.io.readEnd) { // 控制器读完成，进入空闲
-    readBusy := false
+    readBusy := False
   } otherwise {
     readBusy := readBusy
   }

@@ -62,7 +62,7 @@ case class ysyx_23060082_Clint() extends Component {
 
   io.clintAxi4.ar.ready := !readActive                  // 传输中不应答新请求
 
-  io.clintAxi4.r.valid  := dataFinish
+  io.clintAxi4.r.valid  := dataFinish && readActive
   io.clintAxi4.r.last   := True
   io.clintAxi4.r.data   := dataReg.asBits
   io.clintAxi4.r.id     := U(0)

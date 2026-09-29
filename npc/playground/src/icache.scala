@@ -138,7 +138,7 @@ case class ysyx_23060082_Icache(config: CpuConfig = CpuConfig(), param: IcachePa
     tagMem  (indexReg) := tagReg
   }
 
-  val readCnt = RegInit(UInt(0, wordBits bits))
+  val readCnt = RegInit(UInt(0, param.wordBits bits))
   when(io.reqIn.valid && !hit) {
     readCnt := 0
   } elsewhen((state === IcacheState.Miss) && axi4Ctrler.io.readOnce) {

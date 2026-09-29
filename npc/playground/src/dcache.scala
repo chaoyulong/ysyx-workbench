@@ -76,17 +76,21 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   val reqWrite = io.reqIn.valid && io.reqIn.write
   val readHit  = (state === DcacheState.Idle) && reqRead && hit
 
-  val writeAccept = (state === DcacheState.Idle) && reqWrite        // 写请求被接受
-  val writeAcceptAddr = RegNextWhen(io.reqIn.addr, writeAccept)
+  val sameWord   = io.reqIn.addr(31 downto 2) === writeAcceptAddr        // 同一地址
+  val writeGuard = bPending && (reqWrite || (reqRead && sameWord && !hit))
+
+  val writeAccept = (state === DcacheState.Idle) && reqWrite && !writeGuard       // 写请求被接受
+  val writeAcceptAddr = RegNextWhen(io.reqIn.addr(31 downto 2), writeAccept)
   val writeAcceptCacheable = RegNextWhen(cacheable, writeAccept)
 
   val writeSent     = !axi4Ctrler.io.axi4.aw.valid && !axi4Ctrler.io.axi4.w.valid         // valid不为高，说明发送完成
   val writePostDone = (state === DcacheState.Write) && writeSent && writeAcceptCacheable  // 写通道发送完成，并且访问的不是确实是存储，此时就可以挂后台
 
+
   // 读的时候由于会阻塞，不会产生写信号，但是在后台写的时候下一条指令可能会产生读信号
   when(state === DcacheState.Idle) {
-    when(reqRead && !hit) { state := DcacheState.ReadMiss }         // 读缺失
-    .elsewhen(reqWrite)   { state := DcacheState.Write    }         // 写: 命中也要写内存
+    when(reqRead && !hit && !writeGuard) { state := DcacheState.ReadMiss }         // 读缺失
+    .elsewhen(reqWrite !writeGuard)   { state := DcacheState.Write    }         // 写: 命中也要写内存
     .otherwise            { state := DcacheState.Idle     }
   } elsewhen(state === DcacheState.ReadMiss) {                      // 读只能等到结束
     when(axi4Ctrler.io.readEnd)  { state := DcacheState.Idle }
@@ -106,10 +110,7 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   }
   
 
-  val sameWord   = io.reqIn.addr === writeAcceptAddr        // 同一地址
-  val writeGuard = bPending && (reqWrite || (reqRead && sameWord && !hit))
 
-  val reqAccept = (state === DcacheState.Idle) && !writeGuard
   io.reqIn.ready         := (state === DcacheState.Idle)  && !writeGuard
   axi4Ctrler.io.readReq  := (state === DcacheState.Idle)  && !writeGuard && reqRead  && !hit
   axi4Ctrler.io.writeReq := (state === DcacheState.Idle)  && !writeGuard && reqWrite

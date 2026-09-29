@@ -74,6 +74,8 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   val reqWrite = io.reqIn.valid && io.reqIn.write
   val readHit  = (state === DcacheState.Idle) && reqRead && hit
 
+  val writeAccept = (state === DcacheState.Idle) && reqWrite      // 写请求被接受
+
   when(state === DcacheState.Idle) {
     when(reqRead && !hit) { state := DcacheState.ReadMiss }   // 读缺失
     .elsewhen(reqWrite)   { state := DcacheState.Write    }   // 写: 命中也要写内存
@@ -96,7 +98,7 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   }
 
   // ================================ 响应 ================================ //
-  val writeAccept = (state === DcacheState.Idle) && reqWrite      // 请求被接受
+  
   io.rspOut.valid := readHit || readMissDone || writeAccept       // 不等到写完
   io.writeAccept  := writeAccept                                  //
   io.writeBusy    := (state === DcacheState.Write)
@@ -129,12 +131,12 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
     }
   }
 
-  when(readMissDone && cacheable && !readErr) {               // 读缺失填回(只有可缓存地址才占 cache)
+  when(readMissDone && cacheable && !readErr) {                   // 读缺失填回(只有可缓存地址才占 cache)
     dataMem(index)  := axi4Ctrler.io.readData
     tagMem(index)   := tag
     validReg(index) := True
-  } elsewhen((state === DcacheState.Idle) && reqWrite && hit) {
-    dataMem(index) := storeData                                // store 命中: 同步更新, valid 不动
+  } elsewhen((state === DcacheState.Idle) && reqWrite && hit) {   // 如果是写入的地址正好命中，就更新cache
+    dataMem(index)  := storeData                                
   }
 }
 case class ysyx_23060082_Axi4_Ctrler() extends Component {

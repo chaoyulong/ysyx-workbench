@@ -138,7 +138,7 @@ case class ysyx_23060082_Icache(config: CpuConfig = CpuConfig(), param: IcachePa
     tagMem  (indexReg) := tagReg
   }
 
-  val readCnt = RegInit(UInt(0, param.wordBits bits))
+  val readCnt = Reg(UInt(param.wordBits bits)) init(0)
   when(io.reqIn.valid && !hit) {
     readCnt := 0
   } elsewhen((state === IcacheState.Miss) && axi4Ctrler.io.readOnce) {
@@ -219,7 +219,7 @@ case class ysyx_23060082_Axi4_Ctrler_ReadOnly_Burst(param: IcacheParams = Icache
   io.axi4.r.ready := io.axi4.r.valid
   
   io.readOnce := readOnce
-  io.readDataOnce := io.axi4.r.data
+  io.readDataOnce := io.axi4.r.data.asUInt
   io.readEnd  := io.axi4.r.fire && io.axi4.r.last     // 突发结束(r.last)才算读完
   io.readData := (if (param.words > 1) io.axi4.r.data ## lineReg else io.axi4.r.data).asUInt  // 拼接成一行数据                              
 

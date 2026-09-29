@@ -33,8 +33,7 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   // (icache 缺失 avg 2615 拍、LSU 读 avg 732 拍 -> 平台不支持 8 拍突发, boot 阶段就 ABORT)
   // => 这个平台上 icache 的行长不能超过 16B(4 拍突发), 保持 8 行 × 16B
   val icache = ysyx_23060082_Icache(config, IcacheParams())
-  // ============================== 用于确定复位结束 ============================== //
-  // val rstEnd = RegNext(True) init(False)
+  
   // =================================== PC寄存器 =================================== //
   // pcFetch: 下一次要取的地址(重定向优先, 否则顺序+4),因为与icache握手之后，pcFetch就会+4以便于下一次取指
   // 所以需要一个额外的pcOfReq记录取指时的pc,如果icache未命中时，icache输入输出不在同一拍，那时就需要传递pcOfReq
@@ -59,6 +58,7 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   val excStop     = RegInit(False)                    // 出现异常时要暂停流水线，直到重定向信号到来，也就是进入__am_irq_handle 
   val excCause    = Mux(pcMisaligned, U(0, 4 bits),   // 异常的cause号
                     Mux(rspFault,     U(1, 4 bits), U(12, 4 bits)))
+
   // 复位完成，并且没有指令要发送，发出请求,如果是io.redirect.valid导致的打断，此时icache应该不处于Idle状态，icache.io.reqIn.ready会为低
   val tryFetch    = (state === IfuState.Idle) && !stopFetch && !excStop          
   val fetchExc    = tryFetch && (pcMisaligned || rspFault || pfFault)                 // 有异常

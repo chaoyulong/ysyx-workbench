@@ -97,7 +97,7 @@ case class ysyx_23060082_Icache(config: CpuConfig = CpuConfig(), param: IcachePa
   object IcacheState extends SpinalEnum {
     val Idle, Miss = newElement()
   }
-  val state = Reg(IcacheState()) init(IcacheState.Idle)
+  val state = RegInit(IcacheState.Idle)
 
   when(state === IcacheState.Idle) {
     when(io.reqIn.valid && !hit) { state := IcacheState.Miss }  // 有请求但是没有命中

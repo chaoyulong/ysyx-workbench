@@ -32,7 +32,7 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   object LsuState extends SpinalEnum {
     val Idle, WaitMem, Done = newElement()          // lsu等待读写完成的状态机
   }
-  val state = Reg(LsuState()) init(LsuState.Idle)   // 创建一个状态机
+  val state = RegInit(LsuState.Idle)
   val memAddr   = io.input.aluResult                // alu的输出结果就是访存地址
   val needRead  = io.input.valid && io.input.rfCtrl.mem2reg   // 需要读内存
   val needWrite = io.input.valid && io.input.memCtrl.memWr    // 需要写内存

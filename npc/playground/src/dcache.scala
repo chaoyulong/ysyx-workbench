@@ -69,7 +69,7 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   object DcacheState extends SpinalEnum {
     val Idle, ReadMiss, Write = newElement()
   }
-  val state = Reg(DcacheState()) init(DcacheState.Idle)
+  val state = RegInit(DcacheState.Idle)
 
   val bPending  = RegInit(False)          // 记录还有挂在后台的写事务
   val writeAddr = Reg(UInt(30 bits))      // 写地址

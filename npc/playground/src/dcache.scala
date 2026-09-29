@@ -128,10 +128,10 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   io.readHit         := readHit
 
   // ================================ AXI ================================ //
-  axi4Ctrler.io.readReq   := readAccept && !hit   // 请求信号只持续一拍
+  axi4Ctrler.io.readReq   := (state === DcacheState.Idle) && reqRead && !needWait && !hit   // 请求信号只持续一拍
   axi4Ctrler.io.readAddr  := io.reqIn.addr
 
-  axi4Ctrler.io.writeReq  := writeAccept
+  axi4Ctrler.io.writeReq  := (state === DcacheState.Idle) && reqWrite && !needWait
   axi4Ctrler.io.writeAddr := io.reqIn.addr
   axi4Ctrler.io.writeData := io.reqIn.writeData
   axi4Ctrler.io.writeMask := io.reqIn.writeMask

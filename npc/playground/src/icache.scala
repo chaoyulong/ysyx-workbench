@@ -134,24 +134,8 @@ case class ysyx_23060082_Icache(config: CpuConfig = CpuConfig(), param: IcachePa
 
   // 缺失完成: 写回cache(valid/tag/data)
   when(missDone) {
-    // dataMem (indexReg) := axi4Ctrler.io.readData
+    dataMem (indexReg) := axi4Ctrler.io.readData
     tagMem  (indexReg) := tagReg
-  }
-
-  val readCnt = Reg(UInt(param.wordBits bits)) init(0)
-  when(io.reqIn.valid && !hit) {
-    readCnt := 0
-  } elsewhen((state === IcacheState.Miss) && axi4Ctrler.io.readOnce) {
-    readCnt := readCnt + 1
-  }
-
-
-  when((state === IcacheState.Miss) && axi4Ctrler.io.readOnce) {
-    for (i <- 0 until param.words) {
-      if(i == readCnt) {
-        dataMem(indexReg)(i * 32 + 31 downto i * 32) := axi4Ctrler.io.readDataOnce
-      }
-    }
   }
 
   // fence.i: 清空全部有效位(后续取指缺失重读新指令)
@@ -225,7 +209,7 @@ case class ysyx_23060082_Axi4_Ctrler_ReadOnly_Burst(param: IcacheParams = Icache
   io.axi4.r.ready := io.axi4.r.valid
   
   io.readOnce := readOnce
-  io.readDataOnce := io.axi4.r.data.asUInt
+  io.readDataOnce := io.axi4.r.data
   io.readEnd  := io.axi4.r.fire && io.axi4.r.last     // 突发结束(r.last)才算读完
   io.readData := (if (param.words > 1) io.axi4.r.data ## lineReg else io.axi4.r.data).asUInt  // 拼接成一行数据                              
 

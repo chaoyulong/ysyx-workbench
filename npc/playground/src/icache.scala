@@ -207,9 +207,6 @@ case class ysyx_23060082_Axi4_Ctrler_ReadOnly_Burst(param: IcacheParams = Icache
   }
   
   io.axi4.r.ready := io.axi4.r.valid
-  
-  io.readOnce := readOnce
-  io.readDataOnce := io.axi4.r.data
   io.readEnd  := io.axi4.r.fire && io.axi4.r.last     // 突发结束(r.last)才算读完
   io.readData := (if (param.words > 1) io.axi4.r.data ## lineReg else io.axi4.r.data).asUInt  // 拼接成一行数据                              
 

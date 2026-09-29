@@ -161,7 +161,8 @@ sta:
 #     DECLFILENAME 一个 .v 里放了 18 个模块
 #   想看**全部**警告(含噪声)就手动跑:
 #     verilator --lint-only -Wall --top-module $(STA_DESIGN) $(BUILD_DIR)/sta/$(STA_DESIGN).v
-LINT_WAIVER = -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM -Wno-DECLFILENAME
+# LINT_WAIVER = -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM -Wno-DECLFILENAME
+LINT_WAIVER =
 
 lint:
 	@SPINAL_TOPNAME=$(STA_DESIGN) BUILD_DIR=$(BUILD_DIR)/sta SPINAL_SIM_DEBUG=0 \

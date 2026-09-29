@@ -25,16 +25,16 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   }
 
   object IfuState extends SpinalEnum {              // 定义状态机枚举
-    val Idle, WaitMem, Done = newElement()
+    val Rst, Idle, WaitMem, Done = newElement()
   }
-  val state = Reg(IfuState()) init(IfuState.Idle)   // 创建一个状态机
+  val state = RegInit(IfuState.Rst)                 // 创建一个状态机
 
   // 曾试过等容量的 4 行 × 32B(8 拍突发): cachesim 预测命中率 91.82%->93.77%, 但实测直接崩
   // (icache 缺失 avg 2615 拍、LSU 读 avg 732 拍 -> 平台不支持 8 拍突发, boot 阶段就 ABORT)
   // => 这个平台上 icache 的行长不能超过 16B(4 拍突发), 保持 8 行 × 16B
   val icache = ysyx_23060082_Icache(config, IcacheParams())
   // ============================== 用于确定复位结束 ============================== //
-  val rstEnd = RegNext(True) init(False)
+  // val rstEnd = RegNext(True) init(False)
   // =================================== PC寄存器 =================================== //
   // pcFetch: 下一次要取的地址(重定向优先, 否则顺序+4),因为与icache握手之后，pcFetch就会+4以便于下一次取指
   // 所以需要一个额外的pcOfReq记录取指时的pc,如果icache未命中时，icache输入输出不在同一拍，那时就需要传递pcOfReq
@@ -60,7 +60,7 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   val excCause    = Mux(pcMisaligned, U(0, 4 bits),   // 异常的cause号
                     Mux(rspFault,     U(1, 4 bits), U(12, 4 bits)))
   // 复位完成，并且没有指令要发送，发出请求,如果是io.redirect.valid导致的打断，此时icache应该不处于Idle状态，icache.io.reqIn.ready会为低
-  val tryFetch    = (state === IfuState.Idle) && rstEnd && !stopFetch && !excStop          
+  val tryFetch    = (state === IfuState.Idle) && !stopFetch && !excStop          
   val fetchExc    = tryFetch && (pcMisaligned || rspFault || pfFault)                 // 有异常
 
   when(io.redirect.valid) {
@@ -91,6 +91,9 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   }
   // ================================ 状态机 ================================ //
   switch(state) {
+    is(IfuState.Rst) {
+      state := IfuState.Idle
+    }
     is(IfuState.Idle) {                                                               // 手上没有指令，需要发出请求
       when(rspIsCurrentHit) {                                                         // icache命中，同拍就能输出结果
         when(io.output.fire) { state := IfuState.Idle }                               // 握手同时成功的话，就说明一切都在一周期内完成了，继续待在Idle状态进行下一次取指

@@ -77,8 +77,8 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   val readHit  = (state === DcacheState.Idle) && reqRead && hit
 
   val writeAccept = (state === DcacheState.Idle) && reqWrite        // 写请求被接受
-  val writeAcceptAddr = RegNextWhen(io.reqIn.addr, writePostDone)
-  val writeAcceptCacheable = RegNextWhen(cacheable, writePostDone)
+  val writeAcceptAddr = RegNextWhen(io.reqIn.addr, writeAccept)
+  val writeAcceptCacheable = RegNextWhen(cacheable, writeAccept)
 
   val writeSent     = !axi4Ctrler.io.axi4.aw.valid && !axi4Ctrler.io.axi4.w.valid         // valid不为高，说明发送完成
   val writePostDone = (state === DcacheState.Write) && writeSent && writeAcceptCacheable  // 写通道发送完成，并且访问的不是确实是存储，此时就可以挂后台

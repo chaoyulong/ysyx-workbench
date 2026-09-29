@@ -72,25 +72,37 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   }
   val state = Reg(DcacheState()) init(DcacheState.Idle)
 
+  val bPending = RegInit(False)     // 记录还有挂在后台的写事务
+
   val reqRead  = io.reqIn.valid && io.reqIn.read
   val reqWrite = io.reqIn.valid && io.reqIn.write
   val readHit  = (state === DcacheState.Idle) && reqRead && hit
+
+  val writeAcceptAddr = Reg(UInt(30 bits))
+  val writeAcceptCacheable = Reg(Bool())
 
   val sameWord   = io.reqIn.addr(31 downto 2) === writeAcceptAddr        // 同一地址
   val writeGuard = bPending && (reqWrite || (reqRead && sameWord && !hit))
 
   val writeAccept = (state === DcacheState.Idle) && reqWrite && !writeGuard       // 写请求被接受
-  val writeAcceptAddr = RegNextWhen(io.reqIn.addr(31 downto 2), writeAccept)
-  val writeAcceptCacheable = RegNextWhen(cacheable, writeAccept)
+  when(writeAccept) {
+    writeAcceptAddr := io.reqIn.addr(31 downto 2)
+    writeAcceptCacheable := cacheable
+  }
 
   val writeSent     = !axi4Ctrler.io.axi4.aw.valid && !axi4Ctrler.io.axi4.w.valid         // valid不为高，说明发送完成
   val writePostDone = (state === DcacheState.Write) && writeSent && writeAcceptCacheable  // 写通道发送完成，并且访问的不是确实是存储，此时就可以挂后台
 
+  when(axi4Ctrler.io.axi4.b.fire) {
+    bPending := False
+  } elsewhen(writePostDone) {
+    bPending := True
+  }
 
   // 读的时候由于会阻塞，不会产生写信号，但是在后台写的时候下一条指令可能会产生读信号
   when(state === DcacheState.Idle) {
     when(reqRead && !hit && !writeGuard) { state := DcacheState.ReadMiss }         // 读缺失
-    .elsewhen(reqWrite !writeGuard)   { state := DcacheState.Write    }         // 写: 命中也要写内存
+    .elsewhen(reqWrite && !writeGuard)   { state := DcacheState.Write    }         // 写: 命中也要写内存
     .otherwise            { state := DcacheState.Idle     }
   } elsewhen(state === DcacheState.ReadMiss) {                      // 读只能等到结束
     when(axi4Ctrler.io.readEnd)  { state := DcacheState.Idle }
@@ -102,12 +114,7 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
     .otherwise                   { state := DcacheState.Write }
   }
 
-  val bPending = RegInit(False)     // 记录还有挂在后台的写事务
-  when(axi4Ctrler.io.axi4.b.fire) {
-    bPending := False
-  } elsewhen(writePostDone) {
-    bPending := True
-  }
+
   
 
 

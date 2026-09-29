@@ -72,7 +72,7 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   val state = Reg(DcacheState()) init(DcacheState.Idle)
 
   val bPending  = RegInit(False)          // 记录还有挂在后台的写事务
-  val writeAddr = Reg(UInt(30 bits))      // 写地址
+  val writeAddr = Reg(UInt(23 bits))      // 写地址
   val writeCacheable = Reg(Bool())        // 是否是内存地址，如果不是就不能挂后台
 
   val reqRead  = io.reqIn.valid && io.reqIn.read

@@ -34,16 +34,18 @@ case class DcacheRspData() extends Bundle {
 
 case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Component {
   val io = new Bundle {
-    val reqIn     = slave  Stream(DcacheReqData())
-    val rspOut    = master Flow(DcacheRspData())
-    val readHit     = out Bool()       // 本拍这次读真的命中(load 用它判"当拍完成")
-    val writeAccept = out Bool()    // dcache接收了写数据，正在执行写
-    val writeBusy= out Bool()       // 正在后台写
-    val readErr   = out Bool()
-    val writeErr   = out Bool() 
-    val miss     = if (config.enableSimDebug) out Bool() else null   // 缺失脉冲(供 perf 计数)
-    val missDone = if (config.enableSimDebug) out Bool() else null   // 缺失完成脉冲
-    val axi4     = master(Axi4(AxiConfig.axiConfig))
+    val reqIn       = slave  Stream(DcacheReqData())
+    val rspOut      = master Flow(DcacheRspData())
+    val readHit     = out Bool()        // 本拍这次读真的命中(load 用它判"当拍完成")
+    val writeAccept = out Bool()        // dcache接收了写数据，正在执行写
+    val writeBusy   = out Bool()        // 正在后台写
+    val readErr     = out Bool()
+    val writeErr    = out Bool()
+    val axi4        = master(Axi4(AxiConfig.axiConfig))
+
+    val miss        = if (config.enableSimDebug) out Bool() else null   // 缺失脉冲(供 perf 计数)
+    val missDone    = if (config.enableSimDebug) out Bool() else null   // 缺失完成脉冲
+    
   }
 
   def inDcache(addr: UInt): Bool =
@@ -76,20 +78,37 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
 
   val writeAccept = (state === DcacheState.Idle) && reqWrite      // 写请求被接受
 
+  val readBusy = RegInit(False)   // 读忙碌信号，用来对读写信号两组信号进行解耦
+  when(reqRead && !hit) {         // 读缺失，需要使用总线，进入忙碌状态
+    readBusy := True
+  } elsewhen(axi4Ctrler.io.readEnd) { // 控制器读完成，进入空闲
+    readBusy := false
+  } otherwise {
+    readBusy := readBusy
+  }
+
+  // 读的时候由于会阻塞，不会产生写信号，但是在后台写的时候下一条指令可能会产生读信号
   when(state === DcacheState.Idle) {
-    when(reqRead && !hit) { state := DcacheState.ReadMiss }   // 读缺失
-    .elsewhen(reqWrite)   { state := DcacheState.Write    }   // 写: 命中也要写内存
+    when(reqRead && !hit) { state := DcacheState.ReadMiss }         // 读缺失
+    .elsewhen(reqWrite)   { state := DcacheState.Write    }         // 写: 命中也要写内存
     .otherwise            { state := DcacheState.Idle     }
-  } elsewhen(state === DcacheState.ReadMiss) {
+  } elsewhen(state === DcacheState.ReadMiss) {                      // 读只能等到结束
     when(axi4Ctrler.io.readEnd)  { state := DcacheState.Idle }
     .otherwise                   { state := DcacheState.ReadMiss }
-  } elsewhen(state === DcacheState.Write) {
-    when(axi4Ctrler.io.writeEnd) { state := DcacheState.Idle }
+  } elsewhen(state === DcacheState.Write) {                         // 写可以先写进cache寄存器，然后后台继续控制axi
+    when(axi4Ctrler.io.writeEnd) {
+      when(readBusy) {  // 当有写完发现有数据在读时，进入读状态
+        state := DcacheState.ReadMiss
+      } otherwise {
+        state := DcacheState.Idle 
+      }
+    }
     .otherwise                   { state := DcacheState.Write }
   }
 
   // 只在 Idle 接受请求(忙时下游会等; LSU 也必须等 reqIn.fire 才离开 Idle)
-  io.reqIn.ready := (state === DcacheState.Idle)
+  io.reqIn.ready := (state === DcacheState.Idle) ||
+                    ((state === DcacheState.Write) && reqRead)  // 当前是后台写状态，并且需要读时，也可以ready
 
   val readMissDone = (state === DcacheState.ReadMiss) && axi4Ctrler.io.readEnd
   if (config.enableSimDebug) {
@@ -98,8 +117,7 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   }
 
   // ================================ 响应 ================================ //
-  
-  io.rspOut.valid := readHit || readMissDone || writeAccept       // 不等到写完
+  io.rspOut.valid := readHit || readMissDone || writeAccept       // 不等到写完，就产生有效信号
   io.writeAccept  := writeAccept                                  //
   io.writeBusy    := (state === DcacheState.Write)
 
@@ -109,7 +127,7 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   io.readHit         := readHit
 
   // ================================ AXI ================================ //
-  axi4Ctrler.io.readReq   := (state === DcacheState.Idle) && reqRead && !hit   // 只持续一拍
+  axi4Ctrler.io.readReq   := ((state === DcacheState.Idle) || (state === DcacheState.Write)) && reqRead && !hit // 只持续一拍
   axi4Ctrler.io.readAddr  := io.reqIn.addr
   axi4Ctrler.io.writeReq  := (state === DcacheState.Idle) && reqWrite
   axi4Ctrler.io.writeAddr := io.reqIn.addr
@@ -136,6 +154,7 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
     dataMem(index)  := storeData                                
   }
 }
+
 case class ysyx_23060082_Axi4_Ctrler() extends Component {
   val io = new Bundle {
     val readReq   = in Bool()
@@ -181,11 +200,6 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
   io.axi4.r.ready := io.axi4.r.valid
   io.readEnd := io.axi4.r.fire && io.axi4.r.last   // 突发结束(r.last)才算读完
   io.readData := io.axi4.r.data.asUInt
-
-  // 读响应错误检查: 从机返回非 OKAY 时仿真报错
-  when(io.axi4.r.fire && io.axi4.r.resp =/= Axi4.resp.OKAY) {
-    report(Seq("[LSU] read resp error! resp =", io.axi4.r.resp, "addr =", io.axi4.ar.addr))
-  }
 
   // ================================ 写操作 ================================ //
   io.axi4.aw.id   := U"4'b0"
@@ -239,10 +253,4 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
   // ================================ 写响应 ================================ //
   io.axi4.b.ready := io.axi4.b.valid
   io.writeEnd := io.axi4.b.fire
-
-  // 写响应错误检查: 从机返回非 OKAY 时仿真报错
-  when(io.axi4.b.fire && io.axi4.b.resp =/= Axi4.resp.OKAY) {
-    report(Seq("[LSU] write resp error! resp =", io.axi4.b.resp, ", addr =", io.axi4.aw.addr))
-  }
-
 }

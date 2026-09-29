@@ -150,13 +150,13 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
     dataMem(index)  := axi4Ctrler.io.readData
     tagMem(index)   := tag
     validReg(index) := True
-  } elsewhen(writeAccept && hit) {   // 如果是写入的地址正好命中，就更新cache
+  } elsewhen((state === DcacheState.Idle) && reqWrite && !needWait && hit) {   // 如果是写入的地址正好命中，就更新cache
     dataMem(index)  := storeData                                
   }
 
   // ================================ 仿真信号 ================================ //
   if (config.enableSimDebug) {
-    io.miss     := readAccept && cacheable && !hit
+    io.miss     := (state === DcacheState.Idle) && reqRead && !needWait && cacheable && !hit
     io.missDone := readMissDone
   }
 }

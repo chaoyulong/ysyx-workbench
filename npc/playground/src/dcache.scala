@@ -72,86 +72,72 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   }
   val state = Reg(DcacheState()) init(DcacheState.Idle)
 
-  val bPending = RegInit(False)     // 记录还有挂在后台的写事务
+  val bPending  = RegInit(False)          // 记录还有挂在后台的写事务
+  val writeAddr = Reg(UInt(30 bits))      // 写地址
+  val writeCacheable = Reg(Bool())        // 是否是内存地址，如果不是就不能挂后台
 
   val reqRead  = io.reqIn.valid && io.reqIn.read
   val reqWrite = io.reqIn.valid && io.reqIn.write
-  val readHit  = (state === DcacheState.Idle) && reqRead && hit
 
-  val writeAcceptAddr = Reg(UInt(30 bits))
-  val writeAcceptCacheable = Reg(Bool())
+  val readHit  = (state === DcacheState.Idle) && reqRead && hit             // 读地址命中cache
 
-  val sameWord   = io.reqIn.addr(31 downto 2) === writeAcceptAddr        // 同一地址
-  val writeGuard = bPending && (reqWrite || (reqRead && sameWord && !hit))
+  val sameAddr  = io.reqIn.addr(31 downto 2) === writeAddr                  // 判断是否是同一地址，后台写的话，就不能再读同一地址，需要等待写完
+  val needWait  = bPending && (reqWrite || (reqRead && sameAddr && !hit))   // 后台有写事务时，再次的写请求，或对相同地址的读，需要等待之前的写完成
 
-  val writeAccept = (state === DcacheState.Idle) && reqWrite && !writeGuard       // 写请求被接受
+  val writeAccept = (state === DcacheState.Idle) && reqWrite && !needWait   // 写请求被接受，这个是在valid信号为1的同时就能判断出来的
   when(writeAccept) {
-    writeAcceptAddr := io.reqIn.addr(31 downto 2)
-    writeAcceptCacheable := cacheable
+    writeAddr       := io.reqIn.addr(31 downto 2)
+    writeCacheable  := cacheable
   }
 
-  val writeSent     = !axi4Ctrler.io.axi4.aw.valid && !axi4Ctrler.io.axi4.w.valid         // valid不为高，说明发送完成
-  val writePostDone = (state === DcacheState.Write) && writeSent && writeAcceptCacheable  // 写通道发送完成，并且访问的不是确实是存储，此时就可以挂后台
+  val writeSent     = !axi4Ctrler.io.axi4.aw.valid && !axi4Ctrler.io.axi4.w.valid   // valid不为高，说明发送完成
+  val writePostDone = (state === DcacheState.Write) && writeSent && writeCacheable  // 写通道发送完成，并且访问的不是确实是存储，此时就可以挂后台
 
-  when(axi4Ctrler.io.axi4.b.fire) {
+  when(axi4Ctrler.io.axi4.b.fire) {   // b信号返回，后台事务完成
     bPending := False
-  } elsewhen(writePostDone) {
+  } elsewhen(writePostDone) {         // 开始挂起
     bPending := True
+  } otherwise {
+    bPending := bPending
   }
 
   // 读的时候由于会阻塞，不会产生写信号，但是在后台写的时候下一条指令可能会产生读信号
   when(state === DcacheState.Idle) {
-    when(reqRead && !hit && !writeGuard) { state := DcacheState.ReadMiss }         // 读缺失
-    .elsewhen(reqWrite && !writeGuard)   { state := DcacheState.Write    }         // 写: 命中也要写内存
-    .otherwise            { state := DcacheState.Idle     }
-  } elsewhen(state === DcacheState.ReadMiss) {                      // 读只能等到结束
-    when(axi4Ctrler.io.readEnd)  { state := DcacheState.Idle }
-    .otherwise                   { state := DcacheState.ReadMiss }
-  } elsewhen(state === DcacheState.Write) {                         // 写可以先写进cache寄存器，然后后台继续控制axi
-    when(axi4Ctrler.io.writeEnd || writePostDone) {                 // 读取完成，或者可以挂后台，就返回idle状态
-      state := DcacheState.Idle 
-    }
-    .otherwise                   { state := DcacheState.Write }
+    when(reqRead && !hit && !needWait)  { state := DcacheState.ReadMiss }           // 读缺失，没有命中但是不需要阻塞等待，直接向控制器发出读信号
+    .elsewhen(reqWrite && !needWait)    { state := DcacheState.Write    }           // 请求写，并且不需要阻塞等待
+    .otherwise                            { state := DcacheState.Idle     }
+  } elsewhen(state === DcacheState.ReadMiss) {                                      // 读只能等到结束
+    when(axi4Ctrler.io.readEnd)           { state := DcacheState.Idle     }
+    .otherwise                            { state := DcacheState.ReadMiss }
+  } elsewhen(state === DcacheState.Write) {
+    when(axi4Ctrler.io.writeEnd || writePostDone) { state := DcacheState.Idle  }    // 读取完成，或者可以挂后台，就返回idle状态
+    .otherwise                                    { state := DcacheState.Write }
   }
 
-
-  io.reqIn.ready         := (state === DcacheState.Idle)  && !writeGuard
-  axi4Ctrler.io.readReq  := (state === DcacheState.Idle)  && !writeGuard && reqRead  && !hit
-  axi4Ctrler.io.writeReq := (state === DcacheState.Idle)  && !writeGuard && reqWrite
-  io.writeBusy           := (state === DcacheState.Write) || bPending   // fence.i要等真正写入进存储
-
-  // 只在Idle接受请求(忙时下游会等; LSU也必须等reqIn.fire才离开Idle)
-  // io.reqIn.ready := (state === DcacheState.Idle)
-
-  val readMissDone = (state === DcacheState.ReadMiss) && axi4Ctrler.io.readEnd
-  if (config.enableSimDebug) {
-    io.miss     := (state === DcacheState.Idle) && reqRead && cacheable && !hit
-    io.missDone := readMissDone
-  }
+  val readMissDone = (state === DcacheState.ReadMiss) && axi4Ctrler.io.readEnd      // 读事务完成
 
   // ================================ 响应 ================================ //
-  io.rspOut.valid := readHit || readMissDone || writeAccept       // 不等到写完，就产生有效信号
-  io.writeAccept  := writeAccept                                  //
-  // io.writeBusy    := (state === DcacheState.Write)
+  io.reqIn.ready  := (state === DcacheState.Idle) && !needWait                      // 如果空闲且不用阻塞，就说明可以接受信号
+  io.rspOut.valid := readHit || readMissDone || writeAccept                         // 读命中，或者读缺失但完成，或者请求被接受
+  io.writeBusy    := (state === DcacheState.Write) || bPending                      // fence.i要等真正写入进存储
+  io.writeAccept  := writeAccept
 
-  val readDataReg = RegNextWhen(axi4Ctrler.io.readData, readMissDone)
+  val readDataReg     = RegNextWhen(axi4Ctrler.io.readData, readMissDone)
   io.rspOut.readData := Mux(readHit, dataMem(index),
                         Mux(readMissDone, axi4Ctrler.io.readData, readDataReg))
   io.readHit         := readHit
 
   // ================================ AXI ================================ //
-  // axi4Ctrler.io.readReq   := ((state === DcacheState.Idle) || (state === DcacheState.Write)) && reqRead && !hit // 只持续一拍
+  axi4Ctrler.io.readReq   := (state === DcacheState.Idle) && !needWait && reqRead  && !hit  // 请求信号只持续一拍
   axi4Ctrler.io.readAddr  := io.reqIn.addr
-  // axi4Ctrler.io.writeReq  := (state === DcacheState.Idle) && reqWrite
+  axi4Ctrler.io.writeReq  := (state === DcacheState.Idle) && !needWait && reqWrite
   axi4Ctrler.io.writeAddr := io.reqIn.addr
   axi4Ctrler.io.writeData := io.reqIn.writeData
   axi4Ctrler.io.writeMask := io.reqIn.writeMask
   axi4Ctrler.io.size      := io.reqIn.size
 
-  val readErr  = axi4Ctrler.io.axi4.r.fire && (axi4Ctrler.io.axi4.r.payload.resp =/= B"2'b00")
-  val writeErr = axi4Ctrler.io.axi4.b.fire && (axi4Ctrler.io.axi4.b.payload.resp =/= B"2'b00")
-  io.readErr  := readErr
-  io.writeErr := writeErr
+  io.readErr  := axi4Ctrler.io.axi4.r.fire && (axi4Ctrler.io.axi4.r.payload.resp =/= B"2'b00")
+  io.writeErr := axi4Ctrler.io.axi4.b.fire && (axi4Ctrler.io.axi4.b.payload.resp =/= B"2'b00")
   // ================================ 写穿更新 / 缺失填回 ================================ //
   // store 命中: 按字节使能改 cache 里那一个字(与发给内存的 data/mask 完全一致)
   val writeMaskFull = (io.reqIn.writeMask(3) #* 8) ## (io.reqIn.writeMask(2) #* 8) ##
@@ -159,12 +145,18 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
 
   val storeData = ((dataMem(index).asBits & ~writeMaskFull) | (io.reqIn.writeData.asBits & writeMaskFull)).asUInt
 
-  when(readMissDone && cacheable && !readErr) {                   // 读缺失填回(只有可缓存地址才占 cache)
+  when(readMissDone && cacheable && !io.readErr) {                   // 读缺失填回(只有可缓存地址才占 cache)
     dataMem(index)  := axi4Ctrler.io.readData
     tagMem(index)   := tag
     validReg(index) := True
   } elsewhen((state === DcacheState.Idle) && reqWrite && hit) {   // 如果是写入的地址正好命中，就更新cache
     dataMem(index)  := storeData                                
+  }
+
+  // ================================ 仿真信号 ================================ //
+  if (config.enableSimDebug) {
+    io.miss     := (state === DcacheState.Idle) && reqRead && cacheable && !hit
+    io.missDone := readMissDone
   }
 }
 
@@ -213,6 +205,11 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
   io.axi4.r.ready := io.axi4.r.valid
   io.readEnd := io.axi4.r.fire && io.axi4.r.last   // 突发结束(r.last)才算读完
   io.readData := io.axi4.r.data.asUInt
+
+  // 读响应错误检查: 从机返回非 OKAY 时仿真报错
+  when(io.axi4.r.fire && io.axi4.r.resp =/= Axi4.resp.OKAY) {
+    report(Seq("[LSU] read resp error! resp =", io.axi4.r.resp, "addr =", io.axi4.ar.addr))
+  }
 
   // ================================ 写操作 ================================ //
   io.axi4.aw.id   := U"4'b0"
@@ -266,4 +263,9 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
   // ================================ 写响应 ================================ //
   io.axi4.b.ready := io.axi4.b.valid
   io.writeEnd := io.axi4.b.fire
+
+  // 写响应错误检查: 从机返回非 OKAY 时仿真报错
+  when(io.axi4.b.fire && io.axi4.b.resp =/= Axi4.resp.OKAY) {
+    report(Seq("[LSU] write resp error! resp =", io.axi4.b.resp, ", addr =", io.axi4.aw.addr))
+  }
 }

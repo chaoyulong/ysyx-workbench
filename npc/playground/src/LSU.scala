@@ -90,12 +90,12 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   // ================================ lsu状态机 ================================ //
   switch(state) {
     is(LsuState.Idle) {
-      when(needMem && dcache.io.reqIn.fire && !trapEnter) {          // 等 dcache 接受请求后才离开 Idle
-        when(rdHitNow) {                               // 读命中: 当拍完成, 不等访存
+      when(needMem && dcache.io.reqIn.fire && !trapEnter) {                       // 等 dcache 接受请求后才离开 Idle
+        when(rdHitNow) {                                                          // 读命中: 当拍完成, 不等访存
           when(io.output.fire) { state := LsuState.Idle }
           .otherwise           { state := LsuState.Done }
         } 
-        .elsewhen(wrNow) {                              // 不等写入完成就开始握手，让写操作在后台运行
+        .elsewhen(wrNow) {                                                        // 不等写入完成就开始握手，让写操作在后台运行
           when(io.output.fire) { state := LsuState.Idle } 
           .otherwise           { state := LsuState.Done } 
         } 

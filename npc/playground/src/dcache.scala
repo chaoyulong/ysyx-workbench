@@ -34,9 +34,9 @@ case class DcacheRspData() extends Bundle {
 
 case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Component {
   val io = new Bundle {
-    val reqIn    = slave  Stream(DcacheReqData())
-    val rspOut   = master Flow(DcacheRspData())
-    val readHit  = out Bool()       // 本拍这次读真的命中(load 用它判"当拍完成")
+    val reqIn     = slave  Stream(DcacheReqData())
+    val rspOut    = master Flow(DcacheRspData())
+    val readHit     = out Bool()       // 本拍这次读真的命中(load 用它判"当拍完成")
     val writeAccept = out Bool()    // dcache接收了写数据，正在执行写
     val writeBusy= out Bool()       // 正在后台写
     val readErr   = out Bool()
@@ -74,64 +74,32 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   val reqWrite = io.reqIn.valid && io.reqIn.write
   val readHit  = (state === DcacheState.Idle) && reqRead && hit
 
-  // ================================ 写穿"不等 b"(posted write) ================================ //
-  // 问题: 一次 store 原本要把 dcache 占住整个 aw/w -> b 往返(~20 拍)才回 Idle,
-  //       期间 reqIn.ready=0 => 下一笔访存被挡住(读写本来不冲突, 是这里把它串行化了)。
-  // 改法: 【可缓存】写只要 aw/w 都发出去就回 Idle; 设备/MMIO 写仍严格等 b(不能乱序)。
-  // 顺序性: 挂起的写还没落到内存 => 紧接着的【同字地址未命中读】和任何【新写】都必须先等 b,
-  //         否则会从内存读到旧值 / 出现两笔写同时挂起(控制器只有一套 aw/w)。
-  // aw/w 都已发出: 控制器里这两个 valid 是寄存器, 发出后自己清 0 => 两个都 0 即"发完了"
-  // (Write 态第一拍它们必定还是 1, 不会误判; 这样省掉两个粘性标志, 也避免"粘性重触发"那类坑)
-  val writeSent = !axi4Ctrler.io.axi4.aw.valid && !axi4Ctrler.io.axi4.w.valid
-
-  val bPending    = RegInit(False)                     // 有 b 未回(挂起的写还没落到内存)
-  val pwAddr      = Reg(UInt(20 bits))                 // 挂起写的地址[21:2](同字必然相同, 只需比到这一位)
-  val pwCacheable = RegInit(False)                     // 挂起写是否可缓存
-  // ⚠ writeSent 是【粘性】的(aw/w 可能不同拍握手), 所以置位 bPending 必须只在
-  //   "发完就走"那一拍(= 还在 Write 态的那一拍)发一次脉冲, 否则 b 回来后会被再次置起 -> 死锁
-  val writePostDone = (state === DcacheState.Write) && writeSent && pwCacheable
-  when(axi4Ctrler.io.axi4.b.fire) { bPending := False }
-  .elsewhen(writePostDone)        { bPending := True }
-
-  val sameWord   = io.reqIn.addr(21 downto 2) === pwAddr   // 低位相同就当成可能同字(保守, 只会多停顿)
-  val writeGuard = bPending && (reqWrite || (reqRead && sameWord && !hit))
-
-  // ★ "请求被接受"的统一口径: ready / 状态迁移 / readReq / writeReq 必须用同一个条件,
-  //   否则会出现"dcache 发了 ar 进了 ReadMiss, 但 LSU 因 ready=0 没被接受"的不一致 -> 指令永不完成
-  val reqAccept = (state === DcacheState.Idle) && !writeGuard
-
   when(state === DcacheState.Idle) {
-    when(reqAccept && reqRead && !hit) { state := DcacheState.ReadMiss }   // 读缺失
-    .elsewhen(reqAccept && reqWrite)   { state := DcacheState.Write    }   // 写: 命中也要写内存
+    when(reqRead && !hit) { state := DcacheState.ReadMiss }   // 读缺失
+    .elsewhen(reqWrite)   { state := DcacheState.Write    }   // 写: 命中也要写内存
     .otherwise            { state := DcacheState.Idle     }
   } elsewhen(state === DcacheState.ReadMiss) {
     when(axi4Ctrler.io.readEnd)  { state := DcacheState.Idle }
     .otherwise                   { state := DcacheState.ReadMiss }
   } elsewhen(state === DcacheState.Write) {
-    // 可缓存写: aw/w 发完就回 Idle(posted); 设备写: 必须等 b
-    when(axi4Ctrler.io.writeEnd || writePostDone) { state := DcacheState.Idle }
-    .otherwise { state := DcacheState.Write }
+    when(axi4Ctrler.io.writeEnd) { state := DcacheState.Idle }
+    .otherwise                   { state := DcacheState.Write }
   }
 
-  // 只在 Idle 接受请求(忙时下游会等; LSU 也必须等 reqIn.fire 才离开 Idle);
-  // 有挂起写时, 新写/同字未命中读要等它落内存
-  io.reqIn.ready := reqAccept
+  // 只在 Idle 接受请求(忙时下游会等; LSU 也必须等 reqIn.fire 才离开 Idle)
+  io.reqIn.ready := (state === DcacheState.Idle)
 
   val readMissDone = (state === DcacheState.ReadMiss) && axi4Ctrler.io.readEnd
   if (config.enableSimDebug) {
-    io.miss     := reqAccept && reqRead && cacheable && !hit
+    io.miss     := (state === DcacheState.Idle) && reqRead && cacheable && !hit
     io.missDone := readMissDone
   }
 
   // ================================ 响应 ================================ //
-  val writeAccept = reqAccept && reqWrite                         // 请求被接受
-  when(writeAccept) {                                             // 锁存这一笔写的信息
-    pwAddr      := io.reqIn.addr(21 downto 2)
-    pwCacheable := cacheable
-  }
+  val writeAccept = (state === DcacheState.Idle) && reqWrite      // 请求被接受
   io.rspOut.valid := readHit || readMissDone || writeAccept       // 不等到写完
   io.writeAccept  := writeAccept                                  //
-  io.writeBusy    := (state === DcacheState.Write) || bPending    // fence.i 要等"写真正完成"
+  io.writeBusy    := (state === DcacheState.Write)
 
   val readDataReg = RegNextWhen(axi4Ctrler.io.readData, readMissDone)
   io.rspOut.readData := Mux(readHit, dataMem(index),
@@ -139,9 +107,9 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   io.readHit         := readHit
 
   // ================================ AXI ================================ //
-  axi4Ctrler.io.readReq   := reqAccept && reqRead && !hit                     // 只持续一拍
+  axi4Ctrler.io.readReq   := (state === DcacheState.Idle) && reqRead && !hit   // 只持续一拍
   axi4Ctrler.io.readAddr  := io.reqIn.addr
-  axi4Ctrler.io.writeReq  := reqAccept && reqWrite
+  axi4Ctrler.io.writeReq  := (state === DcacheState.Idle) && reqWrite
   axi4Ctrler.io.writeAddr := io.reqIn.addr
   axi4Ctrler.io.writeData := io.reqIn.writeData
   axi4Ctrler.io.writeMask := io.reqIn.writeMask

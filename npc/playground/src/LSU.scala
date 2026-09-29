@@ -11,8 +11,9 @@ case class Lsu2Wbu_data(config: CpuConfig = CpuConfig()) extends Bundle {
   val pcNext      = if (config.enableSimDebug) UInt(32 bits) else null
   val difftestSkip= if (config.enableSimDebug) Bool() else null          // difftest,本条是否跳过ref
 
+  val regWr       = Bool()            // 控制是否对寄存器rd进行写回，为1时写回寄存器。
+  val rfWriteAddr = UInt(5 bits)
   val rfWriteData = UInt(32 bits) 
-  val rfCtrl      = RfCtrl()        // 其中的mem2reg信号会作为读内存信号被用到
 }
 
 
@@ -123,11 +124,9 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   io.output.valid := io.input.valid && willValid  
 
   // ================================ 数据传输部分 ================================ //
-  io.output.rfCtrl.rfWriteAddr := io.input.rfCtrl.rfWriteAddr
-  io.output.rfCtrl.mem2reg := io.input.rfCtrl.mem2reg
-  io.output.rfCtrl.csr2reg := io.input.rfCtrl.csr2reg
-  io.output.rfCtrl.regWr   := io.input.rfCtrl.regWr && !trapEnter      // ★ 异常时不写回
-
+  io.output.regWr       := io.input.rfCtrl.regWr && !trapEnter            // 异常时不写回
+  io.output.rfWriteAddr := io.input.rfCtrl.rfWriteAddr
+  
   val memDataOut    = Mux(io.input.csrCtrl.csrCmd =/= U"3'd0", csr.io.csrRdata, dataProcess.io.rdataReal) // 借用mem_data_out来输出读出的值
   val aluDataOut    = io.input.aluResult
   val getDataInLsu  = io.input.rfCtrl.mem2reg || io.input.rfCtrl.csr2reg  // 数据来自lsu（访存，csr）中

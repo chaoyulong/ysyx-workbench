@@ -1,5 +1,46 @@
 # NPC RISC-V32E CPU
 
+## 2026-09-29 读写解耦（dcache "写穿不等 b"）+ CLINT 单拍读 + 去掉进位打拍（`1a8a3e2`，周期 −2.67%）
+
+### 周期 −2.67%：把"写在飞"从状态机里拿出来
+
+**动机**：基线 `103146f` 的周期里 **LSU 访存占 60.5%** ✗（7,399,562 cyc，115.81 cyc/次读），而其中**总线本身只占 ~29 cyc** ✓（把 icache 的单拍缺失折算过来是 28.9 cyc ✓）—— 剩下 ~87 cyc 是**端口串行化** ✗。
+
+**根因**：dcache 里一次 store 要**独占**着走完 `aw/w → b` 整个往返（~20 拍）才回 `Idle` ✗，而 `reqIn.ready = (state === Idle)` ⇒ 这 ~20 拍里**下一笔访存（哪怕是个读）一律进不来** ✗。可读和写在 AXI 上本来就是两个独立通道 ✓（Xbar 早就解耦了 ✓）⇒ 串行化是 dcache 自己造成的 ✗。
+
+**改法**（`playground/src/dcache.scala`）—— 关键是：**"某个事务正在飞"这件事不能用 FSM 状态来表达** ✗
+
+1. **写出即松手**：可缓存写的 `aw/w` 都发出去后（`writeSent = !aw.valid && !w.valid`）立刻回 `Idle` ✓，`b` 交给 **`bPending`** 在后台等 ✓
+2. **设备写不吃这套**：`writePostDone` 要求 `writeCacheable` ✓ ⇒ MMIO 写仍严格等 `b` ⇒ **MMIO 顺序不变** ✓
+3. **顺序性 guard**：`bPending` 期间，**新写**和**与挂起写同字（`addr[31:2]`）且未命中的读**都要等 `b` ✓（否则读可能先到内存拿到旧值 ✗）；**命中读永远放行** ✓ —— 写穿 + 写不分配 ⇒ 若那笔写命中则 cache 已是新值 ✓，若没命中则那个字根本不在 cache 里 ⇒ 读它必然是缺失 ✗ ⇒ "命中读"不可能读到受挂起写影响的数据 ✓
+4. `writeBusy := (state === Write) || bPending` ✓ ⇒ `fence.i` 等的仍是"写真正落地" ✓
+5. **读路径一行没改** ✓：FSM 现在**只跟踪读**（`Idle → ReadMiss → Idle`），所以 `readHit`/`readMissDone` 保持原样 ⇒ "读响应被丢"这类死锁在结构上不存在 ✓
+
+**★ 最大的坑：五处口径必须完全一致** ✗
+`ready` / 状态迁移 / `readReq` / `writeReq` / `writeAccept` 必须都是同一个 `(state === Idle) && !needWait` ✓。口径只要错开一处，就会出现「**dcache 已经发了 `ar` 并进了 `ReadMiss`，但 LSU 因 `ready=0` 没被接受**」✗ ⇒ 无限重复缺失 ⇒ `一条指令超过10000周期未完成` ✓（实测踩到过 ✓）。同理，`writeAccept` 漏掉 guard 会**静默丢写** ✗（store 当拍退休但 AXI 上什么都没发 ✓）。
+
+### CLINT 读通道去掉突发支持（只做单拍）
+
+本设计里安全 ✓：只有 icache 会发 4 拍突发 ✓，而**取指永远不落在 CLINT 段** ✓；LSU/dcache 全是单拍 ✓。于是删掉 `readLen`/`readCnt`、`r.last := True` ✓（省一个计数器 + 8 位比较 ✓）。
+
+⚠ 坑 ✗：`readActive` **必须 `RegInit(False)`** ✓ —— 曾误写成 `RegInit(True)`，而 `ar.ready := !readActive` ⇒ **`ar.ready` 恒 0 ⇒ 读请求永远进不来** ✗，而 `readActive` 唯一能清掉它的路径是 `r.fire`（又得先有 `ar`）⇒ **自锁死** ✓。
+
+### CSR 去掉 `f6ceec4` 的进位打拍
+
+它是**周期中性的** ✓（实测周期/计数器逐位不变 ✓），把面积让给 dcache ✓。⇒ **`f6ceec4` 那条"读计数器必须夹一条指令"的约定随之作废** ✓：现在回到"读低 → 立刻读高" ✓（`mcycle.c`/`trm.c` 里多写的 `nop` 无害 ✓）。
+
+### 实测（microbench `test`，`CONFIG_DIFFTEST` 开着逐指令对拍 NEMU 通过 ✓）
+
+| | `103146f` | **`1a8a3e2`** |
+|---|---|---|
+| 周期 / 指令 / IPC | 12,235,206 / 555,737 / 0.0454 | **11,908,252 / 555,445 / 0.0466**（**−2.67%** ✓）|
+| LSU 写 avg / 取指 avg | 20.87 / 21.11 cyc | **19.04 / 20.78 cyc** ✓ |
+| 真实时间 | 13.22 ms | **12.72 ms（−3.8%）** ✓ |
+| 综合频率 / 面积 | 925.7 MHz / 24,457.64 µm² | **936.3 MHz / 24,777.37 µm²**（余量 222.6 ✓）|
+| setup / hold 最差 / VIOLATED | — | 0.932 ns（≈936 MHz）/ 0.077 ns / **0** ✓ |
+
+⚠ `difftest` 对 **CLINT 这类设备访问覆盖有限** ✗（设备访问被跳过、且跳过时把 DUT 状态抄给 NEMU ✓）⇒ "`mtime` 值对不对"它抓不到 ✓，只能保证"不挂死 + 指令流一致" ✓。
+
 ## 2026-09-27 difftest 接入 + "无用信号 → ABC 映射"实验
 
 ### difftest：与 NEMU 逐指令对拍（`csrc/difftest.c` + `include/difftest.h`）

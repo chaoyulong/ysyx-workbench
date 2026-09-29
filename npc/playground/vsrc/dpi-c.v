@@ -51,7 +51,7 @@ module ItraceReg(
   reg        itraceRetireValid;
   reg        itraceRetireSkip;
 
-  always @(posedge clock or posedge reset) begin
+  always @(posedge clock) begin
     if (reset) begin
       itraceRetirePc     <= 32'h0;
       itraceRetirePcNext <= 32'h0;

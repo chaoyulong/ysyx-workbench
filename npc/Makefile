@@ -151,10 +151,29 @@ sta:
 			PDK=$(STA_PDK) CLK_FREQ_MHZ=$(STA_CLK_FREQ_MHZ) CLK_PORT_NAME=$(STA_CLK_PORT_NAME) O=$(STA_OUT) \
 			RTL_FILES="$(abspath $(BUILD_DIR))/sta/$(STA_DESIGN).v"
 
+# lint: 对 STA 的综合输入(build/sta/$(STA_DESIGN).v, SPINAL_SIM_DEBUG=0 那份)做 verilator 静态检查
+#   只把"真问题"类警告当失败: 位宽(WIDTH*)/锁存器(LATCH)/组合环(UNOPTFLAT,COMBDLY)/
+#   多驱动(MULTIDRIVEN)/未驱动(UNDRIVEN)/隐式线网(IMPLICIT)/阻塞赋值(BLKSEQ)/case 不全(CASEINCOMPLETE) ...
+#   下面三类是 SpinalHDL 生成物的已知噪声, 显式屏蔽:
+#     UNUSEDSIGNAL 未用到的端口/位(io_interrupt / io_slave_* / RegFile addr[4] / icache pc[1:0] ...)
+#                  以及 `ifndef SYNTHESIS 包起来的枚举调试字符串(共约 35 个)
+#     UNUSEDPARAM  枚举的 localparam(只被上面那些调试字符串引用)
+#     DECLFILENAME 一个 .v 里放了 18 个模块
+#   想看**全部**警告(含噪声)就手动跑:
+#     verilator --lint-only -Wall --top-module $(STA_DESIGN) $(BUILD_DIR)/sta/$(STA_DESIGN).v
+LINT_WAIVER = -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM -Wno-DECLFILENAME
+
+lint:
+	@SPINAL_TOPNAME=$(STA_DESIGN) BUILD_DIR=$(BUILD_DIR)/sta SPINAL_SIM_DEBUG=0 \
+		./mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog
+	verilator --lint-only -Wall $(LINT_WAIVER) --top-module $(STA_DESIGN) \
+		$(BUILD_DIR)/sta/$(STA_DESIGN).v
+	@echo "[lint] OK: 无'真问题'类警告(位宽/锁存/组合环/多驱动/未驱动/隐式线网)"
+
 clean:
 	-rm -rf $(BUILD_DIR) ./simulations ./*.v
 
-.PHONY: $(SRC_AUTO_BIND) $(SPINAL_VFILE) test verilog run sim wave help reformat checkformat clean sta
+.PHONY: $(SRC_AUTO_BIND) $(SPINAL_VFILE) test verilog run sim wave help reformat checkformat clean sta lint
 
 
 -include ../Makefile

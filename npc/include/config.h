@@ -12,7 +12,7 @@
 // 差分测试: 与参考实现对比(需要 -d <ref.so> / -p <port> 参数)
 // 打开后不影响周期/面积统计(纯 C 侧), 但仿真会慢很多(每条指令都要跑一遍 NEMU);
 // 没传 -d 时自动关闭并打一条警告, 所以常开也是安全的(见 csrc/difftest.c)
-#define CONFIG_DIFFTEST 1
+// #define CONFIG_DIFFTEST 1
 
 // trace 总开关: 配合 log_enable() 按指令数范围写日志(见 csrc/sdb/log.c)
 // #define CONFIG_TRACE 1

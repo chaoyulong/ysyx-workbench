@@ -88,13 +88,13 @@ case class ysyx_23060082_Clint() extends Component {
   io.clintAxi4.b.id   := U(0)
   io.clintAxi4.b.resp := Axi4.resp.OKAY
 
-  when(writeHigh) {// 写高位时一起更新
+  when(io.clintAxi4.w.fire && writeHigh) {// 写高位时一起更新
     timeCountLow := wTempL
   } otherwise {
     timeCountLow := timeCountLow + 1
   }
 
-  when(writeHigh) {
+  when(io.clintAxi4.w.fire && writeHigh) {
     timeCountHigh := io.clintAxi4.w.data.asUInt
   } elsewhen(timeCountLow === U"32'hffffffff") {
     timeCountHigh := timeCountHigh + 1

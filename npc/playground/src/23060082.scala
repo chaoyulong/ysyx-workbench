@@ -103,7 +103,6 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig()) extends Component {
   val lsu     = ysyx_23060082_LSU(config)
   val wbu     = ysyx_23060082_WBU(config)
   
-
   // ================================ 重定向与冲刷 ================================ //
   val exuRedir    = exu.io.redirect.valid
   val lsuRedir    = lsu.io.redirect.valid
@@ -113,7 +112,6 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig()) extends Component {
   ifu.io.redirect.pcNext := Mux(lsuRedir, lsu.io.redirect.pcNext, exu.io.redirect.pcNext) // LSU 更老, 优先
   ifu.io.redirect.fenceI := Mux(lsuRedir, lsu.io.redirect.fenceI, exu.io.redirect.fenceI)
                                         
-
   // 只冲上游（即更年轻）的寄存器，WBU不动
   pipelineConnect(ifu.io.output, idu.io.input, idu.io.output, flush = redirectAny)               
   pipelineConnect(idu.io.output, exu.io.input, exu.io.output, flush = lsuRedir, block = redirectAny)  // lsu发起冲刷才会冲掉exu中的数据
@@ -135,12 +133,5 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig()) extends Component {
   xbar.io.ifuAxi4      <> ifu.io.axi4
   xbar.io.lsuAxi4      <> lsu.io.axi4
 
-
-  // ==================== 仿真专用: mtrace 访存踪迹 (与 itrace 同一块) ====================
-  // 黑盒实例化(寄存器在 dpi-c.v), 端口连接提供fanout, 指令逐级传递到WBU
-  if (config.enableSimDebug) {
-    
-
-  }
 }
 

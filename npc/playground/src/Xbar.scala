@@ -4,7 +4,7 @@ import spinal.core._
 import spinal.lib._       // 使用spinal的模块库
 import spinal.lib.bus.amba4.axi._
 
-// --------------------------------- 地址映射配置 --------------------------------- //
+// ============================== 地址映射配置 ============================== //
 // clint 地址可能会修改, 统一在此定义, 修改时只需改动这里
 object AddressMap {
   val CLINT_BASE = BigInt("02000000", 16)   // clint 基地址
@@ -18,7 +18,7 @@ object AddressMap {
   def isClint(addr: UInt) = addr >= U(CLINT_BASE, 32 bits) && addr <= U(CLINT_END, 32 bits)
 }
 
-// --------------------------------- AXI4Xbar --------------------------------- //
+// ============================== AXI4Xbar ============================== //
 case class ysyx_23060082_AXI4Xbar() extends Component {
   val io = new Bundle {
     val ifuAxi4     = slave(Axi4ReadOnly(AxiConfig.axiConfig))
@@ -29,7 +29,7 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
 
   val busAxi4  = Axi4(AxiConfig.axiConfig)
 
-// --------------------------------------------------------- Arbiter ------------------------------------------------------ //
+// ============================== Arbiter ============================== //
   object ArbiterState extends SpinalEnum {              // 定义状态机枚举
     val Idle, IfuUsing, LsuUsing = newElement()
   }
@@ -52,36 +52,28 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
   }
 
   // Idle就开始，提前一周期
-  val grantIfu = (arbiterState === ArbiterState.IfuUsing) || 
-                 (arbiterState === ArbiterState.Idle && io.ifuAxi4.ar.valid)
-  val grantLsu = (arbiterState === ArbiterState.LsuUsing) || 
-                 (arbiterState === ArbiterState.Idle && !io.ifuAxi4.ar.valid && io.lsuAxi4.ar.valid)
-                
+  val grantIfu = (arbiterState === ArbiterState.IfuUsing) || (arbiterState === ArbiterState.Idle && io.ifuAxi4.ar.valid)
+  val grantLsu = (arbiterState === ArbiterState.LsuUsing) || (arbiterState === ArbiterState.Idle && !io.ifuAxi4.ar.valid && io.lsuAxi4.ar.valid)
+                        
   // 状态机判断条件不用改(本来就在 Idle 拍用 ar.valid 选), 优先级仍是 IFU 优先
-  busAxi4.ar.payload := Mux(grantIfu, io.ifuAxi4.ar.payload, io.lsuAxi4.ar.payload)
-  busAxi4.ar.valid   := (grantIfu && io.ifuAxi4.ar.valid) ||
-                        (grantLsu && io.lsuAxi4.ar.valid)
-  io.ifuAxi4.ar.ready := grantIfu && busAxi4.ar.ready
-  io.lsuAxi4.ar.ready := grantLsu && busAxi4.ar.ready
-  
-  // busAxi4.ar.payload  := Mux(arbiterState === ArbiterState.IfuUsing, io.ifuAxi4.ar.payload, io.lsuAxi4.ar.payload)
-  // busAxi4.ar.valid    := (arbiterState === ArbiterState.IfuUsing && io.ifuAxi4.ar.valid) ||
-  //                        (arbiterState === ArbiterState.LsuUsing && io.lsuAxi4.ar.valid)
-  // io.ifuAxi4.ar.ready := (arbiterState === ArbiterState.IfuUsing && busAxi4.ar.ready) 
-  // io.lsuAxi4.ar.ready := (arbiterState === ArbiterState.LsuUsing && busAxi4.ar.ready) 
+  busAxi4.ar.payload   := Mux(grantIfu, io.ifuAxi4.ar.payload, io.lsuAxi4.ar.payload)
+  busAxi4.ar.valid     := (grantIfu && io.ifuAxi4.ar.valid) || (grantLsu && io.lsuAxi4.ar.valid)
+                        
+  io.ifuAxi4.ar.ready  := grantIfu && busAxi4.ar.ready
+  io.lsuAxi4.ar.ready  := grantLsu && busAxi4.ar.ready
 
   io.ifuAxi4.r.payload := busAxi4.r.payload
   io.lsuAxi4.r.payload := busAxi4.r.payload
-  io.ifuAxi4.r.valid := (arbiterState === ArbiterState.IfuUsing && busAxi4.r.valid)
-  io.lsuAxi4.r.valid := (arbiterState === ArbiterState.LsuUsing && busAxi4.r.valid)
-  busAxi4.r.ready    := (arbiterState === ArbiterState.IfuUsing && io.ifuAxi4.r.ready) ||
-                        (arbiterState === ArbiterState.LsuUsing && io.lsuAxi4.r.ready)
+  io.ifuAxi4.r.valid   := (arbiterState === ArbiterState.IfuUsing && busAxi4.r.valid)
+  io.lsuAxi4.r.valid   := (arbiterState === ArbiterState.LsuUsing && busAxi4.r.valid)
+  busAxi4.r.ready      := (arbiterState === ArbiterState.IfuUsing && io.ifuAxi4.r.ready) ||
+                         (arbiterState === ArbiterState.LsuUsing && io.lsuAxi4.r.ready)
 
   busAxi4.aw <> io.lsuAxi4.aw   // 写通道直连
-  busAxi4.w <> io.lsuAxi4.w
-  busAxi4.b <> io.lsuAxi4.b
+  busAxi4.w  <> io.lsuAxi4.w
+  busAxi4.b  <> io.lsuAxi4.b
 
-// --------------------------------------------------------- crossbar ------------------------------------------------------ //
+// ============================== crossbar ============================== //
   // 读/写各自独立的状态机: 读事务(ar/r)与写事务(aw/w/b)可以并行, 互不阻塞(符合AXI语义)
   object CrossState extends SpinalEnum {              // 定义状态机枚举
     val Idle, Clint, External = newElement()
@@ -120,8 +112,8 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
     }
   }
 
-  // ---------------------------------------------- 读通道路由 (readState) ---------------------------------------------- //
-  // ------------------------------- 读地址 ------------------------------- //
+  // ============================== 读通道路由 (readState) ============================== //
+  // ============================== 读地址 ============================== //
   // 提前一周期
   val routeClint    = (readState === CrossState.Clint) ||
                       (readState === CrossState.Idle &&  AddressMap.isClint(busAxi4.ar.addr))
@@ -132,23 +124,19 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
   io.externalAxi4.ar.valid := routeExternal && busAxi4.ar.valid
   busAxi4.ar.ready   := (routeClint && io.clintAxi4.ar.ready) || (routeExternal && io.externalAxi4.ar.ready)
 
-  // io.clintAxi4.ar.valid := (readState === CrossState.Clint) && busAxi4.ar.valid   
   io.clintAxi4.ar.payload := busAxi4.ar.payload
 
-  // io.externalAxi4.ar.valid := (readState === CrossState.External) && busAxi4.ar.valid
   io.externalAxi4.ar.payload := busAxi4.ar
 
-  // busAxi4.ar.ready := (readState === CrossState.Clint && io.clintAxi4.ar.ready) ||
-  //                     (readState === CrossState.External && io.externalAxi4.ar.ready)
-  // ------------------------------- 读数据 ------------------------------- //
+  // ============================== 读数据 ============================== //
   busAxi4.r.valid  := (readState === CrossState.Clint && io.clintAxi4.r.valid) ||
                       (readState === CrossState.External && io.externalAxi4.r.valid)
   busAxi4.r.payload := Mux(readState === CrossState.Clint, io.clintAxi4.r.payload, io.externalAxi4.r.payload)
   io.clintAxi4.r.ready := (readState === CrossState.Clint) && busAxi4.r.ready
 
   io.externalAxi4.r.ready := (readState === CrossState.External) && busAxi4.r.ready
-  // ---------------------------------------------- 写通道路由 (writeState) ---------------------------------------------- //
-  // ------------------------------- 写地址 ------------------------------- //
+  // ============================== 写通道路由 (writeState) ============================== //
+  // ============================== 写地址 ============================== //
   io.clintAxi4.aw.valid := (writeState === CrossState.Clint && busAxi4.aw.valid)
   io.clintAxi4.aw.payload := busAxi4.aw.payload
 
@@ -157,7 +145,7 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
 
   busAxi4.aw.ready := (writeState === CrossState.Clint && io.clintAxi4.aw.ready) ||
                       (writeState === CrossState.External && io.externalAxi4.aw.ready)
-  // ------------------------------- 写数据 ------------------------------- //
+  // ============================== 写数据 ============================== //
   io.clintAxi4.w.valid := (writeState === CrossState.Clint && busAxi4.w.valid)
   io.clintAxi4.w.payload := busAxi4.w.payload
 
@@ -166,7 +154,7 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
 
   busAxi4.w.ready := (writeState === CrossState.Clint && io.clintAxi4.w.ready) ||
                      (writeState === CrossState.External && io.externalAxi4.w.ready)
-  // ------------------------------- 写响应 ------------------------------- //
+  // ============================== 写响应 ============================== //
   busAxi4.b.valid := (writeState === CrossState.Clint && io.clintAxi4.b.valid) ||
                       (writeState === CrossState.External && io.externalAxi4.b.valid)
   busAxi4.b.payload := Mux(writeState === CrossState.Clint, io.clintAxi4.b.payload, io.externalAxi4.b.payload)

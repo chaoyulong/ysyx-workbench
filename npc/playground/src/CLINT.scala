@@ -30,14 +30,14 @@ case class ysyx_23060082_Clint() extends Component {
   }
 
   // 地址暂存一下，打断从icache到clint这条不会存在的关键路径，之记录低4位，区分高低位即可
-  val rid = RegNextWhen(io.clintAxi4.ar.id, io.clintAxi4.ar.fire)
+  val rid         = RegNextWhen(io.clintAxi4.ar.id, io.clintAxi4.ar.fire)
   val raddrReg    = RegNextWhen(io.clintAxi4.ar.addr(3 downto 0), io.clintAxi4.ar.fire)
-  val rdataReg     = Reg(UInt(32 bits))
-  val arFireDelay = RegNext(io.clintAxi4.ar.fire) // 握手后的下一周期
+  val rdataReg    = Reg(UInt(32 bits))
+  val arFireDelay = RegNext(io.clintAxi4.ar.fire)     // 握手后的下一周期
   val dataFinish  = RegInit(False)
 
   // 读取协议: 先读低位(mtime), 硬件锁存当时的高位; 再读高位(mtimeh)返回锁存值
-  val readLow  = raddrReg === U"4'h0"
+  val readLow     = raddrReg === U"4'h0"
   val timeCountHighSnap = RegNextWhen(timeCountHigh, arFireDelay && readLow)    // 读低那一拍锁存高位
 
   when(arFireDelay) {    
@@ -73,10 +73,10 @@ case class ysyx_23060082_Clint() extends Component {
   val writeLow  = io.clintAxi4.aw.addr(3 downto 0) === U"4'h0"
   val writeHigh = io.clintAxi4.aw.addr(3 downto 0) === U"4'h4"
 
-  val wid = RegNextWhen(io.clintAxi4.aw.id, io.clintAxi4.aw.fire)
-  val wTempL    = RegNextWhen(io.clintAxi4.w.data.asUInt, io.clintAxi4.w.fire && writeLow) // 暂存低位数据，等到写高位时一并写入
+  val wid         = RegNextWhen(io.clintAxi4.aw.id, io.clintAxi4.aw.fire)
+  val wTempL      = RegNextWhen(io.clintAxi4.w.data.asUInt, io.clintAxi4.w.fire && writeLow)  // 暂存低位数据，等到写高位时一并写入
   val wStrbFull   = io.clintAxi4.w.strb === B"1111"
-  val wStrbFullReg = RegNextWhen(wStrbFull, io.clintAxi4.w.fire)
+  val wStrbFullReg= RegNextWhen(wStrbFull, io.clintAxi4.w.fire)
 
   when(io.clintAxi4.w.fire) {
     io.clintAxi4.b.valid := True

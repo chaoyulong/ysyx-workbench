@@ -132,12 +132,12 @@ case class ysyx_23060082_IDU(config: CpuConfig = CpuConfig()) extends Component 
 
   io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
   // ================================ 数据传输部分 ================================ //
-  io.rfRead.addr1  := rfReadAddr1
-  io.rfRead.addr2  := rfReadAddr2
+  io.rfRead.addr1 := rfReadAddr1
+  io.rfRead.addr2 := rfReadAddr2
   
-  io.output.pc          := io.input.pc
-  io.output.ctrl        := decoder.io.ctrl
-  io.output.imm         := decoder.io.imm
+  io.output.pc    := io.input.pc
+  io.output.ctrl  := decoder.io.ctrl
+  io.output.imm   := decoder.io.imm
 
   if (config.enableSimDebug) {
     io.output.isCalc    := decoder.io.isCalc

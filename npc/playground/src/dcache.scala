@@ -102,8 +102,8 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
 
   // 读的时候由于会阻塞，不会产生写信号，但是在后台写的时候下一条指令可能会产生读信号
   when(state === DcacheState.Idle) {
-    when(reqRead && !hit && !needWait)  { state := DcacheState.ReadMiss }           // 读缺失，没有命中但是不需要阻塞等待，直接向控制器发出读信号
-    .elsewhen(reqWrite && !needWait)    { state := DcacheState.Write    }           // 请求写，并且不需要阻塞等待
+    when(reqRead && !hit && !needWait)    { state := DcacheState.ReadMiss }         // 读缺失，没有命中但是不需要阻塞等待，直接向控制器发出读信号
+    .elsewhen(reqWrite && !needWait)      { state := DcacheState.Write    }         // 请求写，并且不需要阻塞等待
     .otherwise                            { state := DcacheState.Idle     }
   } elsewhen(state === DcacheState.ReadMiss) {                                      // 读只能等到结束
     when(axi4Ctrler.io.readEnd)           { state := DcacheState.Idle     }
@@ -203,8 +203,8 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
 
   // ================================ 读数据 ================================ //
   io.axi4.r.ready := io.axi4.r.valid
-  io.readEnd := io.axi4.r.fire && io.axi4.r.last   // 突发结束(r.last)才算读完
-  io.readData := io.axi4.r.data.asUInt
+  io.readEnd      := io.axi4.r.fire && io.axi4.r.last   // 突发结束(r.last)才算读完
+  io.readData     := io.axi4.r.data.asUInt
 
   // 读响应错误检查: 从机返回非 OKAY 时仿真报错
   // when(io.axi4.r.fire && io.axi4.r.resp =/= Axi4.resp.OKAY) {

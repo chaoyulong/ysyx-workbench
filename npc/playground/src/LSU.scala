@@ -16,7 +16,6 @@ case class Lsu2Wbu_data(config: CpuConfig = CpuConfig()) extends Bundle {
   val rfWriteData = UInt(32 bits) 
 }
 
-
 case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component {
   val io = new Bundle {
     val input   = slave  Flow(Exu2Lsu_data(config))

@@ -11,7 +11,7 @@ case class Ifu2Idu_data() extends Bundle {
   val ifuExcCause  = UInt(4 bits)    // 异常号
 }
 
-case class RedirectReq() extends Bundle {  // 真实的在exu中运算出来，或者lsu的csr中取出来的pc,同时需要一个valid信号
+case class RedirectReq() extends Bundle { // 真实的在exu中运算出来，或者lsu的csr中取出来的pc,同时需要一个valid信号
   val pcNext = UInt(32 bits)
   val fenceI = Bool()                     // 这次重定向同时要求失效 icache
 }

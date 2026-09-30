@@ -54,7 +54,7 @@ case class ysyx_23060082_CSR() extends Component {
     mcycleh := mcycleh + 1
   }
 
-  val mcyclehTmp = RegNextWhen(mcycleh, readMcycle)        // 规定先读低位，再立刻读高位
+  // val mcyclehTmp = RegNextWhen(mcycleh, readMcycle)        // 规定先读低位，再立刻读高位
 
   val readMinstret  = io.csrAddr === CSR.minstret
   val readMinstreth = io.csrAddr === CSR.minstreth
@@ -64,7 +64,7 @@ case class ysyx_23060082_CSR() extends Component {
       minstreth := minstreth + 1
     }
   }
-  val minstrethTmp = RegNextWhen(minstreth, readMinstret)  // 规定先读低位，再立刻读高位
+  // val minstrethTmp = RegNextWhen(minstreth, readMinstret)  // 规定先读低位，再立刻读高位
 
   io.csrRdata := io.csrAddr.mux(
     CSR.mstatus   -> mstatus,
@@ -74,19 +74,19 @@ case class ysyx_23060082_CSR() extends Component {
     CSR.mvendorid -> mvendorid,
     CSR.marchid   -> marchid,
     CSR.mcycle    -> mcycle,
-    CSR.mcycleh   -> mcyclehTmp,
+    CSR.mcycleh   -> mcycleh,
     CSR.minstret  -> minstret,
-    CSR.minstreth -> minstrethTmp,
+    CSR.minstreth -> minstreth,
     default       -> U"32'h0"
   )
 
-  val rdataWb = Mux(readMcycleh, mcycleh,
-                Mux(readMinstreth, minstreth,  io.csrRdata))  // csrrw与csrrs有与当前值做运算再写回的操作，如果正好是读取计数器的高位
+  // val rdataWb = Mux(readMcycleh, mcycleh,
+  //               Mux(readMinstreth, minstreth,  io.csrRdata))  // csrrw与csrrs有与当前值做运算再写回的操作，如果正好是读取计数器的高位
                                                               // 则会因为读取的是之前的暂存值而数据错误，所以需要使用真正的值
   val writeData = io.csrCmd.mux(
-    U"3'd1" -> io.csrWdata,               // CSRRW
-    U"3'd2" -> (rdataWb | io.csrWdata),   // CSRRS
-    default -> rdataWb
+    U"3'd1" -> io.csrWdata,                   // CSRRW
+    U"3'd2" -> (io.csrRdata | io.csrWdata),   // CSRRS
+    default -> io.csrRdata
   )
 
   when(writeEnable){

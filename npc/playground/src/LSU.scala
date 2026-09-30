@@ -49,8 +49,8 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   val lsFault = dcache.io.readErr || dcache.io.writeErr
   val trapEnter = io.input.csrCtrl.trapEnter || lsMisaligned || lsFault   // 上游优先
   val excCause = Mux(io.input.csrCtrl.trapEnter, io.input.csrCtrl.excCause,
-                  Mux(lsMisaligned, Mux(needRead, U(4, 4 bits), U(6, 4 bits)),        // 4 = load, 6 = store
-                                 Mux(needRead, U(5, 4 bits), U(7, 4 bits))))       // 5 = load, 7 = store
+                 Mux(lsMisaligned, Mux(needRead, U(4, 4 bits), U(6, 4 bits)),     // 4 = load, 6 = store
+                                   Mux(needRead, U(5, 4 bits), U(7, 4 bits))))    // 5 = load, 7 = store
 
   // ================================ 访存通路 ================================ //
 
@@ -142,8 +142,7 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   // fence.i放在LSU: LSU顺序处理访存, fence进到LSU时最多有一个后台访存，只要等待访存完成，之后的取指必然看得到新指令
   io.redirect.valid  := io.input.valid && (trapEnter || io.input.csrCtrl.trapExit || (io.input.fenceI && !dcache.io.writeBusy))
   io.redirect.pcNext := Mux(trapEnter, csr.io.mtvec,
-                        Mux(io.input.csrCtrl.trapExit, csr.io.mepc,
-                                                      io.input.pc + 4))    // fence.i只是冲刷，pcNext依旧是pc+4
+                        Mux(io.input.csrCtrl.trapExit, csr.io.mepc, io.input.pc + 4))    // fence.i只是冲刷，pcNext依旧是pc+4
   io.redirect.fenceI := io.input.fenceI
 
   // ================================ 调试专用信号 ================================ //

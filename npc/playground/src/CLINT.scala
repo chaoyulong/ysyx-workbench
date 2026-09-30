@@ -18,10 +18,10 @@ case class ysyx_23060082_Clint() extends Component {
   val timeCountLow  = RegInit(U"32'h0")
   val timeCountHigh = RegInit(U"32'h0")
 
-  timeCountLow := timeCountLow + 1
-  when(timeCountLow === U"32'hffffffff") {
-    timeCountHigh := timeCountHigh + 1
-  }
+  // timeCountLow := timeCountLow + 1
+  // when(timeCountLow === U"32'hffffffff") {
+  //   timeCountHigh := timeCountHigh + 1
+  // }
 
   io.clintAxi4.b.valid.setAsReg() init(False)
 // ================================ 读通道 ================================ //
@@ -36,13 +36,13 @@ case class ysyx_23060082_Clint() extends Component {
   }
 
   // 地址暂存一下，打断从icache到clint这条不会存在的关键路径，之记录低4位，区分高低位即可
-  val addrReg     = RegNextWhen(io.clintAxi4.ar.addr(3 downto 0), io.clintAxi4.ar.fire)
-  val dataReg     = Reg(UInt(32 bits))
+  val raddrReg    = RegNextWhen(io.clintAxi4.ar.addr(3 downto 0), io.clintAxi4.ar.fire)
+  val rdataReg     = Reg(UInt(32 bits))
   val arFireDelay = RegNext(io.clintAxi4.ar.fire) // 握手后的下一周期
   val dataFinish  = RegInit(False)
 
   // 读取协议: 先读低位(mtime), 硬件锁存当时的高位; 再读高位(mtimeh)返回锁存值
-  val readLow  = addrReg === U"4'h0"
+  val readLow  = raddrReg === U"4'h0"
   val timeCountHighSnap = RegNextWhen(timeCountHigh, arFireDelay && readLow)    // 读低那一拍锁存高位
 
   when(arFireDelay) {    
@@ -54,7 +54,7 @@ case class ysyx_23060082_Clint() extends Component {
   }
 
   when(arFireDelay) {
-    dataReg := addrReg.mux(
+    rdataReg := raddrReg.mux(
       U"4'h4"  -> timeCountHighSnap,  // 高位
       U"4'h0"  -> timeCountLow,       // 低位
       default -> U(0)
@@ -65,17 +65,20 @@ case class ysyx_23060082_Clint() extends Component {
 
   io.clintAxi4.r.valid  := dataFinish && readActive
   io.clintAxi4.r.last   := True
-  io.clintAxi4.r.data   := dataReg.asBits
+  io.clintAxi4.r.data   := rdataReg.asBits
   io.clintAxi4.r.id     := U(0)
   io.clintAxi4.r.resp   := Axi4.resp.OKAY
   // ================================ 写通道 ================================ //
   val wAllValid = io.clintAxi4.aw.valid && io.clintAxi4.w.valid
   io.clintAxi4.aw.ready := wAllValid
   io.clintAxi4.w.ready  := wAllValid
-  // when(wAllValid) {  
-  //   report(Seq("should not write to there!", io.clintAxi4.aw.addr))
-  // }
-  when(wAllValid) {
+
+  val writeLow  = io.clintAxi4.aw.addr(3 downto 0) === U"4'h0"
+  val writeHigh = io.clintAxi4.aw.addr(3 downto 0) === U"4'h4"
+
+  val wTempL    = RegNextWhen(io.clintAxi4.w.data.asUInt, io.clintAxi4.w.fire && writeLow) // 暂存低位数据，等到写高位时一并写入
+
+  when(io.clintAxi4.w.fire) {
     io.clintAxi4.b.valid := True
   } elsewhen (io.clintAxi4.b.fire) {
     io.clintAxi4.b.valid := False
@@ -84,4 +87,16 @@ case class ysyx_23060082_Clint() extends Component {
   }
   io.clintAxi4.b.id   := U(0)
   io.clintAxi4.b.resp := Axi4.resp.OKAY
+
+  when(writeHigh) {// 写高位时一起更新
+    timeCountLow := wTempL
+  } otherwise {
+    timeCountLow := timeCountLow + 1
+  }
+
+  when(writeHigh) {
+    timeCountHigh := io.clintAxi4.w.data.asUInt
+  } elsewhen(timeCountLow === U"32'hffffffff") {
+    timeCountHigh := timeCountHigh + 1
+  }
 }

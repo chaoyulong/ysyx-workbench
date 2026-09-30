@@ -46,14 +46,6 @@ case class ysyx_23060082_CSR() extends Component {
 
   val writeEnable = io.csrCmd =/= 0 // csr写使能
 
-  val readMcycle  = io.csrAddr === CSR.mcycle
-  val readMcycleh = io.csrAddr === CSR.mcycleh
-  val mcyclehTmp = RegNextWhen(mcycleh, readMcycle)        // 规定先读低位，再立刻读高位
-
-  val readMinstret  = io.csrAddr === CSR.minstret
-  val readMinstreth = io.csrAddr === CSR.minstreth
-  val minstrethTmp = RegNextWhen(minstreth, readMinstret)  // 规定先读低位，再立刻读高位
-
   mcycle := mcycle + 1
   when(mcycle === U"32'hffffffff") {
     mcycleh := mcycleh + 1
@@ -67,7 +59,6 @@ case class ysyx_23060082_CSR() extends Component {
     }
   }
   
-
   io.csrRdata := io.csrAddr.mux(
     CSR.mstatus   -> mstatus,
     CSR.mtvec     -> mtvec,

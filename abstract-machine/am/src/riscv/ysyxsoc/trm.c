@@ -138,21 +138,29 @@ void ysyxsoc_dis_id(){
   putch('\n');
 }
 
+// 64 位计数器标准读取: 读高 -> 读低 -> 再读高, 两次高相同才采信
+// (硬件 mcycleh/minstreth 是直读当前值; 两条 csrr 在两个时钟沿采样,
+//  "低->高"背靠背会留 2^-32 的窗口: 回绕正好落在两次读之间时组合值偏大 2^32,
+//  用三重读即可彻底消掉, 且不需要任何硬件快照)
 uint64_t read_mcycle64(void) {
-  uint32_t lo, hi;
-  asm volatile("csrr %0, mcycle\n\t"    // 先读低, 硬件在下一拍锁存当时的高位
-               "nop\n\t"                // 协议要求的最小间隔(>=1 条指令 = 2 拍)
-               "csrr %1, mcycleh"       // 再读高, 返回锁存值
-               : "=r"(lo), "=r"(hi));
-  return ((uint64_t)hi << 32) | lo;     // 合并成 64 位
+  uint32_t hi, lo, hi2;
+  do {
+    asm volatile("csrr %0, mcycleh\n\t"
+                 "csrr %1, mcycle\n\t"
+                 "csrr %2, mcycleh"
+                 : "=r"(hi), "=r"(lo), "=r"(hi2));
+  } while (hi != hi2);
+  return ((uint64_t)hi << 32) | lo;
 }
 
 uint64_t read_minstret64(void) {
-  uint32_t lo, hi;
-  asm volatile("csrr %0, minstret\n\t"
-               "nop\n\t"
-               "csrr %1, minstreth"
-               : "=r"(lo), "=r"(hi));
+  uint32_t hi, lo, hi2;
+  do {
+    asm volatile("csrr %0, minstreth\n\t"
+                 "csrr %1, minstret\n\t"
+                 "csrr %2, minstreth"
+                 : "=r"(hi), "=r"(lo), "=r"(hi2));
+  } while (hi != hi2);
   return ((uint64_t)hi << 32) | lo;
 }
 

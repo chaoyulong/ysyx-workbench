@@ -46,8 +46,8 @@ case class ysyx_23060082_CSR() extends Component {
 
   val writeEnable = io.csrCmd =/= 0 // csr写使能
 
-  val readMcycle  = io.csrAddr === CSR.mcycle
-  val readMcycleh = io.csrAddr === CSR.mcycleh
+  // val readMcycle  = io.csrAddr === CSR.mcycle
+  // val readMcycleh = io.csrAddr === CSR.mcycleh
 
   mcycle := mcycle + 1
   when(mcycle === U"32'hffffffff") {

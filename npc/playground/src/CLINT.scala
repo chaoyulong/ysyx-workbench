@@ -18,12 +18,6 @@ case class ysyx_23060082_Clint() extends Component {
   val timeCountLow  = RegInit(U"32'h0")
   val timeCountHigh = RegInit(U"32'h0")
 
-  // timeCountLow := timeCountLow + 1
-  // when(timeCountLow === U"32'hffffffff") {
-  //   timeCountHigh := timeCountHigh + 1
-  // }
-
-  io.clintAxi4.b.valid.setAsReg() init(False)
 // ================================ 读通道 ================================ //
   val readActive = RegInit(False)       // 空闲 = 不在传输中
 
@@ -78,6 +72,7 @@ case class ysyx_23060082_Clint() extends Component {
 
   val wTempL    = RegNextWhen(io.clintAxi4.w.data.asUInt, io.clintAxi4.w.fire && writeLow) // 暂存低位数据，等到写高位时一并写入
 
+  io.clintAxi4.b.valid.setAsReg() init(False)
   when(io.clintAxi4.w.fire) {
     io.clintAxi4.b.valid := True
   } elsewhen (io.clintAxi4.b.fire) {
@@ -90,7 +85,7 @@ case class ysyx_23060082_Clint() extends Component {
 
   when(io.clintAxi4.w.fire && writeHigh) {// 写高位时一起更新
     timeCountLow := wTempL
-  } otherwise {
+  } otherwise {MTIME
     timeCountLow := timeCountLow + 1
   }
 

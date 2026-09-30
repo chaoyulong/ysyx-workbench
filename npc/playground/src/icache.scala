@@ -174,8 +174,6 @@ case class ysyx_23060082_Axi4_Ctrler_ReadOnly_Burst(param: IcacheParams = Icache
     val readReq  = in  Bool()
     val readAddr = in  UInt(32 bits)
     val readEnd  = out Bool()
-    val readOnce = out Bool() // 只读了一次的标志
-    val readDataOnce = out UInt(32 bits)
     val readData = out UInt(param.dataBits bits)
     val axi4 = master(Axi4ReadOnly(AxiConfig.axiConfig))
   }

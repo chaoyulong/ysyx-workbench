@@ -72,7 +72,7 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   val state = RegInit(DcacheState.Idle)
 
   val bPending  = RegInit(False)          // 记录还有挂在后台的写事务
-  val writeAddr = Reg(UInt(16 bits))      // 写地址，不用存储全部位
+  val writeAddr = Reg(UInt(22 bits))      // 写地址，不用存储全部位
   val writeCacheable = Reg(Bool())        // 是否是内存地址，如果不是就不能挂后台
 
   val reqRead  = io.reqIn.valid && io.reqIn.read
@@ -80,13 +80,13 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
 
   val readHit  = (state === DcacheState.Idle) && reqRead && hit             // 读地址命中cache
 
-  val sameAddr  = io.reqIn.addr(17 downto 2) === writeAddr                  // 判断是否是同一地址，后台写的话，就不能再读同一地址，需要等待写完
+  val sameAddr  = io.reqIn.addr(23 downto 2) === writeAddr                  // 判断是否是同一地址，后台写的话，就不能再读同一地址，需要等待写完
   val needWait  = bPending && (reqWrite || (reqRead && sameAddr && !hit))   // 后台有写事务时，再次的写请求，或对相同地址的读，需要等待之前的写完成
 
   val writeAccept = (state === DcacheState.Idle) && reqWrite && !needWait   // 写请求被接受，这个是在valid信号为1的同时就能判断出来的
   val readAccept  = (state === DcacheState.Idle) && reqRead  && !needWait
   when(writeAccept) {
-    writeAddr       := io.reqIn.addr(17 downto 2)
+    writeAddr       := io.reqIn.addr(23 downto 2)
     writeCacheable  := cacheable
   }
 

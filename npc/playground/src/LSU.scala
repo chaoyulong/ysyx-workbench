@@ -76,12 +76,18 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   dataProcess.io.rdata := dcache.io.rspOut.readData   // dcache 内已有数据寄存器, 不需要再寄存
 
   // ================================ CSR寄存器 ================================ //
+  // ★ 所有 CSR 侧的控制信号都要用【已复位的 io.input.valid】门控:
+  //   LSU 的输入 payload 寄存器(级间 pipelineConnect 的 payloadReg)没有复位 ⇒ 复位刚释放时
+  //   csrCmd/trapEnter/trapExit 都是 X。RTL 里 `if(X)` 被当作假分支吃掉, 但综合成门之后
+  //   这些 X 会经 D 端 mux 直接写进 CSR 寄存器(实测复位释放那一拍 mtvec/mstatus/mcause/
+  //   mcycle/minstret 全部 0→x)。valid 是 RegInit, 用它与一下就把 X 挡在 CSR 之外。
+  val csrActive     = io.input.valid
   val csr = ysyx_23060082_CSR()
   csr.io.csrAddr    := io.input.csrAddr
   csr.io.csrWdata   := io.input.rfReadData
-  csr.io.csrCmd     := Mux(trapEnter, U(0, 3 bits), io.input.csrCtrl.csrCmd)      // 异常时不执行本条自己的CSR写
-  csr.io.trapEnter  := trapEnter
-  csr.io.trapExit   := io.input.csrCtrl.trapExit
+  csr.io.csrCmd     := Mux(trapEnter || !csrActive, U(0, 3 bits), io.input.csrCtrl.csrCmd)  // 异常/无指令时不执行CSR写
+  csr.io.trapEnter  := csrActive && trapEnter
+  csr.io.trapExit   := csrActive && io.input.csrCtrl.trapExit
   csr.io.pcIn       := io.input.pc                                                // 出错那条指令的pc
   csr.io.causeIn    := Mux(io.input.csrCtrl.ecall, io.input.rfReadData,           // ecall指令的cause在a5寄存器中
                                                    excCause.resize(32 bits))      // 其余零扩展

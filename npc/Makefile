@@ -176,10 +176,61 @@ lint-all:
 	-verilator --lint-only -Wall --top-module $(STA_DESIGN) $(BUILD_DIR)/sta/$(STA_DESIGN).v
 	@echo "[lint-all] 以上为全部警告(含噪声); 只挑真问题用 make lint"
 
+# ================================ iverilog (四值仿真 / 网表仿真) ================================
+# 目标名按课程 CI 约定:
+#   make sim-iverilog          IMG=xxx.bin
+#   make sim-iverilog-netlist  IMG=xxx.bin [NETLIST=yyy.v] [CELLS=zzz.v]
+#
+# 几个刻意的设计:
+#   1) 仿真的 RTL 单独生成到 build/iverilog/, 且用 SPINAL_SIM_DEBUG=0
+#      ⇒ 生成结果里没有 DPI 黑盒(ItraceReg/MtraceReg/PerfReg/NpcMemRW) ⇒ iverilog 能编
+#      (build/ysyx_23060082.v 那份是 debug=true 的, 含 DPI, 不能给 iverilog 用)
+#   2) 【显式传 PARTFORM】: sta/lint 的配方没传 PARTFORM, Config 会退到默认 npc(resetPc=0x80000000);
+#      这里按 CI 要求用 ysyxsoc(resetPc=0x30000000), 再由 TB 在 0x30000000 处放 trampoline 跳到 0x80000000
+#   3) 网表默认用 ...netlist.v.sim: yosys.tcl 里 splitnets -ports 会把【端口也拆成单位】,
+#      而 .sim 是拆端口之前写的 ⇒ 端口还是向量 ⇒ 同一个 TB 可以直接接 RTL 与网表
+#   4) 不加 git_commit: iverilog 仿真会反复跑, 不该每次都在仓库里留一条自动提交
+IVERILOG   ?= iverilog
+VVP        ?= vvp
+IV_DIR      = $(BUILD_DIR)/iverilog
+IV_TB_DIR   = $(abspath sim-iverilog/testbench)
+IV_TB       = $(IV_TB_DIR)/tb_npc.v
+IV_BIN2MEM  = $(abspath sim-iverilog/tools/bin2mem.sh)
+IV_RTL      = $(IV_DIR)/$(STA_DESIGN).v
+IV_IMG      = $(IV_DIR)/img.hex
+IV_MAXCYC  ?= 40000000
+IV_ARGS    ?=
+IV_SRCS     = $(shell find $(abspath playground/src) -name "*.scala") $(abspath ./build.sc)
+NETLIST    ?= $(abspath $(BUILD_DIR))/sta/$(STA_DESIGN)-500MHz/$(STA_DESIGN).netlist.v.sim
+CELLS      ?= $(IV_TB_DIR)/cells.v
+
+$(IV_RTL): $(IV_SRCS)
+	@mkdir -p $(IV_DIR)
+	@SPINAL_TOPNAME=$(STA_DESIGN) BUILD_DIR=$(IV_DIR) SPINAL_SIM_DEBUG=0 PARTFORM=$(PARTFORM) \
+		./mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog
+
+# 四值仿真: RTL(无 debug 黑盒) + TB(带突发的 AXI 从机 + 存储器)
+sim-iverilog: $(IV_RTL) $(IV_TB)
+	@test -n "$(IMG)" || { echo "错误: 需要 IMG=<xxx.bin>（例: make sim-iverilog IMG=sim-iverilog/bin/microbench-riscv32e-npc.bin）"; exit 1; }
+	@mkdir -p $(IV_DIR)
+	@$(IV_BIN2MEM) $(IMG) $(IV_IMG)
+	$(IVERILOG) -g2012 -o $(IV_DIR)/sim-iv.vvp -s tb_npc $(IV_RTL) $(IV_TB)
+	$(VVP) $(IV_DIR)/sim-iv.vvp +img=$(IV_IMG) +img_size=$(shell stat -c%s $(IMG)) +max_cycles=$(IV_MAXCYC) $(IV_ARGS)
+
+# 网表仿真: 同一个 TB + yosys 网表 + nangate45 标准单元行为模型
+sim-iverilog-netlist: $(IV_TB) $(IV_IMG)
+	@test -n "$(IMG)" || { echo "错误: 需要 IMG=<xxx.bin>"; exit 1; }
+	@test -f "$(NETLIST)" || { echo "错误: 找不到网表 $(NETLIST)（先 make sta, 或用 NETLIST= 指定）"; exit 1; }
+	@test -f "$(CELLS)"   || { echo "错误: 找不到标准单元模型 $(CELLS)（或用 CELLS= 指定）"; exit 1; }
+	@mkdir -p $(IV_DIR)
+	@$(IV_BIN2MEM) $(IMG) $(IV_IMG)
+	$(IVERILOG) -g2012 -DIV_NETLIST -o $(IV_DIR)/net-iv.vvp -s tb_npc $(NETLIST) $(CELLS) $(IV_TB)
+	$(VVP) $(IV_DIR)/net-iv.vvp +img=$(IV_IMG) +img_size=$(shell stat -c%s $(IMG)) +max_cycles=$(IV_MAXCYC) $(IV_ARGS)
+
 clean:
 	-rm -rf $(BUILD_DIR) ./simulations ./*.v
 
-.PHONY: $(SRC_AUTO_BIND) $(SPINAL_VFILE) test verilog run sim wave help reformat checkformat clean sta lint lint-all
+.PHONY: $(SRC_AUTO_BIND) $(SPINAL_VFILE) test verilog run sim wave help reformat checkformat clean sta lint lint-all sim-iverilog sim-iverilog-netlist
 
 
 -include ../Makefile

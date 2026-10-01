@@ -33,7 +33,7 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
   object ArbiterState extends SpinalEnum {              // 定义状态机枚举
     val Idle, IfuUsing, LsuUsing = newElement()
   }
-  val arbiterState = Reg(ArbiterState()) init(ArbiterState.Idle)   // 创建一个状态机
+  val arbiterState = RegInit(ArbiterState.Idle)
 
   switch(arbiterState) {
     is(ArbiterState.Idle) {
@@ -79,7 +79,7 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
     val Idle, Clint, External = newElement()
   }
   // 读状态机: 路由 ar/r 通道, 由 r.fire 结束事务
-  val readState = Reg(CrossState()) init(CrossState.Idle)
+  val readState = RegInit(CrossState.Idle)
   switch(readState) {
     is(CrossState.Idle) {
       when(busAxi4.ar.valid) {
@@ -96,7 +96,7 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
   }
 
   // 写状态机: 路由 aw/w/b 通道, 由 b.fire 结束事务
-  val writeState = Reg(CrossState()) init(CrossState.Idle)
+  val writeState = RegInit(CrossState.Idle)
   switch(writeState) {
     is(CrossState.Idle) {
       when(busAxi4.aw.valid) {

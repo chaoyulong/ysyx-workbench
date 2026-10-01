@@ -173,6 +173,7 @@ module tb_npc;
   reg [63:0] max_cycles = DEFAULT_MAX_CYCLES;
   reg [31:0] zero_size = DEFAULT_ZERO;
   reg [31:0] img_size = 32'd0;      // 镜像字节数(由 Makefile 传 +img_size=), 用来区分"镜像区"和"清零区"
+  reg [31:0] uart_stop = 32'd0;     // +uart_stop=N: UART 输出到 N 字节就结束(网表模式没法看 ebreak 时的收尾开关)
   integer    uart_bytes = 0;
   integer    unmapped_reads = 0;
   integer    unmapped_writes = 0;
@@ -402,6 +403,10 @@ module tb_npc;
   reg [63:0] aw_fires = 64'd0;
   reg [63:0] r_beats  = 64'd0;
   reg [63:0] w_beats  = 64'd0;
+  // 写数据含 X 的统计: 用来量化"存未初始化值"这类事件的规模, 以及是否会打到设备(串口)
+  integer    x_w_beats = 0;                 // 有效 W 拍里 wdata 含 X 的次数
+  integer    x_w_dev   = 0;                 // 其中落到 UART(设备) 的次数 —— 这类才可能污染输出
+  reg [31:0] x_w_first_addr = 32'hFFFF_FFFF;
 
   // ★ 用 negedge 采样：门级网表的组合逻辑在 posedge 那一刻还在收敛，
   //   在 posedge 采样会看到未稳定的值（delta-cycle 竞态）⇒ 会在 X 统计上产生假阳性
@@ -457,6 +462,21 @@ module tb_npc;
           $display("[TB][XCHK] ★★ 第一次【有效读事务上出现 X 地址】: cyc=%0d araddr=%h len=%0d arsize=%b arburst=%b",
                    cycles, io_master_araddr, io_master_arlen, io_master_arsize, io_master_arburst);
         end
+`ifdef IV_NETLIST
+        // ★ 网表模式收尾: 扁平的 yosys 网表里没有 lsu 这个实例, TB 无法用层次引用看
+        //   ebreak 提交(见文件头/结束判定处的说明) ⇒ 改用行为签名:
+        //   程序没写过 mtvec(保持复位值 0) 时, ebreak/trap 会跳到 0 ⇒ CPU 从地址 0 取指,
+        //   这是一次"未译码读"。正常程序不会从 0 取指, 所以把它当作"程序已 trap 退出"。
+        if (io_master_araddr == 32'h0000_0000) begin
+          $display("");
+          $display("================ [TB] 程序结束 (网表模式, 检测到 trap 到 0) ================");
+          $display("  从地址 0 取指 ⇒ 程序已 trap 退出 (mtvec 未被程序写过, 保持复位值 0)");
+          $display("  共 %0d 个周期, UART 输出 %0d 字节, AXI: ar=%0d aw=%0d rbeat=%0d wbeat=%0d",
+                   cycles, uart_bytes, ar_fires, aw_fires, r_beats, w_beats);
+          $display("==========================================================================");
+          $finish;
+        end
+`endif
       end
       if (io_master_rvalid  && io_master_rready ) r_beats  <= r_beats  + 64'd1;
       if (io_master_awvalid && io_master_awready) begin
@@ -469,9 +489,17 @@ module tb_npc;
       end
       if (io_master_wvalid  && io_master_wready ) begin
         w_beats <= w_beats + 64'd1;
-        if (!x_w_reported && has_x32(io_master_wdata)) begin
-          x_w_reported <= 1'b1;
-          $display("[TB][XCHK] ★★ 第一次【有效写数据上出现 X】: cyc=%0d wdata=%h wstrb=%b", cycles, io_master_wdata, io_master_wstrb);
+        if (has_x32(io_master_wdata)) begin
+          x_w_beats <= x_w_beats + 1;
+          if (in_serial({w_addr[31:2], 2'b00})) x_w_dev <= x_w_dev + 1;
+          if (!x_w_reported) begin
+            x_w_reported <= 1'b1;
+            x_w_first_addr <= w_addr;
+            $display("[TB][XCHK] ★★ 第一次【有效写数据上出现 X】: cyc=%0d addr=%h wdata=%h wstrb=%b",
+                     cycles, w_addr, io_master_wdata, io_master_wstrb);
+            if (in_serial({w_addr[31:2], 2'b00}))
+              $display("[TB][XCHK]    ★ 这笔 X 写打到 UART 设备!");
+          end
         end
       end
     end
@@ -498,6 +526,22 @@ module tb_npc;
   end
 
   //------------------------------------------------------------------
+  // 按 UART 字节数收尾（+uart_stop=N）
+  //   网表模式看不到 ebreak, 又不想等几十分钟的 watchdog 时:
+  //   程序输出总量已知(例: microbench = 539 字节)时, 用它精确收尾。
+  //------------------------------------------------------------------
+  always @(posedge clock) begin
+    if (!reset && uart_stop != 32'd0 && uart_bytes >= uart_stop) begin
+      $display("");
+      $display("================ [TB] 程序结束 (按 +uart_stop=%0d) ================", uart_stop);
+      $display("  UART 输出 %0d 字节, 共 %0d 个周期", uart_bytes, cycles);
+      $display("  AXI 事务: ar=%0d aw=%0d rbeat=%0d wbeat=%0d", ar_fires, aw_fires, r_beats, w_beats);
+      $display("=================================================================");
+      $finish;
+    end
+  end
+
+  //------------------------------------------------------------------
   // 主流程
   //------------------------------------------------------------------
   integer i;
@@ -514,6 +558,7 @@ module tb_npc;
     if ($value$plusargs("max_cycles=%d", max_cycles)) begin end
     if ($value$plusargs("zero=%d", zero_size)) begin end
     if ($value$plusargs("img_size=%d", img_size)) begin end
+    if ($value$plusargs("uart_stop=%d", uart_stop)) begin end
     // ★ 注意: iverilog 的 $test$plusargs 是【前缀匹配】, "vcdwin" 也满足 "vcd"
     //   ⇒ 必须显式排除, 否则 +vcdwin 会在这里先 $dumpvars(t=0), 窗口 $dumpfile 被忽略(踩过)
     if (!$test$plusargs("vcdwin") && $test$plusargs("vcd")) begin
@@ -565,8 +610,11 @@ module tb_npc;
         $display("  ebreak 提交(cause=3) 于 pc=%h, 共 %0d 个周期", lsu_commit_pc, cycles);
         $display("  UART 输出 %0d 字节", uart_bytes);
         $display("  未译码访问: 读 %0d 次 / 写 %0d 次", unmapped_reads, unmapped_writes);
-        $display("  端口含 X 的周期数: %0d %s", x_cycles, xcheck ? "" : "（未开 +xcheck）");
+        if (xcheck) $display("  端口含 X 的周期数: %0d", x_cycles);
+        else        $display("  端口含 X 的周期数: 未统计 (加 +xcheck 才打开 X 检查)");
         $display("  AXI 事务: ar=%0d aw=%0d rbeat=%0d wbeat=%0d", ar_fires, aw_fires, r_beats, w_beats);
+        $display("  写数据含 X: %0d 拍 (其中打到 UART 设备: %0d 拍; 首次 addr=%h)",
+                 x_w_beats, x_w_dev, x_w_first_addr);
         $display("===============================================");
         $finish;
       end
@@ -575,8 +623,11 @@ module tb_npc;
         $display("================ [TB] watchdog 超时 ================");
         $display("  跑了 %0d 个周期仍未看到 ebreak", cycles);
         $display("  UART 输出 %0d 字节", uart_bytes);
-        $display("  端口含 X 的周期数: %0d %s", x_cycles, xcheck ? "" : "（未开 +xcheck）");
+        if (xcheck) $display("  端口含 X 的周期数: %0d", x_cycles);
+        else        $display("  端口含 X 的周期数: 未统计 (加 +xcheck 才打开 X 检查)");
         $display("  AXI 事务: ar=%0d aw=%0d rbeat=%0d wbeat=%0d", ar_fires, aw_fires, r_beats, w_beats);
+        $display("  写数据含 X: %0d 拍 (其中打到 UART 设备: %0d 拍; 首次 addr=%h)",
+                 x_w_beats, x_w_dev, x_w_first_addr);
         $display("===================================================");
         $finish;
       end

@@ -2,6 +2,10 @@
 
 > 用法：下面每段都是**自包含**的，按需整段复制给 AI 助手。工作区：`ysyx-workbench`（`npc` 仓库）。
 > 相关背景另见 `npc/AI_PROMPTS.md`（工程总览/代码地图）与 `HANDOVER-CI.md`（CI 合规线）。
+>
+> **2026-10-01 更新**：网表 X 卡点**已定位并修复**（commit `6a6d85d`）。原因不是状态机/valid 漏复位，
+> 而是 **CSR 侧控制信号没按 `io.input.valid` 门控**（复位释放那一拍 CSR 被 X 写入）。详见 `npc/README.md`
+> 的 2026-10-01 节与 `npc/PERF.md` 的 `6a6d85d` 行。提示词 3 保留作为方法记录。
 
 ---
 
@@ -26,14 +30,21 @@ CI 的目标名约定：make -C npc sim-iverilog IMG=xxx.bin  以及
 - RTL 四值仿真：microbench 全量 PASS ✓（10/10 项 Passed + MicroBench PASS，1049614 周期，约 46 秒）
   RT-Thread 能启动到 msh shell ✓（之后停在 AM 侧 panic：npc/ioe.c 的 lut 没实现 rtt 要的设备）
 
-【当前卡点】✗ 网表仿真能跑但很慢、且有 X
-- 网表与 RTL 的 AXI 访问序列【前 5068 条完全一致】✓（只差开头 2 条 trampoline 取指）
-- 但 50k 周期时网表只发出 3337 个 AR（RTL 是 4225），UART 98 字节 vs 124 字节 ⇒ 卡住
-- 用 TB 的 +xcheck 定位到：cyc=42261 顶层 io_master_arvalid 先变 X → 42263 araddr 全 X
-  → 42264 awv/wv 也 X（先读请求、再污染整个 AXI 接口）
-- 同期 RTL 完全没有 X ⇒ 是"综合后才暴露"的问题（Verilog 的 if(X) 被当假分支吃掉了）
+【已解决 2026-10-01（`6a6d85d`）】✓ 网表 X 根因 = 【CSR 侧控制信号没按 valid 门控】
+- 网表在复位释放那一拍(cyc 50)把 lsu.csr 的 mtvec/mstatus/mcause/mcycle/minstret 写成 X；
+  RTL 的 if(reset) 是程序分支(if(X) 当假)，综合成门后复位只是 D 端 mux 的一项 ⇒ X 直接写进寄存器
+- X 经前递/比较 → exu.redirect.valid → IFU 的 pcFetch(cyc 42253，第一个变 X 的控制寄存器)
+  → 顶层 arvalid/araddr X(cyc 42260)；Xbar 的 readState/arbiterState 是【最后】被污染的，不是源头
+- 修法(LSU.scala，零新增触发器)：csrCmd = Mux(trapEnter || !io.input.valid, 0, ...)；
+  trapEnter/trapExit 都与 io.input.valid 相与
+- 验收：网表 X 消失(端口含 X 周期 787→47，只剩启动瞬态)；网表全量 microbench 10/10 PASS、UART 539B、
+  AXI ar/aw/rbeat/wbeat = 104590/48668/252778/48668(与 RTL 逐位一致)；rtthread(新 bin) 网表跑到 RTT
+  自动 microbench PASS 后收尾；make perf 11908252/555445 及全部计数器逐位不变；
+  make sta 面积 24990.97(<25000)、0 VIOLATED、slack +0.838ns
+- 残留(协议内正常，刻意不动)：mepc / regFile.rf_3,rf_4 / clint.wStrbFullReg 仍是 X —— 它们只在
+  "先写后读"的协议保证下被选中，不逃逸到控制路径；加复位要 32/512 个触发器，远超 9 µm² 余量
 
-【下一步要做的】见提示词 3（先用 VCD 窗口找出"第一个变 X 的信号名"，再决定改不改 RTL）
+【下一步】CI 的两个 bin 现在都能在网表模式自动收尾(E1 取指 0 / E3 UART "AM Panic:")，不必再手设 IV_MAXCYC
 ```
 
 ---
@@ -48,11 +59,13 @@ npc/sim-iverilog/testbench/tb_npc.v 是替代 verilator C++/DPI 环境的仿真�
   ★ CLINT 在 ysyx_23060082 内部（Xbar 把 0x02000000 路由给内部 CLINT），TB 不需要实现
   ★ trampoline 只是为了让 CI 要求的"复位值 0x30000000"能跳到程序所在的 0x80000000
 - AXI4 从机：读/写都支持突发（icache 会发 4 拍 ARLEN=3）；写按 WSTRB 逐字节落内存
-- 结束判定：RTL 模式用层级引用看 LSU 的 ebreak 提交（dut.lsu.io_input_valid &&
-  io_input_payload_csrCtrl_trapEnter && excCause==3）；网表模式扁平化后只能靠 watchdog
+- 结束判定（只用顶层可见量，RTL/网表通用）：
+  · E1 从地址 0 取指（microbench：ebreak + mtvec=0）
+  · E3 UART 出现 "AM Panic:"（rtthread 跑完自动 microbench 后 panic）
+  · RTL 另有层级引用看 LSU 的 ebreak 提交(dut.lsu.io_input_valid && ...trapEnter && excCause==3)；
+    网表 flatten 后没有 lsu 实例 ⇒ 该信号恒 0，自动只用 E1/E3（+no_ebreak_stop 可关掉它）
 - 诊断开关（默认关）：+xcheck（端口 X 统计/首次 X/首次有效事务上的 X）、+traffic（每次 AR/AW）、
-  +memcheck（存储器自检）、+img_size=（镜像大小，Makefile 会传）、+vcdwin（只 dump 一段窗口）、
-  +quiet、+zero=（启动清零字节数，默认 16MB）、+max_cycles=
+  +memcheck（存储器自检）、+img_size=（镜像大小，Makefile 会传）、+quiet、+zero=（默认 16MB）、+max_cycles=
 
 【已经在 TB 里踩过并修掉的坑，别再踩】
 1. $readmemh 会覆盖数组其余部分 ⇒ 必须【先 $readmemh、再清零"镜像之外"的区间】，
@@ -62,15 +75,21 @@ npc/sim-iverilog/testbench/tb_npc.v 是替代 verilator C++/DPI 环境的仿真�
    字节 k 的落点 = (AWADDR & ~3) + k，不是 AWADDR + k（写错会把栈上的 char 写歪）
 4. 含 X 的写数据要按 0 落内存（verilator 流程内存是二值的），否则无害的"存未初始化值"
    会被放大成大面积 X 传播
-5. 网表里【无法】从 TB 引用内部信号：iverilog 绑不上带点的扁平名（dut.\xbar.xxx 会报
-   Unable to bind）⇒ 想查内部只能靠 VCD
-6. watchdog 默认 4,000,000 拍（实测 microbench 约 105 万拍）；网表很慢（≈9.5 分钟/百万周期），
-   跑网表一定显式给 IV_MAXCYC=
+5. 网表里【能】引用扁平转义网名，写法必须是"实例点 + 转义名"(如 dut.\lsu.io_input_valid)；
+   写成 dut.lsu.xxx(当 scope)才报 Unable to bind。但 yosys 的改名不稳定(lsu.io_input_valid 会变成
+   _zz_io_input_valid 等) ⇒ 不要依赖它，网表收尾用 E1/E3 这种顶层行为判据
+6. 网表很慢（≈9.5 分钟/百万周期）⇒ 现在有 E1/E3 自动收尾，一般不用再手设 IV_MAXCYC
 ```
 
 ---
 
-## 提示词 3：当前卡点的排查方案（把这段整段给 AI）
+## 提示词 3：卡点排查方案（**已完成**，保留作方法记录）
+
+**结论（2026-10-01，`6a6d85d`）**：源头不是状态机/valid 漏复位，而是 `LSU.scala` 的 CSR 侧控制信号
+未按 `io.input.valid` 门控 —— 网表在复位释放那拍把 `lsu.csr.{mtvec,mstatus,mcause,mcycle,minstret}`
+写成 X，再经前递/比较 → `exu.redirect.valid` → `pcFetch`(cyc 42253) → 顶层 `arvalid/araddr`(cyc 42260)；
+Xbar 的 `readState/arbiterState` 是**最后**被污染的。修法见 `LSU.scala`（3 行门控，零新增触发器）。
+下面这段 VCD 方法就是本次定位用的手段（VCD 生成代码事后已从 TB 移除，需要时按这段临时加回）。
 
 ```
 NPC 的 iverilog 网表仿真在 cyc=42261 出现 X：顶层 io_master_arvalid 先变 X，随后 araddr、
@@ -113,16 +132,18 @@ rvalid/bvalid/wvalid 全变 X；同期 RTL（同 TB、同镜像）完全没有 X
 ## 提示词 4：修完之后的完整验收链（必须全过）
 
 ```
-改 RTL 之后依次跑，全部要过：
-1. 网表 +xcheck 跑到 ≥50 万拍：不再出现 X、且 AXI 事务数(ar/aw/rbeat/wbeat)与 RTL 一致
+改 RTL 之后依次跑，全部要过（`6a6d85d` 已全部通过，数值为当时实测）：
+1. 网表 +xcheck：不再出现 X（端口含 X 周期 787→47，只剩启动瞬态）、且 AXI 事务数
+   (ar/aw/rbeat/wbeat = 104590/48668/252778/48668) 与 RTL 一致
 2. RTL 四值仿真全量：make -C npc sim-iverilog IMG=sim-iverilog/bin/microbench-riscv32e-npc.bin
-   必须 10/10 项 Passed + MicroBench PASS
+   10/10 项 Passed + MicroBench PASS ✓（1,049,614 周期）
 3. 功能基准：CCACHE_DISABLE=1 make -C npc perf
-   ★ 必须仍然是 周期 11908252 / 指令 555445（逐位不变）——补复位不该改行为
+   ★ 仍然是 周期 11908252 / 指令 555445，且全部 PERF 计数器逐位不变 ✓
 4. 时序/面积：make -C npc sta
-   ★ 面积上限 25000（nangate45），当前 24986.178 ⇒ 余量只有 13.8 µm²，务必盯住
-   ★ 频率不是评分项，但要 >500MHz 通过（当前 1004.0 MHz / slack 1.004ns）
-5. 别并行跑两个仿真/综合（build/ 会互相覆盖）；日志写到 npc/build/ 下
+   ★ 面积上限 25000（nangate45）：当前 24990.966 ⇒ 余量仅 9.0 µm²，务必盯住
+   ★ 频率不是评分项，但要 >500MHz 通过（当前 slack +0.838ns ≈ 860.8 MHz；DFF 3226 不变）
+5. rtthread（新 bin）：网表跑到 RTT 自动 microbench PASS 后按 E3 收尾（2,398,028 拍）✓
+6. 别并行跑两个仿真/综合（build/ 会互相覆盖）；日志写到 npc/build/ 下
 
 【镜像怎么准备】
 cd am-kernels/benchmarks/microbench && make ARCH=riscv32e-npc
@@ -138,9 +159,10 @@ cd am-kernels/benchmarks/microbench && make ARCH=riscv32e-npc
 我的 NPC（ysyx 一生一芯，SpinalHDL RV32E）在用 iverilog 做四值仿真与网表仿真。
 npc/Makefile 里已有 sim-iverilog / sim-iverilog-netlist 两个目标，TB 在
 npc/sim-iverilog/testbench/tb_npc.v（带突发 AXI 从机、128MB pmem、只有 UART 外设、复位 50 拍）。
-RTL 四值仿真 microbench 全量 PASS ✓；网表仿真能跑但 cyc=42261 起顶层 arvalid/araddr 变 X，
-导致它比 RTL 慢几十倍。已排除 TB 侧原因（存储器/清零/采样/窄传输落点/X 数据落内存）。
-现在【不要改 RTL】，先用 VCD 窗口（+vcdwin，只在 42000~42400 拍 dump）找出第一个变 X 的信号名，
-再决定补哪个寄存器的复位。改完的验收：网表无 X + make perf 周期仍是 11908252/555445 +
-make sta 面积不超 25000（当前余量仅 13.8 µm²）。
+网表 X 卡点已于 2026-10-01 修复（commit 6a6d85d）：根因是 LSU 的 CSR 侧控制信号
+(csrCmd/trapEnter/trapExit) 没按已复位的 io.input.valid 门控 —— 复位释放那拍 CSR 被 X 写入，
+再经前递/比较传到 exu.redirect.valid → pcFetch → AXI arvalid/araddr。修法 3 行、零新增触发器。
+TB 结束判据只用顶层可见量(RTL/网表通用)：E1 从地址 0 取指(microbench)、
+E3 UART 出现 "AM Panic:"(rtthread)。验收全过：网表无 X 且 AXI 计数与 RTL 一致、
+make perf 周期/指令 11908252/555445 逐位不变、make sta 面积 24990.97(<25000)。
 ```

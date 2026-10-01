@@ -1,5 +1,55 @@
 # NPC RISC-V32E CPU
 
+## 2026-10-01 iverilog 四值/网表仿真：网表 X 根因定位与修复（`6a6d85d`）
+
+B5 流片准备要求用 iverilog 做**四值仿真**与**网表仿真**（CI: `make sim-iverilog IMG=` / `make sim-iverilog-netlist IMG=`），目的是找出"Verilator 二值仿真掩盖掉的漏复位触发器（X 传播）"和"综合后才暴露的行为差异"。本次把**网表 X 卡点彻底解决**，网表现在能完整跑完两个 CI 镜像。
+
+### 现象
+- RTL 四值 microbench 一直全过。
+- **网表**跑到 cyc≈42261：顶层 `io_master_arvalid` 先变 X → 42263 `araddr` 全 X → 42264 `awv/wv` 也 X ⇒ 之后整片控制塌成 X、比 RTL 慢几十倍（4M 拍只到 `[qsort]`、UART 98B vs RTL 124B）。
+
+### 根因（VCD 窗口 + 寄存器 Q 级追踪，实测）
+| 时间 | 事件 |
+|---|---|
+| cyc 50（复位释放那一拍） | 网表把 `lsu.csr` 的 `mtvec/mstatus/mcause/mcycle/minstret` **全部写成 X** |
+| cyc 42253 | `pcFetch` 变成 X（IFU 的"重定向/顺序"mux 把 X 写进 pc）—— 窗口里第一个变 X 的控制寄存器 |
+| cyc 42260 | 顶层 `io_master_arvalid` / `araddr` X |
+| cyc 42261 | Xbar `readState/arbiterState` 的 **Q** 才变 X（**最后**被污染，不是源头） |
+
+机制：LSU 的级间 `payloadReg`（`pipelineConnect` 的 `RegNextWhen`）**没有复位** ⇒ 复位刚释放时 `csrCtrl.csrCmd/trapEnter/trapExit` 是 X。RTL 里 `if(reset) q<=0` 是程序分支、`if(X)` 被当假分支吃掉；**综合成门之后复位只是 D 端 mux 的一项**，控制信号上的 X 会被直接写进 CSR 寄存器。这些 X 再经前递/比较传到 `exu.redirect.valid` → `pcFetch` → icache 地址 → Xbar 地址解码 → AXI。
+
+> ⇒ "Xbar/IFU/LSU 状态机漏复位"的假设**不成立**（它们都是 `RegInit`，在被污染前一直确定）；真正的问题是**未复位的控制来源把 X 灌进了控制路径**。
+
+### 修复（`LSU.scala`，零新增触发器；`Xbar.scala` 纯写法统一）
+```scala
+val csrActive = io.input.valid                       // 已复位的流水线 valid
+csr.io.csrCmd    := Mux(trapEnter || !csrActive, U(0,3 bits), io.input.csrCtrl.csrCmd)
+csr.io.trapEnter := csrActive && trapEnter
+csr.io.trapExit  := csrActive && io.input.csrCtrl.trapExit
+```
+`Xbar.scala` 只把 `arbiterState/readState/writeState` 统一成 `RegInit(...)`（语义不变）。
+
+### TB（`sim-iverilog/testbench/tb_npc.v`）与结束判据
+- 行为级 AXI4 从机（读支持突发；写按 WSTRB 逐字节落内存，**窄传输落点 = 字对齐基址 + k**）+ 128MB `pmem` + UART + trampoline(0x30000000)。
+- **结束判据只用顶层可见量，RTL/网表通用**：
+  - **E1**：CPU 从地址 0 取指 → microbench 的 `ebreak` + `mtvec=0` 签名；
+  - **E3**：UART 输出出现 `"AM Panic:"` → rtthread 跑完自动 microbench 后 panic 的签名；
+  - RTL 另有"层级引用看 LSU 的 ebreak 提交"的提前收尾（网表 flatten 后没有 `lsu` 实例 ⇒ 该信号恒 0，自动只用 E1/E3；`+no_ebreak_stop` 可关掉以做到逐拍同判据）。
+- **踩过的坑**（都已在 TB 里修掉）：`+vcdwin` 被 `+vcd` 前缀匹配抢先 dump；`$readmemh` 会刷掉镜像外区域 ⇒ 必须先装载再清零；X 检查必须 negedge 采样；含 X 的写数据按 0 落内存（对齐 verilator 二值流程）；`$display` 的 `%s` 不能传含 UTF-8 的三元表达式（会花屏）。
+
+### 验收（microbench，nangate45）
+| 项 | 结果 |
+|---|---|
+| 网表 `+xcheck` | X 消失：端口含 X 周期 **787→47**（且只剩启动瞬态、无有效事务上的 X）|
+| 网表全量 | **10/10 Passed + MicroBench PASS**，UART 539B，AXI `ar/aw/rbeat/wbeat = 104590/48668/252778/48668`（与 RTL 逐位一致）|
+| RTL 四值 | **10/10 + PASS**，1,049,614 周期，AXI 计数同上 |
+| rtthread（新 bin） | 网表：RTT 启动 → 自动 `am_microbench test` → 10/10 PASS → 按 E3 收尾（2,398,028 拍）|
+| `make perf` | **周期 11908252 / 指令 555445**，全部计数器逐位不变 |
+| `make sta` | 面积 **24990.97 µm²**（<25000）、0 VIOLATED、slack **+0.838ns**、DFF 3226 不变 |
+
+### 附：rtthread 的 `AM Panic`（与本次修复无关）
+新 bin 的 RTT 跑完自动 microbench 后，shell 会去 `io_read(AM_UART_RX)`（[uart.c](/home/cyl/Desktop/rt-thread-am/bsp/abstract-machine/src/uart.c) 的 `_uart_getc` 在喂完脚本 `"help\n"` 后调用），而 npc 平台没实现串口输入（`ioe.c` 的 LUT 无该表项）⇒ `AM Panic: access nonexist register`。RTL 与网表在这一步完全一致，TB 正好用 E3 收尾。
+
 ## 2026-09-30 dcache guard 位宽**重扫**（`c382984`：16~30 取 W=26 → 1004.0 MHz，周期零变化；⚠ 面积余量仅 13.8）
 
 RTL 又动过两处（`6d7f49b` CSR 去掉快照寄存器、`0c9b6a0` CLINT 可写）⇒ **映射整体重掷** ✗ ⇒ 上一轮那 12 个点的数值作废，重扫 16~30 共 15 点。

@@ -76,7 +76,7 @@ case class ysyx_23060082_Clint() extends Component {
   val wid         = RegNextWhen(io.clintAxi4.aw.id, io.clintAxi4.aw.fire)
   val wTempL      = RegNextWhen(io.clintAxi4.w.data.asUInt, io.clintAxi4.w.fire && writeLow)  // 暂存低位数据，等到写高位时一并写入
   val wStrbFull   = io.clintAxi4.w.strb === B"1111"
-  val wStrbFullReg= RegNextWhen(wStrbFull, io.clintAxi4.w.fire)
+  val wStrbFullReg= RegNextWhen(wStrbFull, io.clintAxi4.w.fire) init(False)  // 加复位防 X 进 b.resp
 
   when(io.clintAxi4.w.fire) {
     io.clintAxi4.b.valid := True

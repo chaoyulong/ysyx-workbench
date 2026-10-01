@@ -35,9 +35,9 @@ case class ysyx_23060082_AXI4Xbar() extends Component {
   }
   val arbiterState = RegInit(ArbiterState.Idle)
   // 状态译码: 后面统一用这些信号, 不再到处写 `arbiterState === ...`
-  val arbIdle    = arbiterState === ArbiterState.Idle
-  val arbIfuUsing= arbiterState === ArbiterState.IfuUsing
-  val arbLsuUsing= arbiterState === ArbiterState.LsuUsing
+  val arbIdle     = arbiterState === ArbiterState.Idle
+  val arbIfuUsing = arbiterState === ArbiterState.IfuUsing
+  val arbLsuUsing = arbiterState === ArbiterState.LsuUsing
 
   switch(arbiterState) {
     is(ArbiterState.Idle) {

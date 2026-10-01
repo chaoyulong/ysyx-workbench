@@ -17,9 +17,12 @@
 //      - 其余地址                        : 返回 0，并打印有限次警告（方便发现漏译码的地址段）
 //      ★ CLINT 在 ysyx_23060082 内部（Xbar 把 0x02000000 路由给内部 CLINT），
 //        外总线看不到，所以这里【不需要】实现 CLINT
-//   5) 结束条件
-//      - RTL 仿真：层级引用 LSU 的提交信号，看到 ebreak 提交(cause=3) 就停
-//      - 网表仿真：扁平化后层级没了，退化为 watchdog 超时停（+max_cycles= 可调）
+//   5) 结束条件（RTL / 网表通用）
+//      - E1: 检测到 CPU 从地址 0 取指 ⇒ 程序 trap 到 mtvec=0, 视为已退出（两种模式都成立）
+//      - E2: +uart_stop=N ⇒ UART 输出到 N 字节就停（不依赖 mtvec, 两种模式都成立）
+//      - RTL 额外加速: 层级引用 LSU 的 ebreak 提交信号, 早几拍停并打印 pc
+//        （网表被 flatten 后没有 lsu 实例, 该信号恒 0, 自动只用 E1/E2; +no_ebreak_stop 可关掉）
+//      - 兜底: watchdog（+max_cycles=）
 //
 // 用法（由 make sim-iverilog / sim-iverilog-netlist 调用）：
 //   vvp sim.vvp +img=xxx.hex [+max_cycles=40000000] [+zero=16777216] [+vcd] [+quiet] [+trace_uart]
@@ -174,6 +177,7 @@ module tb_npc;
   reg [31:0] zero_size = DEFAULT_ZERO;
   reg [31:0] img_size = 32'd0;      // 镜像字节数(由 Makefile 传 +img_size=), 用来区分"镜像区"和"清零区"
   reg [31:0] uart_stop = 32'd0;     // +uart_stop=N: UART 输出到 N 字节就结束(网表模式没法看 ebreak 时的收尾开关)
+  reg        ebreak_stop = 1'b1;    // RTL 专用"提前收尾": 层次引用看 ebreak 提交; +no_ebreak_stop 关掉后与网表同判据
   integer    uart_bytes = 0;
   integer    unmapped_reads = 0;
   integer    unmapped_writes = 0;
@@ -350,9 +354,14 @@ module tb_npc;
   end
 
   //------------------------------------------------------------------
-  // 结束判定：RTL 仿真用层级引用看 "ebreak 提交"(LSU 是异常生效点)
-  //   SPINAL_SIM_DEBUG=0 时 WBU 的 payload 已瘦身(没有 pc/instr)，所以不看 WBU
-  //   网表仿真(-DIV_NETLIST)层级不存在，只能靠 watchdog
+  // 结束判定
+  //   ★ 通用判据(两种模式都成立, 只看顶层 io_master_* 与 TB 自己的 UART 计数):
+  //       E1 检测到"从地址 0 取指" ⇒ 程序 trap 到 mtvec=0, 视为已退出
+  //       E2 +uart_stop=N          ⇒ UART 输出到 N 字节就退出(不依赖 mtvec)
+  //     见下面 negedge 块里的 E1 与 "按 UART 字节数收尾" 的 always 块。
+  //   ★ RTL 专用加速: 下面用层次引用直接看 LSU 的 ebreak 提交, 能早几拍收尾并打印 pc;
+  //     网表被 yosys flatten 后没有 lsu 实例 ⇒ 这里恒 0, 自动退化为 E1/E2。
+  //     (+no_ebreak_stop 可关掉它, 让 RTL 与网表用完全相同的判据。)
   //------------------------------------------------------------------
 `ifdef IV_NETLIST
   wire lsu_commit_trap    = 1'b0;
@@ -365,10 +374,12 @@ module tb_npc;
   wire [31:0] lsu_commit_pc = dut.lsu.io_input_payload_pc;
 `endif
 
-  // ---- 探针: 网表扁平化后仍保留带点的名字(iverilog 用 escaped 名引用) ----
-  //   用来确认 arvalid/araddr 变 X 时, 到底是哪个状态寄存器先 X
+  // ---- 探针: 网表扁平化后仍保留带点的名字 ----
+  //   注: iverilog 其实【能】引用扁平转义网名, 写法必须是"实例点 + 转义名"
+  //       (如 dut.\lsu.io_input_valid); 写成 dut.lsu.xxx(当 scope)才报 Unable to bind。
+  //   但 yosys 的改名不稳定, 所以这里不用它, 探针保持弃用。
 `ifdef IV_NETLIST
-  wire p_arb0=1'b0, p_arb1=1'b0, p_arb2=1'b0, p_rds0=1'b0, p_rds1=1'b0, p_wrs0=1'b0, p_wrs1=1'b0;  // 探针(已弃用: iverilog 绑不上带点的扁平名)
+  wire p_arb0=1'b0, p_arb1=1'b0, p_arb2=1'b0, p_rds0=1'b0, p_rds1=1'b0, p_wrs0=1'b0, p_wrs1=1'b0;  // 探针(已弃用)
 `else
   wire p_arb0 = 1'b0, p_arb1 = 1'b0, p_arb2 = 1'b0;
   wire p_rds0 = 1'b0, p_rds1 = 1'b0, p_wrs0 = 1'b0, p_wrs1 = 1'b0;
@@ -462,21 +473,20 @@ module tb_npc;
           $display("[TB][XCHK] ★★ 第一次【有效读事务上出现 X 地址】: cyc=%0d araddr=%h len=%0d arsize=%b arburst=%b",
                    cycles, io_master_araddr, io_master_arlen, io_master_arsize, io_master_arburst);
         end
-`ifdef IV_NETLIST
-        // ★ 网表模式收尾: 扁平的 yosys 网表里没有 lsu 这个实例, TB 无法用层次引用看
-        //   ebreak 提交(见文件头/结束判定处的说明) ⇒ 改用行为签名:
-        //   程序没写过 mtvec(保持复位值 0) 时, ebreak/trap 会跳到 0 ⇒ CPU 从地址 0 取指,
-        //   这是一次"未译码读"。正常程序不会从 0 取指, 所以把它当作"程序已 trap 退出"。
+        // ★ 通用收尾判据 E1 (RTL 与网表都成立, 只依赖顶层 io_master_*):
+        //   程序 ebreak 时若 mtvec 仍是复位值 0, trap 会跳到 0 ⇒ CPU 从地址 0 取指。
+        //   正常程序不会从 0 取指, 所以把它当作"程序已 trap 退出"。
+        //   (RTL 模式另有一个"层次引用看 ebreak 提交"的提前收尾, 见下面的结束/超时块;
+        //    加 +no_ebreak_stop 可关掉它, 让 RTL 与网表逐拍同判据。)
         if (io_master_araddr == 32'h0000_0000) begin
           $display("");
-          $display("================ [TB] 程序结束 (网表模式, 检测到 trap 到 0) ================");
-          $display("  从地址 0 取指 ⇒ 程序已 trap 退出 (mtvec 未被程序写过, 保持复位值 0)");
+          $display("================ [TB] 程序结束 (检测到 trap 到 0) ================");
+          $display("  E1: 从地址 0 取指 ⇒ 程序已 trap 退出 (mtvec 未被程序写过, 保持复位值 0)");
           $display("  共 %0d 个周期, UART 输出 %0d 字节, AXI: ar=%0d aw=%0d rbeat=%0d wbeat=%0d",
                    cycles, uart_bytes, ar_fires, aw_fires, r_beats, w_beats);
-          $display("==========================================================================");
+          $display("==============================================================");
           $finish;
         end
-`endif
       end
       if (io_master_rvalid  && io_master_rready ) r_beats  <= r_beats  + 64'd1;
       if (io_master_awvalid && io_master_awready) begin
@@ -559,6 +569,7 @@ module tb_npc;
     if ($value$plusargs("zero=%d", zero_size)) begin end
     if ($value$plusargs("img_size=%d", img_size)) begin end
     if ($value$plusargs("uart_stop=%d", uart_stop)) begin end
+    if ($test$plusargs("no_ebreak_stop")) ebreak_stop = 1'b0;
     // ★ 注意: iverilog 的 $test$plusargs 是【前缀匹配】, "vcdwin" 也满足 "vcd"
     //   ⇒ 必须显式排除, 否则 +vcdwin 会在这里先 $dumpvars(t=0), 窗口 $dumpfile 被忽略(踩过)
     if (!$test$plusargs("vcdwin") && $test$plusargs("vcd")) begin
@@ -604,7 +615,9 @@ module tb_npc;
   always @(posedge clock) begin
     if (!reset) begin
       // ebreak 提交 => 程序 halt
-      if (lsu_commit_trap && lsu_exc_cause == 4'd3) begin
+      // ★ 这是【RTL 专用】的提前收尾(靠层次引用 dut.lsu.*, 网表扁平化后绑不上 ⇒ 恒 0)。
+      //   通用判据是上面的 E1(取指 0) 与 +uart_stop; 想要 RTL 与网表逐拍同判据就加 +no_ebreak_stop。
+      if (ebreak_stop && lsu_commit_trap && lsu_exc_cause == 4'd3) begin
         $display("");
         $display("================ [TB] 程序结束 ================");
         $display("  ebreak 提交(cause=3) 于 pc=%h, 共 %0d 个周期", lsu_commit_pc, cycles);

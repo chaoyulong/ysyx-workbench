@@ -12,10 +12,10 @@
 //            存在的唯一原因：CI 要求复位 PC=0x30000000 而程序在 0x80000000
 //        ★ CLINT 在 ysyx_23060082 内部（Xbar 路由 0x02000000），TB 不需要实现
 //   5) 结束条件（RTL/网表通用，判据只用顶层 io_master_* 与 TB 自己的 UART 计数）
-//        E1: 从地址 0 取指     ⇒ 程序 trap 到 mtvec=0, 视为已退出
-//        E2: +uart_stop=N      ⇒ UART 输出到 N 字节就退出（不依赖 mtvec）
+//        E1: 从地址 0 取指         ⇒ 程序 trap 到 mtvec=0, 视为已退出（microbench）
+//        E3: UART 出现 "AM Panic:" ⇒ 程序 panic 退出（rtthread）
 //        RTL 额外加速: 层级引用看 LSU 的 ebreak 提交, 早几拍停并打印 pc
-//          （网表被 flatten 后没有 lsu 实例 ⇒ 该信号恒 0, 自动只用 E1/E2；
+//          （网表被 flatten 后没有 lsu 实例 ⇒ 该信号恒 0, 自动只用 E1/E3；
 //            +no_ebreak_stop 可关掉它, 让 RTL 与网表用完全相同的判据）
 //        兜底: watchdog（+max_cycles=）
 //
@@ -24,12 +24,9 @@
 //   +img_size=<N>   镜像字节数（区分"镜像区"和"清零区"）
 //   +zero=<N>       启动清零字节数（模拟 malloc 的零内存；要盖住 .bss/stack，默认 16MB）
 //   +max_cycles=<N> watchdog 上限
-//   +uart_stop=<N>  UART 输出到 N 字节就结束
 //   +no_ebreak_stop 关掉 RTL 专用的 ebreak 提前收尾
 //   +xcheck         统计/报告端口 X（首次、每 x_report_period 拍汇总）
 //   +traffic        打印每次 AR/AW
-//   +vcdwin[+vcd_from=<N> +vcd_to=<N>]  只 dump 指定窗口（默认 42000~42400）到 tb_npc_win.vcd
-//   +vcd [+vcd_file=<f>]                只 dump TB 顶层
 //   +memcheck       装载后自检 pmem
 //   +trace_uart     打印每次 UART 写
 //   +quiet          安静模式
@@ -42,6 +39,10 @@ module tb_npc;
   localparam PMEM_SIZE   = 32'h0800_0000;    // 128MB
   localparam SERIAL_BASE = 32'h1000_0000;
   localparam TRAMP_BASE  = 32'h3000_0000;
+
+  // E3 终止串: CI 只跑 microbench / rtthread 两个 bin —— microbench 走 E1(取指 0),
+  //   rtthread 跑完自动 microbench 后会在 msh 里 panic, 输出该串 ⇒ 用它收尾
+  localparam PANIC_STR = "AM Panic:";
 
   parameter RESET_CYCLES       = 50;
   parameter DEFAULT_MAX_CYCLES = 4_000_000;  // microbench 实测约 105 万拍(网表很慢, 请显式给 IV_MAXCYC=)
@@ -132,15 +133,15 @@ module tb_npc;
   reg [63:0] max_cycles = DEFAULT_MAX_CYCLES;
   reg [31:0] zero_size  = DEFAULT_ZERO;
   reg [31:0] img_size   = 32'd0;
-  reg [31:0] uart_stop  = 32'd0;
   reg        ebreak_stop = 1'b1;
   integer    uart_bytes = 0;
   integer    unmapped_reads = 0;
   integer    unmapped_writes = 0;
   integer    unmapped_prints = 0;
   reg [31:0] last_unmapped = 32'hFFFF_FFFF;
-  reg [1023:0] img_file, dump_file;
+  reg [1023:0] img_file;
   reg quiet = 1'b0, trace_uart = 1'b0;
+  reg [8*9-1:0] uart_tail = 72'd0;           // 最近 9 个 UART 字节（给 E3 匹配 "AM Panic:"）
 
   always @(posedge clock) cycles <= cycles + 64'd1;
 
@@ -175,6 +176,7 @@ module tb_npc;
     else if (in_serial(addr)) begin
       $write("%c", data);                               // UART: 直接打到 stdout
       uart_bytes <= uart_bytes + 1;
+      uart_tail  <= {uart_tail[8*9-1-8:0], data};       // 给 E3 保留最近 9 个字节
     end
   endtask
 
@@ -270,7 +272,7 @@ module tb_npc;
 
   //------------------------------------------------------------------
   // 结束判定：RTL 专用的 ebreak 提前收尾（网表 flatten 后没有 lsu 实例 ⇒ 恒 0）
-  //   通用判据 E1/E2 见下面的 negedge 块与 uart_stop 块
+  //   通用判据 E1/E3 见下面的 negedge 块与 E3 块
   //------------------------------------------------------------------
 `ifdef IV_NETLIST
   wire        lsu_commit_trap = 1'b0;
@@ -295,8 +297,7 @@ module tb_npc;
                         has_x32(io_master_rdata) };
   wire x_now = |x_bits;
 
-  reg        xcheck = 1'b0, traffic = 1'b0, vcdwin = 1'b0;
-  reg [31:0] vcd_from = 32'd42000, vcd_to = 32'd42400;
+  reg        xcheck = 1'b0, traffic = 1'b0;
   reg        first_x_reported = 1'b0;
   reg        x_ar_reported = 1'b0, x_aw_reported = 1'b0, x_w_reported = 1'b0;
   integer    late_x_prints = 0;
@@ -378,33 +379,15 @@ module tb_npc;
   end
 
   //------------------------------------------------------------------
-  // VCD 窗口 dump（+vcdwin）：★ 必须"窗口开始那一拍才 $dumpfile/$dumpvars",
-  //   不能在 t=0 先 $dumpvars 再 $dumpoff —— iverilog 下那样只留 t=0 快照, 抓不到窗口
+  // 结束判据 E3：UART 输出里出现 PANIC_STR（rtthread 跑完自动 microbench 后 panic）
   //------------------------------------------------------------------
   always @(posedge clock) begin
-    if (vcdwin) begin
-      if (cycles == vcd_from) begin
-        $dumpfile("tb_npc_win.vcd");
-        $dumpvars(0, dut);
-        if (!quiet) $display("[TB][VCD] 窗口开始: cyc=%0d", cycles);
-      end
-      if (cycles == vcd_to) begin
-        $dumpoff;
-        if (!quiet) $display("[TB][VCD] 窗口结束: cyc=%0d", cycles);
-      end
-    end
-  end
-
-  //------------------------------------------------------------------
-  // 结束判据 E2（+uart_stop=N）：程序输出总量已知时精确收尾
-  //------------------------------------------------------------------
-  always @(posedge clock) begin
-    if (!reset && uart_stop != 32'd0 && uart_bytes >= uart_stop) begin
+    if (!reset && uart_tail == PANIC_STR) begin
       $display("");
-      $display("================ [TB] 程序结束 (按 +uart_stop=%0d) ================", uart_stop);
+      $display("================ [TB] 程序结束 (UART 出现 \"%0s\") ================", PANIC_STR);
       $display("  UART 输出 %0d 字节, 共 %0d 个周期", uart_bytes, cycles);
       $display("  AXI 事务: ar=%0d aw=%0d rbeat=%0d wbeat=%0d", ar_fires, aw_fires, r_beats, w_beats);
-      $display("=================================================================");
+      $display("================================================================");
       $finish;
     end
   end
@@ -422,21 +405,6 @@ module tb_npc;
     if ($value$plusargs("max_cycles=%d", max_cycles)) begin end
     if ($value$plusargs("zero=%d",       zero_size )) begin end
     if ($value$plusargs("img_size=%d",   img_size  )) begin end
-    if ($value$plusargs("uart_stop=%d",  uart_stop )) begin end
-    if ($test$plusargs("vcdwin")) begin
-      vcdwin = 1'b1;
-      if ($value$plusargs("vcd_from=%d", vcd_from)) begin end
-      if ($value$plusargs("vcd_to=%d",   vcd_to  )) begin end
-    end
-    // ★ iverilog 的 $test$plusargs 是【前缀匹配】, "vcdwin" 也满足 "vcd"
-    //   ⇒ 必须显式排除, 否则 +vcdwin 会先在这里 $dumpvars(t=0), 窗口 $dumpfile 被忽略(踩过)
-    if (!$test$plusargs("vcdwin") && $test$plusargs("vcd")) begin
-      if ($value$plusargs("vcd_file=%s", dump_file)) begin end
-      else dump_file = "tb_npc.vcd";
-      $dumpfile(dump_file);
-      $dumpvars(1, tb_npc);
-      if (!quiet) $display("[TB] wave dump -> %0s", dump_file);
-    end
     if (!$value$plusargs("img=%s", img_file)) begin
       $display("[TB][FATAL] 需要 +img=<hex 文件>（用 sim-iverilog/tools/bin2mem.sh 从 .bin 生成）");
       $finish;
@@ -479,7 +447,7 @@ module tb_npc;
         report_x();
         $display("===============================================");
         $finish;
-      end
+      end 
       if (cycles >= max_cycles) begin
         $display("");
         $display("================ [TB] watchdog 超时 ================");

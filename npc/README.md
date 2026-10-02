@@ -1,5 +1,37 @@
 # NPC RISC-V32E CPU
 
+## 2026-10-01 Xbar 状态判断抽成译码信号 + 补 3 个无复位寄存器（`56856d7`：面积 24990.97→24673.89）
+
+### 改动
+`Xbar.scala` 里 `arbiterState/readState/writeState` 的 **20 处** `=== 状态` 判断抽成译码信号：
+`arbIdle/arbIfuUsing/arbLsuUsing`、`rdIdle/rdClint/rdExternal`、`wrClint/wrExternal`。
+
+### ★ 这里"纯改名"会改变网表**功能**
+一开始用 `val`（SpinalHDL 会**真的多出一组共享信号**）⇒ 交给 ABC 的网表结构变了 ⇒ **网表 microbench 的 `[md5]` 算错**
+（1,049,181 ≠ 1,049,614 拍，而 **RTL 仍 PASS**）。这正是 README 里"语义中性改动会换一整套映射"的升级版：
+换映射把潜伏的 X-pessimism 换了出来。
+> 兜底方案是改用 Scala `def`（表达式别名，展开后与改前逐字相同）：面积 24990.966、网表 10/10 PASS —— 但那只是别名、不是信号。
+> 最终**保留 `val`，把被新映射暴露出来的 X 种子补上复位**。
+
+### 补的三个复位（都是"协议内允许是 X、但门级会漏进数据/控制路径"的寄存器）
+| 文件 | 改动 | 说明 |
+|---|---|---|
+| `RegFile.scala` | 只给 `rf(3)`/`rf(4)`(gp/tp) 加 `init(0)` | 其余 14 个仍不复位；`Vec` 改成由 `Seq` 构造，复位只加在这两项上 |
+| `CSR.scala` | `mepc` 加 `init(0)` | 只被 `mret` 读（之前必有 trap 写入），但 X 会进 redirect mux |
+| `CLINT.scala` | `wStrbFullReg` 加 `init(False)` | 它的 X 会经 `b.resp` 进写响应路径 |
+
+**复位只加 D 端 mux ⇒ DFF 仍是 3226**。三个种子本次是**一起**补的，没有逐一二分最小集。
+
+### 验收（nangate45）
+| 项 | 结果 |
+|---|---|
+| `make sta` | 面积 **24673.894 µm²**（<25000，余量 326）、**0 VIOLATED**、最差 slack **+0.986ns**（≈986MHz，端点 `lsu.csr.minstreth_30`）、DFF 3226 |
+| 网表 microbench | **10/10 PASS**，1,049,607 拍，UART 539B，AXI `104590/48668/252778/48668` |
+| 网表 rtthread | **10/10 PASS** + E3 收尾，2,398,028 拍，UART 2366 |
+| RTL microbench | 10/10 PASS，1,049,614 拍，AXI `104591/48668/252782/48668` |
+| RTL rtthread | E3 收尾，2,398,037 拍 |
+| `make perf` | 周期/指令 **11908252 / 555445**，全部 PERF 计数器逐位不变 |
+
 ## 2026-10-01 iverilog 四值/网表仿真：网表 X 根因定位与修复（`6a6d85d`）
 
 B5 流片准备要求用 iverilog 做**四值仿真**与**网表仿真**（CI: `make sim-iverilog IMG=` / `make sim-iverilog-netlist IMG=`），目的是找出"Verilator 二值仿真掩盖掉的漏复位触发器（X 传播）"和"综合后才暴露的行为差异"。本次把**网表 X 卡点彻底解决**，网表现在能完整跑完两个 CI 镜像。

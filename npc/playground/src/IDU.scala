@@ -124,8 +124,16 @@ case class ysyx_23060082_IDU(config: CpuConfig = CpuConfig()) extends Component 
                 Mux(rs2Lsu =/= FwdOutcome.Miss, io.lsuForward.writeData,
                                                 io.wbuForward.writeData))
 
-  io.output.rfReadData1 := Mux(rs1Outcome === FwdOutcome.Hit, rs1Data, io.rfRead.data1)   // 如果有前递，就使用前递数据，没有就使用寄存器数据
-  io.output.rfReadData2 := Mux(rs2Outcome === FwdOutcome.Hit, rs2Data, io.rfRead.data2)
+  // ★ 用不到的 rs 要把【读出的数据】强制成 0(而不是照原样送下去):
+  //   I 型(addi/lw/jalr...) 的 instr[24:20] 是立即数、U/J 型(lui/auipc/jal) 的 instr[19:15] 也是立即数,
+  //   这些位若恰好等于 3/4(x3=gp / x4=tp, 按 ABI 程序从不写) 就会读到未复位寄存器的 X,
+  //   再经 rfReadData1/2 → EXU.rfReadData 进流水寄存器一路带下去; RTL 的 if(X) 掩盖了它,
+  //   门级网表掩盖不了 ⇒ 被后来的指令当确定值用(实测 microbench 的 [md5] 就是这样算错的)。
+  //   stageStatus 仍用原始地址, 逻辑行为不变。
+  io.output.rfReadData1 := Mux(rs1Outcome === FwdOutcome.Hit, rs1Data,
+                           Mux(decoder.io.useRf1, io.rfRead.data1, U(0)))   // 前递优先, 否则用寄存器数据(用不到 rs1 时给 0)
+  io.output.rfReadData2 := Mux(rs2Outcome === FwdOutcome.Hit, rs2Data,
+                           Mux(decoder.io.useRf2, io.rfRead.data2, U(0)))   // 同上
   // ================================ 用于握手的部分 ================================ //
   val stall     = (rs1Outcome === FwdOutcome.Wait) || (rs2Outcome === FwdOutcome.Wait)
   val willValid = !stall

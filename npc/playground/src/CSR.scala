@@ -35,7 +35,7 @@ case class ysyx_23060082_CSR() extends Component {
 
   val mstatus   = Reg(UInt(32 bits)) init(0)
   val mtvec     = Reg(UInt(32 bits)) init(0)
-  val mepc      = Reg(UInt(32 bits)) init(0)   // 只被 mret 读(之前必有 trap 写入); 加复位防门级网表 X
+  val mepc      = Reg(UInt(32 bits))
   val mcause    = Reg(UInt(32 bits)) init(0)
   val mvendorid = U"32'h79737978"   // 只读
   val marchid   = U"32'h15fde72"    // 只读

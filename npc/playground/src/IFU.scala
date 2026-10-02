@@ -78,8 +78,10 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   val rspIsCurrentHit    = icache.io.reqIn.fire && icache.io.rspOut.valid             // icache直接命中
   // =================================== 预先译码出跳转指令 =================================== //
   val instrOut  = io.output.instr
-  val i_jalr = instrOut === M"-----------------000-----1100111"
-  val i_jal  = instrOut === M"-------------------------1101111"
+  // val i_jalr = instrOut === M"-----------------000-----1100111"
+  // val i_jal  = instrOut === M"-------------------------1101111"
+  val i_jal  = instrOut(6 downto 0) === U"7'b1101111"
+  val i_jalr = instrOut(6 downto 0) === U"7'b1100111" && instrOut(14 downto 12) === U"3'b000"
   val isJump = i_jalr || i_jal
   // 取到无条件跳转就关闭取指，直到重定向把前端重启
   when(io.redirect.valid) {   // 靠重定向信号来关闭阻塞

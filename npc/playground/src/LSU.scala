@@ -52,7 +52,6 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
                                    Mux(needRead, U(5, 4 bits), U(7, 4 bits))))    // 5 = load, 7 = store
 
   // ================================ 访存通路 ================================ //
-
   // ---- 数据处理连接 ----
   dataProcess.io.addrOp := memAddr(1 downto 0) ## io.input.memCtrl.memOp    // 合并 addr + MemOp 生成 5 位索引
   dataProcess.io.wdata  := io.input.rfReadData                              // 写数据为rs2的数据
@@ -76,11 +75,7 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   dataProcess.io.rdata := dcache.io.rspOut.readData   // dcache 内已有数据寄存器, 不需要再寄存
 
   // ================================ CSR寄存器 ================================ //
-  // ★ 所有 CSR 侧的控制信号都要用【已复位的 io.input.valid】门控:
-  //   LSU 的输入 payload 寄存器(级间 pipelineConnect 的 payloadReg)没有复位 ⇒ 复位刚释放时
-  //   csrCmd/trapEnter/trapExit 都是 X。RTL 里 `if(X)` 被当作假分支吃掉, 但综合成门之后
-  //   这些 X 会经 D 端 mux 直接写进 CSR 寄存器(实测复位释放那一拍 mtvec/mstatus/mcause/
-  //   mcycle/minstret 全部 0→x)。valid 是 RegInit, 用它与一下就把 X 挡在 CSR 之外。
+  // csr的操作一定要用valid进行使能
   val csrActive     = io.input.valid
   val csr = ysyx_23060082_CSR()
   csr.io.csrAddr    := io.input.csrAddr

@@ -379,6 +379,18 @@ module tb_npc;
   end
 
   //------------------------------------------------------------------
+  // (临时调试) VCD 窗口
+  //------------------------------------------------------------------
+  reg vcdwin = 1'b0;
+  reg [31:0] vcd_from = 32'd0, vcd_to = 32'd0;
+  always @(posedge clock) begin
+    if (vcdwin) begin
+      if (cycles == vcd_from) begin $dumpfile("tb_npc_win.vcd"); $dumpvars(0, dut); end
+      if (cycles == vcd_to)   $dumpoff;
+    end
+  end
+
+  //------------------------------------------------------------------
   // 结束判据 E3：UART 输出里出现 PANIC_STR（rtthread 跑完自动 microbench 后 panic）
   //------------------------------------------------------------------
   always @(posedge clock) begin
@@ -402,6 +414,11 @@ module tb_npc;
     if ($test$plusargs("xcheck"))     xcheck = 1'b1;
     if ($test$plusargs("traffic"))    traffic = 1'b1;
     if ($test$plusargs("no_ebreak_stop")) ebreak_stop = 1'b0;
+    if ($test$plusargs("vcdwin")) begin
+      vcdwin = 1'b1;
+      if ($value$plusargs("vcd_from=%d", vcd_from)) begin end
+      if ($value$plusargs("vcd_to=%d",   vcd_to  )) begin end
+    end
     if ($value$plusargs("max_cycles=%d", max_cycles)) begin end
     if ($value$plusargs("zero=%d",       zero_size )) begin end
     if ($value$plusargs("img_size=%d",   img_size  )) begin end

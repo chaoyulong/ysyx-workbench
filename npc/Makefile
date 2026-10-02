@@ -16,26 +16,52 @@ else
 endif
 
 INC_PATH += $(abspath include)
-BUILD_DIR = ./build
+BUILD_DIR = $(abspath ./build)
 OBJ_DIR = $(BUILD_DIR)/obj_dir
 BIN = $(BUILD_DIR)/V$(TOPNAME)
 SIM_WAVE = $(BUILD_DIR)/waveform.fst
 
-# spinal生成verilog相关
+# ======================================== spinal生成verilog相关 ======================================== #
+MILL ?= ./mill
 SPINAL_PRJ = playground
 SPINAL_VFILE = $(abspath $(BUILD_DIR)/$(SPINAL_TOPNAME).v)
 SPINAL_SIM_DIR = $(BUILD_DIR)/simulations
-
-# yosys综合相关
+SPINAL_SRCS = $(shell find $(abspath playground) -name '*.scala') \
+              $(wildcard $(abspath build.sc) $(abspath .mill-version) $(abspath build.mill))
+# ======================================== yosys综合相关 ======================================== #
 # sta目标内自行生成到$(BUILD_DIR)/sta/ysyx_23060082.v(SPINAL_SIM_DEBUG=0)
-STA_DESIGN=ysyx_23060082
-STA_SDC_FILE=$(abspath constr/npc.sdc)
-STA_CLK_FREQ_MHZ=500
-STA_CLK_PORT_NAME=clock
-STA_OUT=$(abspath $(BUILD_DIR)/sta)
-# 综合工艺: nangate45(教程基准, 面积限制按此工艺) / icsprout55(流片工艺)
-STA_PDK=nangate45
+YOSYS_STA_PATH ?= /home/cyl/tools/yosys-sta
+STA_DESIGN = ysyx_23060082
+STA_SDC_FILE ?= $(abspath constr/npc.sdc)
+STA_CLK_FREQ_MHZ ?= 500
+STA_CLK_PORT_NAME ?= clock
+STA_BUILD_DIR = $(abspath $(BUILD_DIR)/sta)
+STA_VFILE = $(STA_BUILD_DIR)/$(STA_DESIGN).v
+# nangate45，icsprout55
+STA_PDK ?= nangate45
 
+# ======================================== iverilog四值仿真相关 ======================================== #
+IVERILOG ?= iverilog
+VVP ?= vvp
+# bin文件转hex文件
+IV_BIN2MEM = $(abspath sim-iverilog/tools/bin2mem.sh)
+
+IV_DESIGN = ysyx_23060082
+IV_BUILD_DIR = $(abspath $(BUILD_DIR)/iverilog)
+IV_TB_TOP = tb_npc
+IV_TB ?= $(abspath sim-iverilog/testbench/tb_npc.v)
+IV_VFILE = $(IV_BUILD_DIR)/$(IV_DESIGN).v
+IV_STA_BUILD_DIR = $(IV_BUILD_DIR)/sta
+IV_NETLIST ?= $(IV_STA_BUILD_DIR)/$(IV_DESIGN)-$(STA_CLK_FREQ_MHZ)MHz/$(IV_DESIGN).netlist.v.sim
+IV_CELLS ?= $(abspath sim-iverilog/testbench/cells.v)
+
+# 最大仿真周期
+IV_MAXCYC ?= 20000000
+IV_ARGS ?=
+IV_IMG_DIR = $(IV_BUILD_DIR)/img
+IV_IMG = $(IV_IMG_DIR)/img.hex
+
+# ======================================== ======================================== #
 ifneq ($(words $(CURDIR)),1)
   $(error Unsupported: GNU Make cannot build in directories containing spaces, build elsewhere: '$(CURDIR)')
 endif
@@ -44,7 +70,7 @@ default: $(BIN)
 
 $(shell mkdir -p $(BUILD_DIR))
 
-# rules for NVBoard	
+# ======================================== NVBoard相关 ======================================== #
 NXDC_FILES = constr/pin.nxdc
 SRC_AUTO_BIND = $(abspath $(BUILD_DIR)/auto_bind.cpp)
 $(SRC_AUTO_BIND): $(NXDC_FILES)
@@ -53,9 +79,9 @@ $(SRC_AUTO_BIND): $(NXDC_FILES)
 
 include $(NVBOARD_HOME)/scripts/nvboard.mk
 
-# verilator相关
-VERILATOR = verilator
-GTKWAVE = gtkwave
+# ======================================== verilator相关 ======================================== #
+VERILATOR ?= verilator
+GTKWAVE ?= gtkwave
 
 VERILATOR_CFLAGS += -MMD --build -cc \
 				-O3 --x-assign fast --x-initial fast --noassert \
@@ -73,7 +99,7 @@ LDFLAGS += -lreadline $(shell pkg-config --libs sdl2)
 override ARGS ?=
 IMG ?=
 
-#rules for disassemble
+# 反汇编规则，rules for disassemble，用于itrace
 LIBCAPSTONE = tools/capstone/repo/libcapstone.so.5
 INC_PATH +=  $(abspath tools/capstone/repo/include)
 CXXFLAGS += -DCONFIG_ISA_riscv
@@ -81,21 +107,36 @@ $(abspath csrc/trace/disasm.c): $(LIBCAPSTONE)
 $(LIBCAPSTONE):
 	$(MAKE) -C tools/capstone
 
+# ======================================== spinalhdl相关 ======================================== #
 # 只操作spinal的两条命令:verilog与test
 SPINAL_GEN_ENV := SPINAL_TOPNAME=$(SPINAL_TOPNAME) BUILD_DIR=$(BUILD_DIR) PARTFORM=$(PARTFORM)
 SPINAL_SIM_ENV := SPINAL_SIM_DIR=$(BUILD_DIR)/simulations PARTFORM=$(PARTFORM)
-
-verilog:
+# 用于生成sta时所需要的不含调试信号的ysyx_23060082.v,所以SPINAL_SIM_DEBUG信号要关闭，PARTFORM永远为ysyxsoc，命令行传PARTFORM也不会影响sta
+SPINAL_STA_ENV := SPINAL_TOPNAME=$(STA_DESIGN) BUILD_DIR=$(STA_BUILD_DIR) SPINAL_SIM_DEBUG=0 PARTFORM=ysyxsoc
+# 四值仿真要求从0x80000000开始，所以PARTFORM要选择npc
+SPINAL_IV_ENV := SPINAL_TOPNAME=$(IV_DESIGN) BUILD_DIR=$(IV_BUILD_DIR) SPINAL_SIM_DEBUG=0 PARTFORM=npc
+# ========================================  ======================================== #
+verilog: $(SPINAL_SRCS)
 	$(call git_commit, "generate verilog")
 	@mkdir -p $(BUILD_DIR)
-	@$(SPINAL_GEN_ENV) ./mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog 
+	@$(SPINAL_GEN_ENV) $(MILL) -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog 
 
-test:
-	@$(SPINAL_SIM_ENV) ./mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalSim 
+test: $(SPINAL_SRCS)
+	@$(SPINAL_SIM_ENV) $(MILL) -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalSim 
 	@$(GTKWAVE) $(SPINAL_SIM_DIR)/$(SPINAL_TOPNAME)/test/wave.fst
+
+verilog-sta: $(SPINAL_SRCS)
+	@mkdir -p $(STA_BUILD_DIR)
+	@$(SPINAL_STA_ENV) $(MILL) -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog
+
+verilog-iverilog: $(SPINAL_SRCS)
+	@mkdir -p $(IV_BUILD_DIR)
+	@$(SPINAL_IV_ENV) $(MILL) -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog
 
 # 应该每次都重新生成一次verilog文件
 $(SPINAL_VFILE): verilog
+$(STA_VFILE): verilog-sta
+$(IV_VFILE): verilog-iverilog
 
 # 此函数用于verilator编译，nvboard和直接仿真所用文件不同，例如：
 # 		$(call build_target, $^, -D__USE_NVBOARD__),第一个变量为所需的文件，第二个变量为加入的宏定义
@@ -140,18 +181,21 @@ perf:
 menuconfig:
 	@python3 tools/menuconfig.py
 
-# sta: 自动用 ysyx_23060082 顶层 + 关闭仿真调试(SPINAL_SIM_DEBUG=0)生成综合用 verilog
-# 输出到 build/sta/ 独立目录, 避免覆盖仿真用的 debug=true 版本
-sta:
-	@mkdir -p $(BUILD_DIR)/sta
-	@SPINAL_TOPNAME=$(STA_DESIGN) BUILD_DIR=$(BUILD_DIR)/sta SPINAL_SIM_DEBUG=0 \
-		./mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog
-	make -C /home/cyl/tools/yosys-sta sta \
+# sta: 自动用ysyx_23060082顶层 + 关闭仿真调试(SPINAL_SIM_DEBUG=0)生成综合用verilog
+# 输出到 build/sta/独立目录, 避免覆盖仿真用的debug=true版本
+sta: $(STA_VFILE)
+	$(MAKE) -C $(YOSYS_STA_PATH) sta \
 			DESIGN=$(STA_DESIGN) SDC_FILE=$(STA_SDC_FILE) \
-			PDK=$(STA_PDK) CLK_FREQ_MHZ=$(STA_CLK_FREQ_MHZ) CLK_PORT_NAME=$(STA_CLK_PORT_NAME) O=$(STA_OUT) \
-			RTL_FILES="$(abspath $(BUILD_DIR))/sta/$(STA_DESIGN).v"
+			PDK=$(STA_PDK) CLK_FREQ_MHZ=$(STA_CLK_FREQ_MHZ) CLK_PORT_NAME=$(STA_CLK_PORT_NAME) O=$(STA_BUILD_DIR) \
+			RTL_FILES="$(STA_VFILE)"
 
-# lint: 对 STA 的综合输入(build/sta/$(STA_DESIGN).v, SPINAL_SIM_DEBUG=0 那份)做 verilator 静态检查
+$(IV_NETLIST): $(IV_VFILE)
+	$(MAKE) -C $(YOSYS_STA_PATH) sta \
+			DESIGN=$(IV_DESIGN) SDC_FILE=$(STA_SDC_FILE) \
+			PDK=$(STA_PDK) CLK_FREQ_MHZ=$(STA_CLK_FREQ_MHZ) CLK_PORT_NAME=$(STA_CLK_PORT_NAME) O=$(IV_STA_BUILD_DIR) \
+			RTL_FILES="$(IV_VFILE)"
+
+# lint: 对STA的综合输入(build/sta/$(STA_DESIGN).v, SPINAL_SIM_DEBUG=0 那份)做verilator静态检查
 #   只把"真问题"类警告当失败: 位宽(WIDTH*)/锁存器(LATCH)/组合环(UNOPTFLAT,COMBDLY)/
 #   多驱动(MULTIDRIVEN)/未驱动(UNDRIVEN)/隐式线网(IMPLICIT)/阻塞赋值(BLKSEQ)/case 不全(CASEINCOMPLETE) ...
 #   下面三类是 SpinalHDL 生成物的已知噪声, 显式屏蔽:
@@ -162,75 +206,43 @@ sta:
 #   想看**全部**警告(含噪声)用: make lint-all
 LINT_WAIVER = -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM -Wno-DECLFILENAME
 
-lint:
-	@SPINAL_TOPNAME=$(STA_DESIGN) BUILD_DIR=$(BUILD_DIR)/sta SPINAL_SIM_DEBUG=0 \
-		./mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog
-	verilator --lint-only -Wall $(LINT_WAIVER) --top-module $(STA_DESIGN) \
-		$(BUILD_DIR)/sta/$(STA_DESIGN).v
+lint: $(STA_VFILE)
+	$(VERILATOR) --lint-only -Wall $(LINT_WAIVER) --top-module $(STA_DESIGN) $(STA_VFILE)
 	@echo "[lint] OK: 无'真问题'类警告(位宽/锁存/组合环/多驱动/未驱动/隐式线网)"
 
-# lint-all: 同上, 但**不屏蔽任何警告**(含 SpinalHDL 生成物噪声), 只用来人工查看全部警告
-lint-all:
-	@SPINAL_TOPNAME=$(STA_DESIGN) BUILD_DIR=$(BUILD_DIR)/sta SPINAL_SIM_DEBUG=0 \
-		./mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog
-	-verilator --lint-only -Wall --top-module $(STA_DESIGN) $(BUILD_DIR)/sta/$(STA_DESIGN).v
+# 打印全部警告
+lint-all: $(STA_VFILE)
+	$(VERILATOR) --lint-only -Wall -Wno-fatal --top-module $(STA_DESIGN) $(STA_VFILE)
 	@echo "[lint-all] 以上为全部警告(含噪声); 只挑真问题用 make lint"
 
 # ================================ iverilog (四值仿真 / 网表仿真) ================================
-# 目标名按课程 CI 约定:
-#   make sim-iverilog          IMG=xxx.bin
-#   make sim-iverilog-netlist  IMG=xxx.bin [NETLIST=yyy.v] [CELLS=zzz.v]
-#
-# 几个刻意的设计:
-#   1) 仿真的 RTL 单独生成到 build/iverilog/, 且用 SPINAL_SIM_DEBUG=0
-#      ⇒ 生成结果里没有 DPI 黑盒(ItraceReg/MtraceReg/PerfReg/NpcMemRW) ⇒ iverilog 能编
-#      (build/ysyx_23060082.v 那份是 debug=true 的, 含 DPI, 不能给 iverilog 用)
-#   2) 【显式传 PARTFORM】: sta/lint 的配方没传 PARTFORM, Config 会退到默认 npc(resetPc=0x80000000);
-#      这里按 CI 要求用 ysyxsoc(resetPc=0x30000000), 再由 TB 在 0x30000000 处放 trampoline 跳到 0x80000000
-#   3) 网表默认用 ...netlist.v.sim: yosys.tcl 里 splitnets -ports 会把【端口也拆成单位】,
-#      而 .sim 是拆端口之前写的 ⇒ 端口还是向量 ⇒ 同一个 TB 可以直接接 RTL 与网表
-#   4) 不加 git_commit: iverilog 仿真会反复跑, 不该每次都在仓库里留一条自动提交
-IVERILOG   ?= iverilog
-VVP        ?= vvp
-IV_DIR      = $(BUILD_DIR)/iverilog
-IV_TB_DIR   = $(abspath sim-iverilog/testbench)
-IV_TB       = $(IV_TB_DIR)/tb_npc.v
-IV_BIN2MEM  = $(abspath sim-iverilog/tools/bin2mem.sh)
-IV_RTL      = $(IV_DIR)/$(STA_DESIGN).v
-IV_IMG      = $(IV_DIR)/img.hex
-IV_MAXCYC  ?= 40000000
-IV_ARGS    ?=
-IV_SRCS     = $(shell find $(abspath playground/src) -name "*.scala") $(abspath ./build.sc)
-NETLIST    ?= $(abspath $(BUILD_DIR))/sta/$(STA_DESIGN)-500MHz/$(STA_DESIGN).netlist.v.sim
-CELLS      ?= $(IV_TB_DIR)/cells.v
-
-$(IV_RTL): $(IV_SRCS)
-	@mkdir -p $(IV_DIR)
-	@SPINAL_TOPNAME=$(STA_DESIGN) BUILD_DIR=$(IV_DIR) SPINAL_SIM_DEBUG=0 PARTFORM=$(PARTFORM) \
-		./mill -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog
-
-# 四值仿真: RTL(无 debug 黑盒) + TB(带突发的 AXI 从机 + 存储器)
-sim-iverilog: $(IV_RTL) $(IV_TB)
-	@test -n "$(IMG)" || { echo "错误: 需要 IMG=<xxx.bin>（例: make sim-iverilog IMG=sim-iverilog/bin/microbench-riscv32e-npc.bin）"; exit 1; }
-	@mkdir -p $(IV_DIR)
-	@$(IV_BIN2MEM) $(IMG) $(IV_IMG)
-	$(IVERILOG) -g2012 -o $(IV_DIR)/sim-iv.vvp -s tb_npc $(IV_RTL) $(IV_TB)
-	$(VVP) $(IV_DIR)/sim-iv.vvp +img=$(IV_IMG) +img_size=$(shell stat -c%s $(IMG)) +max_cycles=$(IV_MAXCYC) $(IV_ARGS)
-
-# 网表仿真: 同一个 TB + yosys 网表 + nangate45 标准单元行为模型
-sim-iverilog-netlist: $(IV_TB) $(IV_IMG)
+# iverilog需要使用$readmemh装载指令，但是规定中IMG是bin格式文件，所以需要转化一下
+$(IV_IMG): $(IMG)
 	@test -n "$(IMG)" || { echo "错误: 需要 IMG=<xxx.bin>"; exit 1; }
-	@test -f "$(NETLIST)" || { echo "错误: 找不到网表 $(NETLIST)（先 make sta, 或用 NETLIST= 指定）"; exit 1; }
-	@test -f "$(CELLS)"   || { echo "错误: 找不到标准单元模型 $(CELLS)（或用 CELLS= 指定）"; exit 1; }
-	@mkdir -p $(IV_DIR)
+	@mkdir -p $(IV_IMG_DIR)
 	@$(IV_BIN2MEM) $(IMG) $(IV_IMG)
-	$(IVERILOG) -g2012 -DIV_NETLIST -o $(IV_DIR)/net-iv.vvp -s tb_npc $(NETLIST) $(CELLS) $(IV_TB)
-	$(VVP) $(IV_DIR)/net-iv.vvp +img=$(IV_IMG) +img_size=$(shell stat -c%s $(IMG)) +max_cycles=$(IV_MAXCYC) $(IV_ARGS)
+
+# 四值仿真，使用平台为npc，复位值0x80000000,不接入
+sim-iverilog: $(IV_TB) $(IV_VFILE) $(IV_IMG)
+	@mkdir -p $(IV_BUILD_DIR)
+	@$(IVERILOG) -g2012 -o $(IV_BUILD_DIR)/sim-iverilog.vvp -s $(IV_TB_TOP) $(IV_TB) $(IV_VFILE)
+	@$(VVP) $(IV_BUILD_DIR)/sim-iverilog.vvp +img=$(IV_IMG) +img_size=$(shell stat -c%s $(IMG)) +max_cycles=$(IV_MAXCYC) $(IV_ARGS)
+
+# 网表仿真
+sim-iverilog-netlist: $(IV_TB) $(IV_NETLIST) $(IV_IMG)
+	@mkdir -p $(IV_BUILD_DIR)
+	@$(IVERILOG) -g2012 -DIV_NETLIST -o $(IV_BUILD_DIR)/netlist-iverilog.vvp -s $(IV_TB_TOP) $(IV_TB) $(IV_NETLIST) $(IV_CELLS)
+	@$(VVP) $(IV_BUILD_DIR)/netlist-iverilog.vvp +img=$(IV_IMG) +img_size=$(shell stat -c%s $(IMG)) +max_cycles=$(IV_MAXCYC) $(IV_ARGS)
 
 clean:
 	-rm -rf $(BUILD_DIR) ./simulations ./*.v
 
-.PHONY: $(SRC_AUTO_BIND) $(SPINAL_VFILE) test verilog run sim wave help reformat checkformat clean sta lint lint-all sim-iverilog sim-iverilog-netlist
+clean-all:
+	-rm -rf out $(BUILD_DIR) ./simulations ./*.v
 
+.PHONY: $(SRC_AUTO_BIND) $(SPINAL_VFILE)\
+				test verilog run sim wave clean clean-all perf menuconfig\
+				verilog-sta sta lint lint-all\
+				$(IV_IMG) verilog-iverilog sim-iverilog sim-iverilog-netlist
 
 -include ../Makefile

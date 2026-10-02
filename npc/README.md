@@ -1,6 +1,77 @@
 # NPC RISC-V32E CPU
 
+## 2026-10-02 网表 md5 失败的真根因：IDU 把立即数当 rs 号读到了未初始化的 x3/x4（`fdc70cc`）
+
+### 背景
+`56856d7` 为"Xbar 抽状态译码(`val`)后网表 microbench 的 `[md5]` 算错"给
+`rf(3)/rf(4)`、`mepc`、`clint.wStrbFullReg` 补了复位。事后看，**`rf(3)/rf(4)` 那一个确实是治了病**，
+但当时没有证据链、`mepc`/`wStrbFullReg` 只是映射扰动；`fdc70cc` 换成"从源头掐掉 X"的修法。
+
+### 定位过程（三步）
+**① `+traffic` 对拍**：前 **151,113** 条 AXI 事务逐条一致，之后 RTL 取 `0x80002b90`、网表取
+`0x80002fb0`，对应 `0x80002b84: beqz a0` ⇒ 分支方向不同。但这只是**症状**：VCD 显示该处
+RTL `a0=1`、网表 `a0=0`，而 `a0` 就是 `printf(res.pass ? "*" : "X")` 的 `res.pass`
+—— **是 md5 的校验结果本身算错了**。
+
+**② 全寄存器逐拍对拍**（临时 TB 只 dump 寄存器堆，一次录 900k~1,036k 共 136k 拍）——
+网表与 RTL 的第一处数据分歧：
+
+| 拍 | 寄存器 | 网表 | RTL |
+|---|---|---|---|
+| **1,026,357** | **x14 (a4)** | **X** | **0x10325000** |
+
+**③ 定位闯祸指令**（`exu.io_input_payload_pc` = `0x80000154`）：
+```asm
+80000154: 10325737   lui  a4,0x10325      # instr[19:15] = 0b00100 = 4  ← 这是立即数位!
+80000158: 47670713   addi a4,a4,1142
+8000015c: 00e12423   sw   a4,8(sp)        # 把 md5 的 IV 常量写进状态
+```
+
+### 机制（VCD 时间线，全部实测）
+| 拍 | 信号 | 事件 |
+|---|---|---|
+| 1,026,350 | `exu.io_input_payload_rfReadData1` | 这条 `lui` 的 rs1 变 X（被 IDU→EXU 流水寄存器锁存）|
+| 1,026,355 | `idu.io_wbuForward_writeData` | 写回数据变 X |
+| 1,026,357 | `regFile.rf_14`(a4) | 网表 **X** / RTL **0x10325000** |
+
+- `lui` 的 `useRf1 = false`（typeU 不在 `useRf1` 里），但 `IDU.scala` 的
+  `rfReadAddr1 = instr(19 downto 15)` 是**无条件**当寄存器号去读的；`lui a4,0x10325` 的
+  `instr[19:15]` 恰好 = 4 ⇒ 读到 **x4(tp)**；x3/x4 按 ABI（ILP32E 保留）程序从不写 ⇒ 网表里恒为 X。
+- `lui` 的 ALU **逻辑上**走 `aluCtr=0011 → resultDir = aluIn2(imm)`，但 `aluAsrc=0` 让
+  `aluIn1 = rfReadData1`(=X) 仍然接进 ALU；门级网表里这个 X 传到了结果 ⇒ **a4 = X**。
+- 随后 `addi a4,a4,1142` 经前递拿到 X，`sw a4,8(sp)` 把 **md5 的 IV 常量**以 X 写进状态
+  ⇒ 摘要算错 ⇒ `[md5] MD5 digest: X Failed`。
+
+> 对照（别被误导）：同一窗口里 `addi a2,a0,4`（I 型，rs2 字段 = 立即数 4）也会短暂读出 X 的
+> `rfReadData2`，但那条路 (**rs2 → EXU `rfReadData` → LSU**) 对该指令是**死路**（`memWr=0`、
+> `csrCmd=0`，且 VCD 里 `forward.writeData` 没变 X）。**真正致命的是 `useRf1=false` 的
+> LUI/AUIPC/JAL 在 rs1 上读到 X** —— 因为 `aluIn1` 是无条件接 `rfReadData1` 的。
+
+### 修复（`IDU.scala`，零新增触发器）
+```scala
+io.output.rfReadData1 := Mux(rs1Outcome===Hit, rs1Data, Mux(decoder.io.useRf1, io.rfRead.data1, U(0)))
+io.output.rfReadData2 := Mux(rs2Outcome===Hit, rs2Data, Mux(decoder.io.useRf2, io.rfRead.data2, U(0)))
+```
+> ⚠ 另一种等价写法"把**读地址**强制成 x0"也能消除 X，但会让 yosys **综合出卡死的网表**
+> （实测 `ar=0`、`pcFetch` 复位值丢失、IFU 停在 `Rst`）⇒ 已放弃，改用"mask 读出的数据"。
+同时**撤掉** `56856d7` 那三个寄存器复位（`rf(3)/rf(4)` 的作用已被本修法覆盖，且不再依赖映射运气）。
+
+### 验收（nangate45）
+| 项 | 结果 |
+|---|---|
+| `make sta` | 面积 **24644.63 µm²**（<25000，余量 355）、**0 VIOLATED**、slack **+0.998ns**（≈998MHz）、DFF 3226 |
+| 网表 microbench | **10/10 PASS**（含 md5），1,049,607 拍，UART 539B，AXI `104590/48668/252778/48668` |
+| 网表 rtthread | **10/10 PASS** + E3 收尾，2,398,028 拍，UART 2366B，AXI `146487/260268/359517/260268` |
+| RTL microbench | 10/10 PASS，1,049,614 拍，AXI `104591/48668/252782/48668` |
+| RTL rtthread | E3 收尾，2,398,037 拍 |
+| `make perf` | 周期/指令 **11908252 / 555445**，全部 PERF 计数器逐位不变 |
+
 ## 2026-10-01 Xbar 状态判断抽成译码信号 + 补 3 个无复位寄存器（`56856d7`：面积 24990.97→24673.89）
+
+> ⚠ **本节已在 `fdc70cc` 被更精确的修法取代**（见上一节）：三个复位里 **`rf(3)/rf(4)` 确实治了病**
+> （它们的 X 正是被 IDU 的 spurious 读带进流水线的），另两个（`mepc`/`clint.wStrbFullReg`）则只是
+> 扰动 ABC 映射；`fdc70cc` 改为在 IDU 侧"对用不到的 rs 把读出的数据 mask 成 0"，从源头掐掉 X，
+> 并撤掉这三个复位（不再依赖映射运气）。
 
 ### 改动
 `Xbar.scala` 里 `arbiterState/readState/writeState` 的 **20 处** `=== 状态` 判断抽成译码信号：

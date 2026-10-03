@@ -232,8 +232,8 @@ npc/README.md 按日期记录每次做了什么、为什么、实测数据。
 【仓库边界(重要)】
 - npc/ 是我自己的仓库(远端 chaoyulong/npc)，正常提交推送
 - ysyxSoC/ 远端是官方 OSCPU/ysyxSoC，【本地改动推不上去、重新 clone 会丢】，
-  所以固化成了 npc/ysyxSoC-local.patch(基线 commit 记录在文件头)，
-  用 npc/tools/make-ysyxsoc-patch.sh 重新生成，改完 ysyxSoC 记得刷新
+  所以固化成了补丁：提交仓库的 patch/ysyxSoC/0001-*.patch(git format-patch, CI 用)，
+  本地对比可用 npc/tools/make-ysyxsoc-patch.sh(git diff 版)；改完 ysyxSoC 记得刷新
 
 【下一步方向(按性价比)】
 1. 用富余的面积/时序换性能：目前 icache 已经调到预算内最优
@@ -254,7 +254,7 @@ npc/README.md 按日期记录每次做了什么、为什么、实测数据。
 ```
 这是一个 ysyx(一生一芯)的 RISC-V 处理器项目，工作区 /home/cyl/Desktop/ysyx-workbench。
 npc/ 是用 SpinalHDL 写的多周期 RV32E CPU(5 级流水，我的仓库)；
-ysyxSoC/ 是官方 SoC 框架(改动推不上去，本地补丁固化在 npc/ysyxSoC-local.patch)；
+ysyxSoC/ 是官方 SoC 框架(改动推不上去，补丁固化在提交仓库的 patch/ysyxSoC/)；
 abstract-machine/ 与 am-kernels/ 提供裸机运行时和测试程序。
 约束：面积 ≤23000 µm²(nangate45)、500 MHz。用 make perf 测性能、make sta 测面积；
 测 ysyxSoC 必须用 make ... sim sdb=n(不要用 run，会长住)。

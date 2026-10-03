@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# ★ 注意: 提交给 CI 的【正式补丁】是提交仓库的 patch/ysyxSoC/0001-*.patch
+#   (在 ysyxSoC 仓库里用 `git format-patch origin/ysyx6` 生成, 已剔除 firtool 二进制);
+#   本脚本产出的 git diff 版仅用于本地留档/快速对比, 不会被 CI 使用。
 # ============================================================================
 # 生成 ysyxSoC 本地补丁（留档用）
 #

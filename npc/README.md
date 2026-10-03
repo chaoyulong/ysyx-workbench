@@ -1,5 +1,80 @@
 # NPC RISC-V32E CPU
 
+## 2026-10-03 IFU 跳转预译码字段化 + `rdataReg` 复位（修掉"死网表"根因）+ guard 重扫取 W=21（`e3d72f4` / `b54cf81`：1005.4 MHz）
+
+### 1. ★ 修掉"网表完全不工作"的根因：`ifu.rdataReg` 加 `init(0)`（`e3d72f4`）
+
+**现象**：某些综合映射下网表彻底不工作 —— `arvalid` 恒 0、永不取指、看门狗超时、cyc=50 起端口全 X；
+而**同一份 RTL 用 iverilog 跑完全正常**。VCD 逐拍定位（死网表的启动）：
+
+| 拍 | 信号 | 值 |
+|---|---|---|
+| 46~49 | `ifu.state` | `Rst`（复位中）|
+| 50 | `ifu.state` / `stopFetch` | `Idle` / `0`（复位释放，本应开始取指）|
+| **51** | **`stopFetch`** | **X（此后永远 X）** |
+| 51 | `ifu.rdataReg` | **X（无复位，上电即 X）** |
+
+**链条**：`rdataReg`(无复位→X) → `normalInstr`/`io.output.instr` = X → **`isJump` 译码出 X**
+→ `stopFetch.D = Mux(… valid && isJump …)` = X → `stopFetch` 锁成 X
+→ `tryFetch = (state===Idle) && !stopFetch && !excStop` 恒 X → **IFU 永不发取指请求**。
+
+RTL 里这条 X 被 `valid && …` 的语义挡掉，门级网表挡不住 —— 与 `6a6d85d`(CSR)、`fdc70cc`(IDU)
+**同一家族：无复位寄存器的 X 逃进控制路径**。修法是 `RegNextWhen(...) init(0)` 一个词
+（语义中性：该寄存器只在"响应没同拍回来、用上一拍响应"时被读）。
+
+> 这个坑还解释了之前的困惑：**"某个位宽/写法能不能过网表"其实取决于映射有没有把这个 X 抽到坏的一侧**。
+
+### 2. IFU 跳转预译码字段化（`b54cf81`）
+
+`i_jal/i_jalr` 由 32 位 `M"..."` 掩码改成字段比较（覆盖原掩码全部非 `-` 位，语义等价）：
+```scala
+val i_jal  = instrOut(6 downto 0) === U"7'b1101111"
+val i_jalr = instrOut(6 downto 0) === U"7'b1100111" && instrOut(14 downto 12) === U"3'b000"
+```
+同一位宽下实测 **952.0 → 1011.3 MHz**，`ifu.stopFetch` 从榜首端点（990）退到第 2（1020）。
+
+### 3. `sameAddr` guard 重扫（ysyxsoc 基准，取 W=21）
+
+在"字段化 + `rdataReg` 复位"之后重扫 11 点：
+
+| W | 20 | **21** | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29 | 30 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| MHz | 964.5 | **1005.4** | 965.6 | 911.3 | 931.8 | 930.7 | 941.2 | 888.7 | 935.7 | 879.9 | 890.1 |
+| 面积(µm²) | 24354.2 | **24752.4** | 24540.4 | 24417.2 | 24587.7 | 24534.0 | 24563.8 | 24345.9 | 24696.5 | 24344.3 | 24486.1 |
+
+（11 点全部 0 VIOLATED；W=21 即 `writeAddr = Reg(UInt(21 bits))`，比较 `addr[22:2]`）
+
+### 验收（W=21 + 字段化 + `rdataReg` 复位）
+| 项 | 结果 |
+|---|---|
+| `make sta` | 面积 **24752.364 µm²**（<25000，余量 247.6）、**0 VIOLATED**、slack **+1.005 ns**（**1005.380 MHz**，端点 `exu.io_input_payload_rfReadData1_23`）|
+| `make perf` | 周期/指令 **11908252 / 555445**，全部 PERF 计数器与改前逐位不变 |
+| RTL microbench | 10/10 PASS，1,049,605 拍，AXI `104590/48668/252778/48668` |
+| RTL rtthread | E3 收尾，2,398,028 拍，UART 2366B |
+| 网表 microbench | **10/10 PASS**（含 md5），1,049,607 拍，AXI `104590/48668/252778/48668` |
+| 网表 rtthread | **10/10 PASS** + E3 收尾，2,398,028 拍，AXI `146487/260268/359517/260268` |
+
+### ⚠ 如实说明
+- 11 点的频率散布 879.9~1005.4 MHz，关键路径端点在 `ifu.stopFetch` / `ifu.icache…readAddr*` /
+  `exu…rfReadData1` / `ifu.rdataReg` 之间游走，**W=21 的优势仍属映射抽签**；
+- W=21 的 guard 窗口只有 4MB（W=30 是完整字地址、不可能假同址），理论上存在
+  "不同地址被误判同址、多等一次后台写"的风险 —— 本 workload 未触发（perf 计数器逐位不变）。
+
+### 顺带：Makefile 的一个陷阱（`2376c19` 统一配方后）
+`NETLIST` 等目标是用 `$(abspath)` 写的**绝对路径**；若手工用**相对路径**去 make
+（`make build/iverilog/sta/…/netlist.v.sim`），make 会认为"规则不匹配 + 文件已存在" ⇒
+**直接 up to date、什么都不做**（exit 0，容易误判成"网表没变化"）。手工调请用绝对路径，或直接用 `make sim-iverilog-netlist`。
+
+### 按 CI 约定用外部网表（`NETLIST=` / `CELLS=`）
+`sim-iverilog-netlist` 支持 CI 的三变量写法，此时**跳过 SpinalToVerilog 与 yosys**，
+只做 bin→hex + iverilog 编译 + 仿真（`$(IV_IMG)` 每次都会按当前 `IMG` 重新生成）：
+```bash
+make sim-iverilog-netlist IMG=xxx.bin NETLIST=/path/xxx.netlist.v.sim CELLS=/path/cells.v
+```
+判据是 `$(origin NETLIST)`：`command line`/`environment` ⇒ 外部传入并跳过综合；没传时 origin 是 `file`
+（makefile 里 `?=` 的默认值）⇒ 自己综合。所以判据只能用 `filter command line environment override`，
+**不能**和 `undefined` 比较。另注意同名陷阱：Makefile 的 `-DNETLIST` 宏必须与 TB 的 `` `ifdef NETLIST `` 同步改名。
+
 ## 2026-10-02 dcache `writeAddr` 同字 guard 位宽 26→29（`053dd11`：频率 997.9→1011.2 MHz）
 
 ### 做了什么

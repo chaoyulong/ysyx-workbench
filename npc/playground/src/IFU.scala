@@ -74,9 +74,7 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   icache.io.reqIn.valid := tryFetch && !fetchExc                                      // 没有异常才发送请求          
   icache.io.reqIn.pc    := pcFetch
 
-  // ★ 必须 init(0): 它是无复位寄存器, 上电起为 X ⇒ normalInstr/instrOut 为 X
-  //   ⇒ isJump 译码出 X ⇒ stopFetch 锁存 X ⇒ tryFetch 恒 X ⇒ 前端永不取指
-  //   (RTL 里被 valid && … 挡掉, 门级网表挡不住 —— 实测就是这么死的)
+  // rdataReg需要init(0)，因为在网表仿真中，初始状态可能恰好使能了isJump导致停止取指
   val rdataReg           = RegNextWhen(icache.io.rspOut.rdata, icache.io.rspOut.valid) init(0)
   val rspIsCurrentHit    = icache.io.reqIn.fire && icache.io.rspOut.valid             // icache直接命中
   // =================================== 预先译码出跳转指令 =================================== //

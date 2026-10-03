@@ -52,8 +52,8 @@ IV_TB_TOP = tb_npc
 IV_TB ?= $(abspath sim-iverilog/testbench/tb_npc.v)
 IV_VFILE = $(IV_BUILD_DIR)/$(IV_DESIGN).v
 IV_STA_BUILD_DIR = $(IV_BUILD_DIR)/sta
-IV_NETLIST ?= $(IV_STA_BUILD_DIR)/$(IV_DESIGN)-$(STA_CLK_FREQ_MHZ)MHz/$(IV_DESIGN).netlist.v.sim
-IV_CELLS ?= $(abspath sim-iverilog/testbench/cells.v)
+NETLIST ?= $(IV_STA_BUILD_DIR)/$(IV_DESIGN)-$(STA_CLK_FREQ_MHZ)MHz/$(IV_DESIGN).netlist.v.sim
+CELLS ?= $(abspath sim-iverilog/testbench/cells.v)
 
 # 最大仿真周期
 IV_MAXCYC ?= 20000000
@@ -189,11 +189,21 @@ sta: $(STA_VFILE)
 			PDK=$(STA_PDK) CLK_FREQ_MHZ=$(STA_CLK_FREQ_MHZ) CLK_PORT_NAME=$(STA_CLK_PORT_NAME) O=$(STA_BUILD_DIR) \
 			RTL_FILES="$(STA_VFILE)"
 
-$(IV_NETLIST): $(IV_VFILE)
+# 外部(命令行/环境变量)没有给NETLIST时才会综合
+#   CI 约定: make sim-iverilog-netlist IMG=xxx.bin NETLIST=yyy CELLS=zzz
+#   给了 NETLIST 就直接用外部网表(跳过 SpinalToVerilog 与 yosys), 只做 bin->hex + 编译 + 仿真
+ifeq ($(filter command line environment override,$(origin NETLIST)),)
+$(NETLIST): $(IV_VFILE)
 	$(MAKE) -C $(YOSYS_STA_PATH) sta \
 			DESIGN=$(IV_DESIGN) SDC_FILE=$(STA_SDC_FILE) \
 			PDK=$(STA_PDK) CLK_FREQ_MHZ=$(STA_CLK_FREQ_MHZ) CLK_PORT_NAME=$(STA_CLK_PORT_NAME) O=$(IV_STA_BUILD_DIR) \
 			RTL_FILES="$(IV_VFILE)"
+	@test -f $@ || { echo "错误: 综合没有产出 $@"; exit 1; }
+else
+# 外部网表: 无前置依赖 ⇒ 文件存在时 make 认为最新、配方不跑; 不存在则给明确报错
+$(NETLIST):
+	@test -f $@ || { echo "错误: 找不到外部指定的网表 $@ (用法: NETLIST=<path>)"; exit 1; }
+endif
 
 # lint: 对STA的综合输入(build/sta/$(STA_DESIGN).v, SPINAL_SIM_DEBUG=0 那份)做verilator静态检查
 #   只把"真问题"类警告当失败: 位宽(WIDTH*)/锁存器(LATCH)/组合环(UNOPTFLAT,COMBDLY)/
@@ -217,7 +227,7 @@ lint-all: $(STA_VFILE)
 
 # ================================ iverilog (四值仿真 / 网表仿真) ================================
 # iverilog需要使用$readmemh装载指令，但是规定中IMG是bin格式文件，所以需要转化一下
-$(IV_IMG): $(IMG)
+$(IV_IMG): $(IMG) $(IV_BIN2MEM)
 	@test -n "$(IMG)" || { echo "错误: 需要 IMG=<xxx.bin>"; exit 1; }
 	@mkdir -p $(IV_IMG_DIR)
 	@$(IV_BIN2MEM) $(IMG) $(IV_IMG)
@@ -229,9 +239,9 @@ sim-iverilog: $(IV_TB) $(IV_VFILE) $(IV_IMG)
 	@$(VVP) $(IV_BUILD_DIR)/sim-iverilog.vvp +img=$(IV_IMG) +img_size=$(shell stat -c%s $(IMG)) +max_cycles=$(IV_MAXCYC) $(IV_ARGS)
 
 # 网表仿真
-sim-iverilog-netlist: $(IV_TB) $(IV_NETLIST) $(IV_IMG)
+sim-iverilog-netlist: $(IV_TB) $(NETLIST) $(CELLS) $(IV_IMG)
 	@mkdir -p $(IV_BUILD_DIR)
-	@$(IVERILOG) -g2012 -DIV_NETLIST -o $(IV_BUILD_DIR)/netlist-iverilog.vvp -s $(IV_TB_TOP) $(IV_TB) $(IV_NETLIST) $(IV_CELLS)
+	@$(IVERILOG) -g2012 -DNETLIST -o $(IV_BUILD_DIR)/netlist-iverilog.vvp -s $(IV_TB_TOP) $(IV_TB) $(NETLIST) $(CELLS)
 	@$(VVP) $(IV_BUILD_DIR)/netlist-iverilog.vvp +img=$(IV_IMG) +img_size=$(shell stat -c%s $(IMG)) +max_cycles=$(IV_MAXCYC) $(IV_ARGS)
 
 clean:

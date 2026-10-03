@@ -41,7 +41,7 @@ module tb_npc;
   localparam TRAMP_BASE  = 32'h3000_0000;
 
   // E3 终止串: CI 只跑 microbench / rtthread 两个 bin —— microbench 走 E1(取指 0),
-  //   rtthread 跑完自动 microbench 后会在 msh 里 panic, 输出该串 ⇒ 用它收尾
+  // rtthread跑完自动microbench后会因为没有实现串口输入而在msh里panic,所以出现这个字符串也就说明程序运行完
   localparam PANIC_STR = "AM Panic:";
 
   parameter RESET_CYCLES       = 50;
@@ -55,13 +55,13 @@ module tb_npc;
   // pmem：字节粒度，下标 = 地址 - 0x80000000
   reg [7:0] pmem [0:PMEM_SIZE-1];
 
-  // trampoline: lui t0,0x80000 ; jr t0 ; nop ; nop
+  // 如果起始地址是0x30000000,则会自动跳转到0x80000000运行
   reg [31:0] tramp [0:3];
   initial begin
-    tramp[0] = 32'h8000_02B7;
-    tramp[1] = 32'h0002_8067;
-    tramp[2] = 32'h0000_0013;
-    tramp[3] = 32'h0000_0013;
+    tramp[0] = 32'h8000_02B7;   // lui t0,0x80000
+    tramp[1] = 32'h0002_8067;   // jr t0
+    tramp[2] = 32'h0000_0013;   // nop
+    tramp[3] = 32'h0000_0013;   // nop
   end
 
   //------------------------------------------------------------------
@@ -155,6 +155,7 @@ module tb_npc;
   function in_serial(input [31:0] a); in_serial = (a >= SERIAL_BASE) && (a < SERIAL_BASE + 8);        endfunction
   function in_tramp (input [31:0] a); in_tramp  = (a >= TRAMP_BASE)  && (a < TRAMP_BASE + 16);        endfunction
 
+  // 读内存
   function [7:0] mem_byte(input [31:0] addr);
     if      (in_pmem(addr))  mem_byte = pmem[addr - PMEM_BASE];
     else if (in_tramp(addr)) mem_byte = tramp[addr[3:2]][8*addr[1:0] +: 8];
@@ -166,6 +167,7 @@ module tb_npc;
                  mem_byte({addr[31:2], 2'b01}), mem_byte({addr[31:2], 2'b00}) };
   endfunction
 
+  // 写内存
   task wr_byte(input [31:0] addr, input [7:0] data);
     if (in_pmem(addr)) begin
       // ★ 含 X 的写数据按 0 落内存：verilator 流程的内存是二值的(未初始化即 0)，
@@ -272,9 +274,9 @@ module tb_npc;
 
   //------------------------------------------------------------------
   // 结束判定：RTL 专用的 ebreak 提前收尾（网表 flatten 后没有 lsu 实例 ⇒ 恒 0）
-  //   通用判据 E1/E3 见下面的 negedge 块与 E3 块
+  // 通用判据 E1/E3 见下面的 negedge 块与 E3 块
   //------------------------------------------------------------------
-`ifdef IV_NETLIST
+`ifdef NETLIST
   wire        lsu_commit_trap = 1'b0;
   wire [3:0]  lsu_exc_cause   = 4'd0;
   wire [31:0] lsu_commit_pc   = 32'd0;
@@ -379,18 +381,6 @@ module tb_npc;
   end
 
   //------------------------------------------------------------------
-  // (临时调试) VCD 窗口
-  //------------------------------------------------------------------
-  reg vcdwin = 1'b0;
-  reg [31:0] vcd_from = 32'd0, vcd_to = 32'd0;
-  always @(posedge clock) begin
-    if (vcdwin) begin
-      if (cycles == vcd_from) begin $dumpfile("tb_npc_win.vcd"); $dumpvars(0, dut); end
-      if (cycles == vcd_to)   $dumpoff;
-    end
-  end
-
-  //------------------------------------------------------------------
   // 结束判据 E3：UART 输出里出现 PANIC_STR（rtthread 跑完自动 microbench 后 panic）
   //------------------------------------------------------------------
   always @(posedge clock) begin
@@ -414,11 +404,6 @@ module tb_npc;
     if ($test$plusargs("xcheck"))     xcheck = 1'b1;
     if ($test$plusargs("traffic"))    traffic = 1'b1;
     if ($test$plusargs("no_ebreak_stop")) ebreak_stop = 1'b0;
-    if ($test$plusargs("vcdwin")) begin
-      vcdwin = 1'b1;
-      if ($value$plusargs("vcd_from=%d", vcd_from)) begin end
-      if ($value$plusargs("vcd_to=%d",   vcd_to  )) begin end
-    end
     if ($value$plusargs("max_cycles=%d", max_cycles)) begin end
     if ($value$plusargs("zero=%d",       zero_size )) begin end
     if ($value$plusargs("img_size=%d",   img_size  )) begin end
@@ -441,12 +426,12 @@ module tb_npc;
       $display("[TB][MEM] img_size=%0d zero_size=%0d | pmem[0]=%h pmem[%0d]=%h pmem[65520]=%h pmem[1000000]=%h",
                img_size, zero_size, pmem[0], img_size-1, pmem[img_size-1], pmem[65520], pmem[1000000]);
 
-    if (!quiet) $display("[TB] 复位中...（%0d 拍）", RESET_CYCLES);
+    if (!quiet) $display("[TB] 复位中...(%0d 拍)", RESET_CYCLES);
     reset = 1'b1;
     repeat (RESET_CYCLES) @(posedge clock);
     @(negedge clock);
     reset = 1'b0;
-    if (!quiet) $display("[TB] 复位释放，开始执行（watchdog = %0d 拍）", max_cycles);
+    if (!quiet) $display("[TB] 复位释放，开始执行(watchdog = %0d 拍)", max_cycles);
   end
 
   //------------------------------------------------------------------

@@ -6,6 +6,13 @@
 > **2026-10-01 更新**：网表 X 卡点**已定位并修复**（commit `6a6d85d`）。原因不是状态机/valid 漏复位，
 > 而是 **CSR 侧控制信号没按 `io.input.valid` 门控**（复位释放那一拍 CSR 被 X 写入）。详见 `npc/README.md`
 > 的 2026-10-01 节与 `npc/PERF.md` 的 `6a6d85d` 行。提示词 3 保留作为方法记录。
+>
+> **2026-10-03 更新**：定位并修复了**另一个独立的**"网表完全不工作"根因（commit `e3d72f4`）：
+> `ifu.rdataReg` 无复位 ⇒ 上电即 X ⇒ `isJump` 译码出 X ⇒ `stopFetch` 锁成 X ⇒ `tryFetch` 恒 X ⇒
+> **IFU 永不取指**（现象：cyc=50 起 `arvalid` 恒 0、端口全 X、看门狗超时，而同一份 RTL 用 iverilog
+> 跑完全正常；这也是"同一 RTL 换个位宽/写法有时能过、有时不能"的真因）。修法：`rdataReg … init(0)`。
+> 另外：CI 三变量写法 `NETLIST=`/`CELLS=` 已实现（给了就跳过 SpinalToVerilog 与 yosys）；
+> dcache guard 位宽重扫取 W=21，当前 **1005.4 MHz / 面积 24752.36**。详见 `npc/README.md` 的 2026-10-03 节。
 
 ---
 
@@ -22,12 +29,15 @@ CI 的目标名约定：make -C npc sim-iverilog IMG=xxx.bin  以及
 
 【已完成】✓
 - npc/Makefile 已有 sim-iverilog / sim-iverilog-netlist 两个目标（别用别的名字）
-  · sim-iverilog 内部用 SPINAL_SIM_DEBUG=0 PARTFORM=ysyxsoc 生成到 build/iverilog/（无 DPI 黑盒）
-  · 网表默认用 build/sta/ysyx_23060082-500MHz/ysyx_23060082.netlist.v.sim
+  · sim-iverilog 内部用 SPINAL_SIM_DEBUG=0 **PARTFORM=npc** 生成到 build/iverilog/（无 DPI 黑盒，
+    复位值 0x80000000）★ 注意与 sta 不同：sta 为对齐 CI 用 PARTFORM=ysyxsoc（复位 0x30000000）
+  · 网表默认由【同一份 npc RTL】综合到 build/iverilog/sta/ysyx_23060082-500MHz/ysyx_23060082.netlist.v.sim
     （★ 必须是 .sim 那份：yosys.tcl 里 splitnets -ports 会拆端口，.netlist.v 是位级端口，TB 接不上）
+  · 也支持 CI 的三变量写法（给了 NETLIST 就跳过 SpinalToVerilog 与 yosys）：
+      make -C npc sim-iverilog-netlist IMG=xxx.bin NETLIST=yyy.netlist.v.sim CELLS=zzz/cells.v
 - TB 在 npc/sim-iverilog/testbench/tb_npc.v；标准单元模型在 npc/sim-iverilog/testbench/cells.v
 - .bin→$readmemh 的转换脚本 npc/sim-iverilog/tools/bin2mem.sh
-- RTL 四值仿真：microbench 全量 PASS ✓（10/10 项 Passed + MicroBench PASS，1049614 周期，约 46 秒）
+- RTL 四值仿真：microbench 全量 PASS ✓（10/10 项 Passed + MicroBench PASS，1,049,605 周期）
   RT-Thread 能启动到 msh shell ✓（之后停在 AM 侧 panic：npc/ioe.c 的 lut 没实现 rtt 要的设备）
 
 【已解决 2026-10-01（`6a6d85d`）】✓ 网表 X 根因 = 【CSR 侧控制信号没按 valid 门控】
@@ -43,6 +53,9 @@ CI 的目标名约定：make -C npc sim-iverilog IMG=xxx.bin  以及
   make sta 面积 24990.97(<25000)、0 VIOLATED、slack +0.838ns
 - 残留(协议内正常，刻意不动)：mepc / regFile.rf_3,rf_4 / clint.wStrbFullReg 仍是 X —— 它们只在
   "先写后读"的协议保证下被选中，不逃逸到控制路径；加复位要 32/512 个触发器，远超 9 µm² 余量
+- ★ 2026-10-03 更正：上面"数据寄存器不用复位"的结论**不成立** —— `ifu.rdataReg`(无复位) 的 X 经
+  `isJump` 把 `stopFetch` 锁成 X(`tryFetch` 恒 X)，会让【整条网表完全不工作】(arvalid 恒 0、看门狗超时)，
+  而 RTL 因 `valid && …` 的语义把这条 X 掩盖掉、看不出问题。已在 `e3d72f4` 用 `init(0)` 修掉
 
 【下一步】CI 的两个 bin 现在都能在网表模式自动收尾(E1 取指 0 / E3 UART "AM Panic:")，不必再手设 IV_MAXCYC
 ```
@@ -110,10 +123,10 @@ rvalid/bvalid/wvalid 全变 X；同期 RTL（同 TB、同镜像）完全没有 X
    （vcd_from=42000, vcd_to=42400；★ 不要用"t=0 先 $dumpvars 再 $dumpoff"的写法，
      iverilog 下那样只会留下 t=0 的快照，抓不到窗口）
 2. 编译网表并跑：
-     iverilog -g2012 -DIV_NETLIST -o build/iverilog/net-iv.vvp -s tb_npc \
-       build/sta/ysyx_23060082-500MHz/ysyx_23060082.netlist.v.sim \
+     iverilog -g2012 -DNETLIST -o build/iverilog/net-iv.vvp -s tb_npc \
+       build/iverilog/sta/ysyx_23060082-500MHz/ysyx_23060082.netlist.v.sim \
        sim-iverilog/testbench/cells.v sim-iverilog/testbench/tb_npc.v
-     vvp build/iverilog/net-iv.vvp +img=build/iverilog/img.hex +img_size=30620 \
+     vvp build/iverilog/net-iv.vvp +img=build/iverilog/img/img.hex +img_size=30620 \
          +max_cycles=42400 +vcdwin +quiet
 3. 解析 VCD：先用 $var 行建 code→name 表，再找【第一个含 x 的值变化行】⇒ 那个名字就是源头：
      awk '/^\$var/{nm[$4]=$5;next} /^#/{t=$1;next}
@@ -123,8 +136,10 @@ rvalid/bvalid/wvalid 全变 X；同期 RTL（同 TB、同镜像）完全没有 X
    - 若是 xbar 的 readState/writeState（或类似状态机寄存器）没复位 ⇒ 结论就是"状态机漏复位"
    - 若是 IFU/LSU 控制器的 ar.valid/aw.valid/w.valid ⇒ 结论是"AXI 握手 valid 漏复位"
    （文档把"各状态机、流水线 valid、AXI 握手 valid、icache 行有效位"列为【必须复位】）
-★ 只有在查清并复现之后，才动 RTL 补 init；补的是状态机/valid，不要顺手给
-  lineReg/rdataReg/wTempL 这类数据寄存器加复位（面积余量只剩 13.8 µm²）
+★ 只有在查清并复现之后，才动 RTL 补 init。
+  ★ 2026-10-03 更正：当初"不要给 rdataReg 这类数据寄存器加复位"的说法已被推翻 —— `ifu.rdataReg`
+  正是"网表完全不工作"的根因(见顶部 2026-10-03 更新)，一个 `init(0)` 就修好了；`init(0)` 只是给
+  已有触发器加复位端，很便宜(本例面积 24752.36 < 25000，余量 247.6 µm²)
 ```
 
 ---
@@ -132,18 +147,19 @@ rvalid/bvalid/wvalid 全变 X；同期 RTL（同 TB、同镜像）完全没有 X
 ## 提示词 4：修完之后的完整验收链（必须全过）
 
 ```
-改 RTL 之后依次跑，全部要过（`6a6d85d` 已全部通过，数值为当时实测）：
-1. 网表 +xcheck：不再出现 X（端口含 X 周期 787→47，只剩启动瞬态）、且 AXI 事务数
+改 RTL 之后依次跑，全部要过（数值为 2026-10-03 实测，W=21 + 跳转译码字段化 + rdataReg 复位）：
+1. 网表 +xcheck：不再出现"有效事务上的 X"（只剩启动瞬态；★ 已知无害：`ysyxsoc_dis_id` 序言
+   `sw s1,28(sp)` 存了从未写过的 s1 ⇒ 1 拍 X 写，不落 UART）、且 AXI 事务数
    (ar/aw/rbeat/wbeat = 104590/48668/252778/48668) 与 RTL 一致
 2. RTL 四值仿真全量：make -C npc sim-iverilog IMG=sim-iverilog/bin/microbench-riscv32e-npc.bin
-   10/10 项 Passed + MicroBench PASS ✓（1,049,614 周期）
+   10/10 项 Passed + MicroBench PASS ✓（1,049,605 周期）
 3. 功能基准：CCACHE_DISABLE=1 make -C npc perf
-   ★ 仍然是 周期 11908252 / 指令 555445，且全部 PERF 计数器逐位不变 ✓
+   ★ 周期 11908252 / 指令 555445，全部 PERF 计数器逐位不变 ✓
 4. 时序/面积：make -C npc sta
-   ★ 面积上限 25000（nangate45）：当前 24990.966 ⇒ 余量仅 9.0 µm²，务必盯住
-   ★ 频率不是评分项，但要 >500MHz 通过（当前 slack +0.838ns ≈ 860.8 MHz；DFF 3226 不变）
-5. rtthread（新 bin）：网表跑到 RTT 自动 microbench PASS 后按 E3 收尾（2,398,028 拍）✓
-6. 别并行跑两个仿真/综合（build/ 会互相覆盖）；日志写到 npc/build/ 下
+   ★ 面积上限 25000（nangate45）：当前 24752.364 ⇒ 余量 247.6 µm²
+   ★ 频率 >500MHz 通过（当前 slack +1.005ns ≈ 1005.4 MHz）
+5. rtthread（新 bin）：RTL E3 收尾 2,398,028 拍；网表 10/10 PASS + E3 收尾 2,398,028 拍 ✓
+6. 别并行跑两个仿真/综合（build/ 会互相覆盖，尤其 `build/iverilog/img/img.hex` 是固定路径）；日志写到 npc/build/ 下
 
 【镜像怎么准备】
 cd am-kernels/benchmarks/microbench && make ARCH=riscv32e-npc
@@ -159,10 +175,11 @@ cd am-kernels/benchmarks/microbench && make ARCH=riscv32e-npc
 我的 NPC（ysyx 一生一芯，SpinalHDL RV32E）在用 iverilog 做四值仿真与网表仿真。
 npc/Makefile 里已有 sim-iverilog / sim-iverilog-netlist 两个目标，TB 在
 npc/sim-iverilog/testbench/tb_npc.v（带突发 AXI 从机、128MB pmem、只有 UART 外设、复位 50 拍）。
-网表 X 卡点已于 2026-10-01 修复（commit 6a6d85d）：根因是 LSU 的 CSR 侧控制信号
-(csrCmd/trapEnter/trapExit) 没按已复位的 io.input.valid 门控 —— 复位释放那拍 CSR 被 X 写入，
-再经前递/比较传到 exu.redirect.valid → pcFetch → AXI arvalid/araddr。修法 3 行、零新增触发器。
+网表 X 卡点修过两次：① 2026-10-01 `6a6d85d`：LSU 的 CSR 侧控制信号没按已复位的 io.input.valid
+门控(复位释放那拍 CSR 被 X 写入)；② 2026-10-03 `e3d72f4`：`ifu.rdataReg` 无复位 ⇒ X ⇒ `isJump`
+译码出 X ⇒ `stopFetch` 锁成 X ⇒ 前端永不取指(整条网表不工作，RTL 却正常)，修法 `init(0)`。
 TB 结束判据只用顶层可见量(RTL/网表通用)：E1 从地址 0 取指(microbench)、
-E3 UART 出现 "AM Panic:"(rtthread)。验收全过：网表无 X 且 AXI 计数与 RTL 一致、
-make perf 周期/指令 11908252/555445 逐位不变、make sta 面积 24990.97(<25000)。
+E3 UART 出现 "AM Panic:"(rtthread)；CI 三变量 `NETLIST=`/`CELLS=` 已支持(给了就跳过综合)。
+验收全过：网表 10/10 PASS 且 AXI 计数与 RTL 一致、make perf 周期/指令 11908252/555445 逐位不变、
+make sta 面积 24752.36(<25000) / 1005.4 MHz。
 ```

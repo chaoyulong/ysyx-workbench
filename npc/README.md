@@ -980,6 +980,10 @@ BL=1 时 `data_count` 会在读出数据后停在 1，于是**背靠背的第 2 
 npc/tools/make-ysyxsoc-patch.sh         # 本地留档/快速对比用(git diff 格式, 不入 patch/)
 ```
 
+> ★ 正式补丁里**不含 `Makefile` 与 `mill`**：上游 `Makefile` 用裸 `mill`（CI 环境的 PATH 里有 mill，
+> 所以不要改成 `./mill`；本机为了能构建把工作区的 `Makefile` 改成了 `./mill`，但**没有提交**），
+> `ysyxSoC/mill` 也只在本机存在、不入库 —— 重新生成补丁时别把这两个带上。
+
 **应用**（在纯净的 `ysyxSoC` 克隆里）：
 
 ```bash

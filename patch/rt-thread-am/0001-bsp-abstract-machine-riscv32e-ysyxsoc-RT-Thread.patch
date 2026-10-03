@@ -1,0 +1,239 @@
+From 6029c5185ef6ba09f357cad45c2b3b44e2695e00 Mon Sep 17 00:00:00 2001
+From: 23060082-ChaoYuLong <2324849716@qq.com>
+Date: Wed, 30 Sep 2026 19:03:35 +0800
+Subject: [PATCH] =?UTF-8?q?bsp/abstract-machine:=20=E6=8E=A5=E5=85=A5=20ri?=
+ =?UTF-8?q?scv32e-ysyxsoc=20=E5=B9=B3=E5=8F=B0=E5=B9=B6=E5=AE=9E=E7=8E=B0?=
+ =?UTF-8?q?=20RT-Thread=20=E4=B8=8A=E4=B8=8B=E6=96=87=E5=88=87=E6=8D=A2?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Makefile: 按 ARCH 的平台名选择链接脚本, ysyxsoc 用 extra-ysyxsoc.ld,
+  其余平台仍用 extra.ld
+- extra-ysyxsoc.ld: 新增 ysyxsoc 平台链接脚本
+- src/context.c: 实现 rt_hw_context_switch_to / rt_hw_context_switch
+  (借助 rt_thread->user_data 打包 from/to, 经 yield 走 ev_handler 切换),
+  以及 rt_hw_stack_init (用包裹函数 pack_fun + kcontext 构造初始上下文)
+- src/uart.c: 串口输入改走 io_read(AM_UART_RX), 保留 help 预置命令
+---
+ bsp/abstract-machine/Makefile         | 11 ++++-
+ bsp/abstract-machine/extra-ysyxsoc.ld | 58 ++++++++++++++++++++++
+ bsp/abstract-machine/src/context.c    | 70 +++++++++++++++++++++++++--
+ bsp/abstract-machine/src/uart.c       |  8 ++-
+ 4 files changed, 139 insertions(+), 8 deletions(-)
+ create mode 100644 bsp/abstract-machine/extra-ysyxsoc.ld
+
+diff --git a/bsp/abstract-machine/Makefile b/bsp/abstract-machine/Makefile
+index 8d70f310b..8ecf14576 100644
+--- a/bsp/abstract-machine/Makefile
++++ b/bsp/abstract-machine/Makefile
+@@ -8,7 +8,16 @@ NAME = rtthread
+ SRCS = $(shell find src -name "*.c")
+ CFLAGS += -DHAVE_CCONFIG_H -D__RTTHREAD__
+ CFLAGS += -Wno-nonnull-compare
+-LDFLAGS += -T extra.ld
++# LDFLAGS += -T extra.ld
++ARCH_SPLIT = $(subst -, ,$(ARCH))
++PLATFORM   = $(word 2,$(ARCH_SPLIT))
++# ********************** 为适应soc而修改  ********************** #
++ifeq ($(PLATFORM), ysyxsoc)
++	LDFLAGS += -T extra-ysyxsoc.ld
++else
++	LDFLAGS += -T extra.ld
++endif
++# **********************  ********************** #
+ -include $(FILE_MK)
+ -include $(AM_APPS_MK)
+ include $(AM_HOME)/Makefile
+diff --git a/bsp/abstract-machine/extra-ysyxsoc.ld b/bsp/abstract-machine/extra-ysyxsoc.ld
+new file mode 100644
+index 000000000..ed2457d15
+--- /dev/null
++++ b/bsp/abstract-machine/extra-ysyxsoc.ld
+@@ -0,0 +1,58 @@
++/*MEMORY {
++  mrom  : ORIGIN = 0x20000000, LENGTH = 4K
++  sram  : ORIGIN = 0x0f000000, LENGTH = 8K
++  psram : ORIGIN = 0x80000000, LENGTH = 4M
++  flash : ORIGIN = 0x30000000, LENGTH = 256M
++  sdram : ORIGIN = 0xa0000000, LENGTH = 128M
++}*/
++SECTIONS {
++  .data.extra : {
++    /* section information for finsh shell */
++    . = ALIGN(8);
++    _data_extra_start = .;
++    __fsymtab_start = .;
++    KEEP(*(FSymTab))
++    __fsymtab_end = .;
++    . = ALIGN(8);
++    __vsymtab_start = .;
++    KEEP(*(VSymTab))
++    __vsymtab_end = .;
++    . = ALIGN(8);
++
++    /* section information for initial. */
++    . = ALIGN(8);
++    __rt_init_start = .;
++    KEEP(*(SORT(.rti_fn*)))
++    __rt_init_end = .;
++    . = ALIGN(8);
++
++    __rt_utest_tc_tab_start = .;
++    KEEP(*(UtestTcTab))
++    __rt_utest_tc_tab_end = .;
++
++    . = ALIGN(8);
++    __am_apps_data_start = .;
++    *(__am_apps.data*)
++    *(__am_apps.sdata*)
++    __am_apps_data_end = .;
++    . = ALIGN(8);
++    _data_extra_end = .;
++  }  > sdram AT> flash
++  _data_extra_load_start = LOADADDR(.data.extra);
++}
++INSERT BEFORE .data;
++
++SECTIONS {
++  .bss.extra : {
++    . = ALIGN(8);
++    _bss_extra_start = .;
++    __am_apps_bss_start = .;
++    *(__am_apps.bss*)
++    *(__am_apps.sbss*)
++    *(__am_apps.scommon*)
++    __am_apps_bss_end = .;
++    . = ALIGN(8);
++    _bss_extra_end = .;
++  } > sdram AT> flash
++}
++INSERT BEFORE .bss;
+diff --git a/bsp/abstract-machine/src/context.c b/bsp/abstract-machine/src/context.c
+index ee38829ae..7d4608b9e 100644
+--- a/bsp/abstract-machine/src/context.c
++++ b/bsp/abstract-machine/src/context.c
+@@ -2,10 +2,36 @@
+ #include <klib.h>
+ #include <rtthread.h>
+ 
++typedef struct{
++  void (*tentry)(void *);
++  void *parameter;
++  void (*texit)(void);
++}pack_para;       // 向包裹函数传递的参数
++
++typedef struct{
++  Context ** from;
++  Context ** to;
++}pack_switch;     // 上下文切换用到的打包数据
++
++
+ static Context* ev_handler(Event e, Context *c) {
+-  switch (e.event) {
++  rt_thread_t tmp = rt_thread_self();
++  pack_switch *data_addr = (pack_switch *)(tmp->user_data);
++  Context ** from = data_addr->from;
++  Context ** to = data_addr->to;  
++
++  switch (e.event) 
++  {
++    case EVENT_YIELD:
++      if(from != 0){      // 如果为0则说明不需要传参
++        *from = c; 
++      }
++      c = *to; 
++      break;
++    case EVENT_IRQ_TIMER: break;
+     default: printf("Unhandled event ID = %d\n", e.event); assert(0);
+   }
++
+   return c;
+ }
+ 
+@@ -14,18 +40,52 @@ void __am_cte_init() {
+ }
+ 
+ void rt_hw_context_switch_to(rt_ubase_t to) {
+-  assert(0);
++  rt_thread_t tmp = rt_thread_self();                             // 获取可以存储上下文结构的位置
++  rt_ubase_t user_data = tmp->user_data;                          // 将&tmp->user_data临时存储
++  pack_switch switch_pack = {.from = 0, .to = (Context **)to};    // 将from和to存储到栈中
++  tmp->user_data = (rt_ubase_t)(&switch_pack);                    // 将from,to的存储地址放入tmp.user_data
++  yield();
++  tmp->user_data = user_data;                                     // 恢复userdata的数据
+ }
+ 
+ void rt_hw_context_switch(rt_ubase_t from, rt_ubase_t to) {
+-  assert(0);
++  rt_thread_t tmp = rt_thread_self();                                         // 获取可以存储上下文结构的位置
++  rt_ubase_t user_data = tmp->user_data;                                      // 将&tmp->user_data临时存储
++  pack_switch switch_pack = {.from = (Context **)from, .to = (Context **)to}; // 将from和to存储到栈中
++  tmp->user_data = (rt_ubase_t)(&switch_pack);                                // 将from,to的存储地址放入tmp.user_data
++  yield();  
++  tmp->user_data = user_data;                                      // 恢复userdata的数据
+ }
+ 
+ void rt_hw_context_switch_interrupt(void *context, rt_ubase_t from, rt_ubase_t to, struct rt_thread *to_thread) {
+   assert(0);
+ }
+ 
++static void pack_fun(void *arg)  // 包裹函数
++{
++  pack_para *pack = (pack_para *)arg;
++  pack->tentry(pack->parameter);
++  pack->texit();                        // 若上下文对应的内核线程从tentry返回, 则调用texit
++  printf("err in pack_fun(): should not reach here.\n"); assert(0); //  RT-Thread会保证代码不会从texit中返回
++}
++
+ rt_uint8_t *rt_hw_stack_init(void *tentry, void *parameter, rt_uint8_t *stack_addr, void *texit) {
+-  assert(0);
+-  return NULL;
++  rt_uint8_t *stk;
++  pack_para *pack;
++  Context *cp;
++  Area kstack;
++
++  stk  = (rt_uint8_t *)RT_ALIGN_DOWN((uintptr_t)stack_addr, 8);
++  pack = (pack_para *)(stk - sizeof(pack_para));
++
++  pack->tentry    = tentry;
++  pack->parameter = parameter;
++  pack->texit     = texit;
++
++  kstack.start = 0;
++  kstack.end = stk - sizeof(pack_para);
++
++  cp = kcontext(kstack, pack_fun, (void *)pack);
++
++  return (void *)cp;
+ }
+diff --git a/bsp/abstract-machine/src/uart.c b/bsp/abstract-machine/src/uart.c
+index e4eb86689..80fef0ce0 100644
+--- a/bsp/abstract-machine/src/uart.c
++++ b/bsp/abstract-machine/src/uart.c
+@@ -11,6 +11,8 @@
+ #include <rtthread.h>
+ #include <am.h>
+ #include <klib.h>
++#include <klib-macros.h>
++
+ 
+ #define UART_DEFAULT_BAUDRATE 115200
+ 
+@@ -37,8 +39,10 @@ static int _uart_putc(struct rt_serial_device *serial, char c) {
+ }
+ 
+ static int _uart_getc(struct rt_serial_device *serial) {
+-  static const char *p = "help\ndate\nversion\nfree\nps\npwd\nls\nmemtrace\nmemcheck\nutest_list\n";
+-  return (*p != '\0' ? *(p ++) : -1);
++  // static const char *p = "help\ndate\nversion\nfree\nps\npwd\nls\nmemtrace\nmemcheck\nutest_list\n";
++  // return (*p != '\0' ? *(p ++) : -1);
++  static const char *p = "help\nam_microbench test\n";
++  return (*p != '\0' ? *(p ++) : io_read(AM_UART_RX).data);
+ }
+ 
+ const struct rt_uart_ops _uart_ops = {
+-- 
+2.55.0
+

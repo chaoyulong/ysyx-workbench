@@ -973,25 +973,29 @@ BL=1 时 `data_count` 会在读出数据后停在 1，于是**背靠背的第 2 
 
 **背景**：`ysyxSoC` 的远端是**官方仓库** `OSCPU/ysyxSoC`——本地所有改动**推不上去** ✗，重新 clone 就会全部丢失 ✗，其中包括上面**两个连环修复**。丢了之后"突发第二拍全 0"会**神秘复现** ✗
 
-**做法**：把改动固化成 patch，放在**本项目**（`npc` 的远端是自己的仓库 ✓ 推得上去 ✓）：
+**做法**：把改动固化成补丁，**放进提交仓库的 `patch/ysyxSoC/`**（CI 会从上游重新 clone `ysyxSoC` 再打这个补丁 ⇒ 复现本地状态）：
 
 ```
-npc/ysyxSoC-local.patch            # 补丁本体（自解释，头部记录基线 commit）
-npc/tools/make-ysyxsoc-patch.sh    # 重新生成（改完 ysyxSoC 后再跑一次即可）
+<提交仓库>/patch/ysyxSoC/0001-*.patch   # ★ CI 用的正式补丁(git format-patch 格式, 已剔除 firtool 二进制)
+npc/tools/make-ysyxsoc-patch.sh         # 本地留档/快速对比用(git diff 格式, 不入 patch/)
 ```
+
+> ★ 正式补丁里**不含 `Makefile` 与 `mill`**：上游 `Makefile` 用裸 `mill`（CI 环境的 PATH 里有 mill，
+> 所以不要改成 `./mill`；本机为了能构建把工作区的 `Makefile` 改成了 `./mill`，但**没有提交**），
+> `ysyxSoC/mill` 也只在本机存在、不入库 —— 重新生成补丁时别把这两个带上。
 
 **应用**（在纯净的 `ysyxSoC` 克隆里）：
 
 ```bash
 cd ysyxSoC
-git checkout <patch 头部记录的基线 commit>       # 当前为 df38a4d9 (origin/ysyx6)
-git apply ../npc/ysyxSoC-local.patch
+git am <提交仓库>/patch/ysyxSoC/0001-*.patch     # 正式补丁是 format-patch 格式 ⇒ 用 git am
 ```
 
 **重新生成**：
 
 ```bash
-npc/tools/make-ysyxsoc-patch.sh                  # 或 BASE=<其它基线> ... 
+cd ysyxSoC && git format-patch origin/ysyx6 -o <提交仓库>/patch/ysyxSoC   # 正式(需先提交改动)
+npc/tools/make-ysyxsoc-patch.sh                                          # 本地 diff 版(含未提交改动)
 ```
 
 **有意排除**：

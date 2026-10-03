@@ -8,8 +8,11 @@
 !/npc/*
 !Makefile
 !README.md
+!使用说明.md
 !.gitignore
 !init.sh
 /fceux-am
 /nvboard
 /am-kernels
+/ysyxSoC
+!/patch/**

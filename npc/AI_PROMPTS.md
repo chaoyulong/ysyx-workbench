@@ -318,7 +318,7 @@ npc/ 内部结构:
 三、常用命令（★ 是最常用的）
 ════════════════════════════════════
 cd npc
-  ./mill playground.compile        ★ 只做 Scala 编译/elaborate 检查(最快, 改 RTL 后先跑这个)
+  mill playground.compile          ★ 只做 Scala 编译/elaborate 检查(最快, 改 RTL 后先跑这个)
   make verilog                     ★ 生成 RTL(会重新 elaborate); 失败时先看 build/v.log
   make perf                        ★ ysyxsoc 平台跑 microbench 并打印全部性能计数器
   make sta                         ★ yosys-sta(nangate45, 500MHz): 面积 + slack, 结果在 build/sta/

@@ -15,4 +15,5 @@
 /nvboard
 /am-kernels
 /ysyxSoC
+/rt-thread-am
 !/patch/**

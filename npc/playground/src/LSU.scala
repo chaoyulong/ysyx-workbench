@@ -117,10 +117,12 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
     }
   }
   // ================================ 用于握手的部分 ================================ //
+  val fenceWait = io.input.fenceI && dcache.io.writeBusy                    // fencei指令时要等待写完成
   // willValid的意义就是当前周期就可以完成任务
-  val willValid = trapEnter || (rdEnd || wrEnd) ||                       // 有异常，或需要访存并且访存成功
+  val willValid = fenceWait &&                                              // 等待写完成
+                  (trapEnter || (rdEnd || wrEnd) ||                         // 有异常，或需要访存并且访存成功
                   (state === LsuState.Done) ||
-                  (state === LsuState.Idle && io.input.valid && !needMem)
+                  (state === LsuState.Idle && io.input.valid && !needMem))  // 不需访存，直接一拍通过
   io.output.valid := io.input.valid && willValid  
 
   // ================================ 数据传输部分 ================================ //

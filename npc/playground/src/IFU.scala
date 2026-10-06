@@ -51,8 +51,10 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
 
   // ================================ 指令缓存 (icache) ================================ //
   val stopFetch   = RegInit(False)                    // 如果是直接jal与jalr指令，直接等待pcNext反馈比取pc+4更快
+
   val pcMisaligned= pcFetch(1) || pcFetch(0)          // 未对齐异常
   val rspFault    = icache.io.rspErr                  // AXI响应异常
+  val missFault   = rspFault && (state === IfuState.WaitMem) 
   val pfFault     = False                             // MMU接口,页错误，未实现
 
   val excStop     = RegInit(False)                    // 出现异常时要暂停流水线，直到重定向信号到来，也就是进入__am_irq_handle 
@@ -61,7 +63,7 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
 
   // 复位完成，并且没有指令要发送，发出请求,如果是io.redirect.valid导致的打断，此时icache应该不处于Idle状态，icache.io.reqIn.ready会为低
   val tryFetch    = (state === IfuState.Idle) && !stopFetch && !excStop          
-  val fetchExc    = tryFetch && (pcMisaligned || rspFault || pfFault)                 // 有异常
+  val fetchExc    = (tryFetch && (pcMisaligned || rspFault || pfFault)) || missFault  // 有异常
 
   when(io.redirect.valid) {
     excStop := False
@@ -75,7 +77,8 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
   icache.io.reqIn.pc    := pcFetch
 
   // rdataReg需要init(0)，因为在网表仿真中，初始状态可能恰好使能了isJump导致停止取指
-  val rdataReg           = RegNextWhen(icache.io.rspOut.rdata, icache.io.rspOut.valid) init(0)
+  val rdataTmp           = Mux(rspFault, U"32'h0", icache.io.rspOut.rdata)            // 如果有错误，读取数据就应该清0
+  val rdataReg           = RegNextWhen(rdataTmp, icache.io.rspOut.valid) init(0)
   val rspIsCurrentHit    = icache.io.reqIn.fire && icache.io.rspOut.valid             // icache直接命中
   // =================================== 预先译码出跳转指令 =================================== //
   val instrOut  = io.output.instr
@@ -122,9 +125,9 @@ case class ysyx_23060082_IFU(config: CpuConfig = CpuConfig()) extends Component 
         
   // ================================ 数据传输部分 ================================ //
   val normalValid = ((state === IfuState.Done) ||                                     // icache已经取出指令，或刚刚取出，或同一拍命中。并且没有重定向
-                     (icache.io.rspOut.valid && state === IfuState.WaitMem) || 
+                     (icache.io.rspOut.valid && state === IfuState.WaitMem && !rspFault) || 
                       rspIsCurrentHit) && !io.redirect.valid
-  val normalInstr = Mux(icache.io.rspOut.valid, icache.io.rspOut.rdata, rdataReg)
+  val normalInstr = Mux(icache.io.rspOut.valid, rdataTmp, rdataReg)
 
   io.output.valid := normalValid || fetchExc                                          // 正常有效信号，或者取指错误
   io.output.pc    := Mux(pcMisaligned || icache.io.reqIn.fire, pcFetch, pcOfReq)      // 同拍命中，直接用pcFetch，否则用请求时锁存的pc,未对齐异常在要请求访存时就能发现

@@ -65,7 +65,7 @@ case class ysyx_23060082(config: CpuConfig = CpuConfig()) extends Component {
     
     when(flush){                                  // 冲刷寄存器，优先级最高
       validReg := False
-    } elsewhen(prevOut.fire && !block) {          // 上游握手成功，说明当前数据处于有效状态，并且
+    } elsewhen(prevOut.fire && !block) {          // 上游握手成功，并且不需要阻挡，说明当前数据处于有效状态
       validReg := True
     } elsewhen(thisOut.fire) {                    // 下游握手成功，说明当前数据已经无用，进入无效状态
       validReg := False

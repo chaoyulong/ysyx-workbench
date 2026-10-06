@@ -320,11 +320,16 @@ module tb_npc;
           $display("[TB][XCHK] ★★ 第一次【有效读事务上出现 X 地址】: cyc=%0d araddr=%h len=%0d arsize=%b arburst=%b",
                    cycles, io_master_araddr, io_master_arlen, io_master_arsize, io_master_arburst);
         end
-        // E1: 程序 ebreak 且 mtvec=0 ⇒ 从地址 0 取指（正常程序不会），视为已退出
+        // E1: 取指地址 0 (araddr==0) ⇒ 程序已退出(正常程序不会跑到这里)。两条来源:
+        //   ① mtvec 仍是复位值 0 ⇒ trap 直跳地址 0;
+        //   ② 程序调了 cte_init(mtvec = __am_asm_trap), 但 handler 主动把 mepc 置 0
+        //      ⇒ mret 回到地址 0, 见 am/src/riscv/{npc,ysyxsoc}/trm.c 的 user_handler_default
+        //   ⚠ 网表仿真里 lsu_commit_trap 恒 0(flatten 掉了) ⇒ 只剩这条判据可用,
+        //     所以情况 ② 里那句 `prev->mepc = 0` 是【必须】的, 不能删
         if (io_master_araddr == 32'h0000_0000) begin
           $display("");
           $display("================ [TB] 程序结束 (检测到 trap 到 0) ================");
-          $display("  E1: 从地址 0 取指 ⇒ 程序已 trap 退出 (mtvec 未被程序写过, 保持复位值 0)");
+          $display("  E1: 从地址 0 取指 ⇒ 程序已 trap 退出 (mtvec=0 直跳, 或 handler 主动将 mepc 置 0)");
           $display("  共 %0d 个周期, UART 输出 %0d 字节, AXI: ar=%0d aw=%0d rbeat=%0d wbeat=%0d",
                    cycles, uart_bytes, ar_fires, aw_fires, r_beats, w_beats);
           $display("==============================================================");

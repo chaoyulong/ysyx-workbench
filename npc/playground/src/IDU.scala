@@ -23,7 +23,7 @@ case class RfCtrl() extends Bundle {  // WBU中消耗的控制信号
 }
 
 case class AluCtrl() extends Bundle { // EXU中消耗的控制信号
-  val aluAsrc = Bool()                // 选择ALU输入端A的来源。为0时选择rs1，为1时选择PC。
+  val aluAsrc = Bool()                // 选择ALU输入端A的来源。为0时选择rs1，为1时选择PC
   val aluBsrc = UInt(2 bits)          // 选择ALU输入端B的来源。为00时选择rs2，为01时选择imm，为10时选择常数4（用于跳转时计算返回地址PC+4）
   val aluCtr  = UInt(4 bits)          // 选择ALU执行的操作
   val branch  = UInt(3 bits)          // 说明分支和跳转的种类，用于生成最终的分支控制信号
@@ -80,6 +80,7 @@ case class ysyx_23060082_IDU(config: CpuConfig = CpuConfig()) extends Component 
     val wbuForward = in(forwardData())
   }
 
+  val dataValid = io.input.valid                  // 当前的输入数据有效的标志
   val instr   = io.input.instr
   val decoder = ysyx_23060082_Decoder(config)
   decoder.instr           := instr
@@ -138,7 +139,7 @@ case class ysyx_23060082_IDU(config: CpuConfig = CpuConfig()) extends Component 
   val stall     = (rs1Outcome === FwdOutcome.Wait) || (rs2Outcome === FwdOutcome.Wait)
   val willValid = !stall
 
-  io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
+  io.output.valid := dataValid && willValid    // dataValid为数据有效信号，是寄存器信号
   // ================================ 数据传输部分 ================================ //
   io.rfRead.addr1 := rfReadAddr1
   io.rfRead.addr2 := rfReadAddr2

@@ -136,7 +136,7 @@ case class ysyx_23060082_Decoder(config: CpuConfig = CpuConfig()) extends Compon
   io.ctrl.rfCtrl.mem2reg     := i_lb | i_lh | i_lw | i_lbu | i_lhu
   io.ctrl.rfCtrl.csr2reg     := csrWb
 
-  io.ctrl.aluCtrl.aluAsrc := i_auipc | i_jal | i_jalr         // 0：选通rdata1，1：选通PC。
+  io.ctrl.aluCtrl.aluAsrc := i_auipc | i_jal | i_jalr         // 0：选通rdata1，1：选通PC       
   io.ctrl.aluCtrl.aluBsrc := Mux(typeR | typeB, U"00",        // 选通rdata2
                              Mux(i_jal  | i_jalr, U"10",      // 选通4，用于跳转
                              U"01" ))                         // 选通imm

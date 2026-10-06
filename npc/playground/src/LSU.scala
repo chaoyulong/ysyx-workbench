@@ -70,8 +70,8 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   val rdHitNow = needRead && (state === LsuState.Idle) && dcache.io.readHit
   val rdEnd    = ((state === LsuState.WaitMem) && dcache.io.rspOut.valid && io.input.rfCtrl.mem2reg) || rdHitNow
 
-  val wrNow = needWrite && (state === LsuState.Idle) && dcache.io.writeAccept       // 可以后台写入
-  val wrEnd = ((state === LsuState.WaitMem) && dcache.io.rspOut.valid && io.input.memCtrl.memWr) || wrNow
+  // val wrNow = needWrite && (state === LsuState.Idle) && dcache.io.writeAccept       // 可以后台写入
+  val wrEnd = ((state === LsuState.WaitMem) && dcache.io.rspOut.valid && io.input.memCtrl.memWr)
   dataProcess.io.rdata := dcache.io.rspOut.readData   // dcache 内已有数据寄存器, 不需要再寄存
 
   // ================================ CSR寄存器 ================================ //
@@ -96,10 +96,10 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
           when(io.output.fire) { state := LsuState.Idle }
           .otherwise           { state := LsuState.Done }
         } 
-        .elsewhen(wrNow) {                                                        // 不等写入完成就开始握手，让写操作在后台运行
-          when(io.output.fire) { state := LsuState.Idle } 
-          .otherwise           { state := LsuState.Done } 
-        } 
+        // .elsewhen(wrNow) {                                                        // 不等写入完成就开始握手，让写操作在后台运行
+        //   when(io.output.fire) { state := LsuState.Idle } 
+        //   .otherwise           { state := LsuState.Done } 
+        // } 
         .otherwise {state := LsuState.WaitMem}
       }
       .otherwise{state := LsuState.Idle}

@@ -70,55 +70,55 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   }
   val state = RegInit(DcacheState.Idle)
 
-  val bPending  = RegInit(False)          // 记录还有挂在后台的写事务
-  val writeAddr = Reg(UInt(21 bits))      // 写地址，不用存储全部位
-  val writeCacheable = Reg(Bool())        // 是否是内存地址，如果不是就不能挂后台
+  // val bPending  = RegInit(False)          // 记录还有挂在后台的写事务
+  // val writeAddr = Reg(UInt(21 bits))      // 写地址，不用存储全部位
+  // val writeCacheable = Reg(Bool())        // 是否是内存地址，如果不是就不能挂后台
 
   val reqRead  = io.reqIn.valid && io.reqIn.read
   val reqWrite = io.reqIn.valid && io.reqIn.write
 
   val readHit  = (state === DcacheState.Idle) && reqRead && hit             // 读地址命中cache
 
-  val sameAddr  = io.reqIn.addr(22 downto 2) === writeAddr                  // 判断是否是同一地址，后台写的话，就不能再读同一地址，需要等待写完
-  val needWait  = bPending && (reqWrite || (reqRead && sameAddr && !hit))   // 后台有写事务时，再次的写请求，或对相同地址的读，需要等待之前的写完成
+  // val sameAddr  = io.reqIn.addr(22 downto 2) === writeAddr                  // 判断是否是同一地址，后台写的话，就不能再读同一地址，需要等待写完
+  // val needWait  = bPending && (reqWrite || (reqRead && sameAddr && !hit))   // 后台有写事务时，再次的写请求，或对相同地址的读，需要等待之前的写完成
 
-  val writeAccept = (state === DcacheState.Idle) && reqWrite && !needWait   // 写请求被接受，这个是在valid信号为1的同时就能判断出来的
-  val readAccept  = (state === DcacheState.Idle) && reqRead  && !needWait
-  when(writeAccept) {
-    writeAddr       := io.reqIn.addr(22 downto 2)
-    writeCacheable  := cacheable
-  }
+  val writeAccept = (state === DcacheState.Idle) && reqWrite// && !needWait   // 写请求被接受，这个是在valid信号为1的同时就能判断出来的
+  val readAccept  = (state === DcacheState.Idle) && reqRead  //&& !needWait
+  // when(writeAccept) {
+  //   writeAddr       := io.reqIn.addr(22 downto 2)
+  //   writeCacheable  := cacheable
+  // }
 
-  val writeSent     = !axi4Ctrler.io.axi4.aw.valid && !axi4Ctrler.io.axi4.w.valid   // valid不为高，说明发送完成
-  val writePostDone = (state === DcacheState.Write) && writeSent && writeCacheable  // 写通道发送完成，并且访问的不是确实是存储，此时就可以挂后台
+  // val writeSent     = !axi4Ctrler.io.axi4.aw.valid && !axi4Ctrler.io.axi4.w.valid   // valid不为高，说明发送完成
+  // val writePostDone = (state === DcacheState.Write) && writeSent && writeCacheable  // 写通道发送完成，并且访问的不是确实是存储，此时就可以挂后台
 
-  when(axi4Ctrler.io.axi4.b.fire) {   // b信号返回，后台事务完成
-    bPending := False
-  } elsewhen(writePostDone) {         // 开始挂起
-    bPending := True
-  } otherwise {
-    bPending := bPending
-  }
+  // when(axi4Ctrler.io.axi4.b.fire) {   // b信号返回，后台事务完成
+  //   bPending := False
+  // } elsewhen(writePostDone) {         // 开始挂起
+  //   bPending := True
+  // } otherwise {
+  //   bPending := bPending
+  // }
 
   // 读的时候由于会阻塞，不会产生写信号，但是在后台写的时候下一条指令可能会产生读信号
   when(state === DcacheState.Idle) {
-    when(reqRead && !hit && !needWait)    { state := DcacheState.ReadMiss }         // 读缺失，没有命中但是不需要阻塞等待，直接向控制器发出读信号
-    .elsewhen(reqWrite && !needWait)      { state := DcacheState.Write    }         // 请求写，并且不需要阻塞等待
+    when(reqRead && !hit)    { state := DcacheState.ReadMiss }         // 读缺失，没有命中但是不需要阻塞等待，直接向控制器发出读信号
+    .elsewhen(reqWrite)      { state := DcacheState.Write    }         // 请求写，并且不需要阻塞等待
     .otherwise                            { state := DcacheState.Idle     }
   } elsewhen(state === DcacheState.ReadMiss) {                                      // 读只能等到结束
     when(axi4Ctrler.io.readEnd)           { state := DcacheState.Idle     }
     .otherwise                            { state := DcacheState.ReadMiss }
   } elsewhen(state === DcacheState.Write) {
-    when(axi4Ctrler.io.writeEnd || writePostDone) { state := DcacheState.Idle  }    // 读取完成，或者可以挂后台，就返回idle状态
+    when(axi4Ctrler.io.writeEnd) { state := DcacheState.Idle  }    // 读取完成，或者可以挂后台，就返回idle状态
     .otherwise                                    { state := DcacheState.Write }
   }
 
   val readMissDone = (state === DcacheState.ReadMiss) && axi4Ctrler.io.readEnd      // 读事务完成
-
+  val writeDone    = (state === DcacheState.Write) && axi4Ctrler.io.writeEnd
   // ================================ 响应 ================================ //
-  io.reqIn.ready  := (state === DcacheState.Idle) && !needWait                      // 如果空闲且不用阻塞，就说明可以接受信号
-  io.rspOut.valid := readHit || readMissDone || writeAccept                         // 读命中，或者读缺失但完成，或者请求被接受
-  io.writeBusy    := (state === DcacheState.Write) || bPending                      // fence.i要等真正写入进存储
+  io.reqIn.ready  := (state === DcacheState.Idle)                      // 如果空闲且不用阻塞，就说明可以接受信号
+  io.rspOut.valid := readHit || readMissDone || writeDone                        // 读命中，或者读缺失但完成，或者请求被接受
+  io.writeBusy    := (state === DcacheState.Write)                     // fence.i要等真正写入进存储
   io.writeAccept  := writeAccept
 
   val readDataReg     = RegNextWhen(axi4Ctrler.io.readData, readMissDone)

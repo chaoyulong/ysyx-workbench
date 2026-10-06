@@ -49,6 +49,7 @@ make sta STA_PDK=icsprout55  # 换流片工艺综合
 | fdc70cc | 修掉网表 md5 失败的**真根因**：IDU 对"用不到的 rs"把读出的数据强制为 0(I/U/J 型的立即数位不再被当寄存器号读到未初始化的 x3/x4，并撤掉 56856d7 三个非因果的复位): 网表 microbench/rtthread 均 10/10 PASS, **周期/指令/全部计数器逐位不变**; 面积 24673.89→**24644.63**, slack +0.998ns [nangate45] | 11908252 | 555445 | 0.0466 | 997.9 | 11.93 | 24644.63 | 14200718 | 20.78 | 8479070 | 7395186 | 115.76 | 1083884 | 19.04 | 4.81/21.35 | 7161239 | 52.0 | 23.4 | 17.9 | 6.7 | 0.0 | 0.0 | 92.24 | 59.64 |
 | 053dd11 | dcache `writeAddr` 同字 guard 位宽 26→**29**(比较 `addr[30:2]`; **重扫 W=20~30 共 11 点取频率最优**): 997.9→**1011.2 MHz**(+13.3), 面积 24644.63→**24797.85**(余量 202), **周期/指令/全部计数器逐位不变**、RTL/网表两 bin 四值全过; ⚠ 收益属**映射抽签**(11 次关键路径端点都不在 dcache 比较器上, 面积也不随位宽单调) [nangate45] | 11908252 | 555445 | 0.0466 | 1011.2 | 11.78 | 24797.85 | 14200718 | 20.78 | 8479070 | 7395186 | 115.76 | 1083884 | 19.04 | 4.81/21.35 | 7161239 | 52.0 | 23.4 | 17.9 | 6.7 | 0.0 | 0.0 | 92.24 | 59.64 |
 | b54cf81 | IFU 跳转预译码**字段化**(`M"..."`→`instrOut(6:0)`/`(14:12)` 字段比较) + **修掉"死网表"根因: `ifu.rdataReg` 加 `init(0)`**(其 X 经 isJump 把 stopFetch 锁成 X ⇒ 前端永不取指) + dcache sameAddr guard 重扫 11 点取 **W=21**: 频率 1005.4 MHz, 面积 24752.36; **周期/指令/全部计数器逐位不变**, RTL/网表两 bin 四值全过; ⚠ 频率优势属映射抽签 [nangate45] | 11908252 | 555445 | 0.0466 | 1005.4 | 11.84 | 24752.36 | 14200718 | 20.78 | 8479070 | 7395186 | 115.76 | 1083884 | 19.04 | 4.81/21.35 | 7161239 | 52.0 | 23.4 | 17.9 | 6.7 | 0.0 | 0.0 | 92.24 | 59.64 |
+| aa5cd4d | **store 访存错误精确归因(写全同步: 写在 `b` 回来之前不退休)** + 取指总线错误(`rspErr`)真正变成异常 + `io.input.valid` 统一别名 `dataValid` + 剔 23 个死寄存器: 周期 11,908,252→**12,306,266(+3.34%)**、面积 24,397.26→**24,352.03**(余量 648)、频率 1016.6 MHz; ⚠ 周期增量是"**精确异常**"的代价 —— 单发射顺序核上 posted 写与精确异常不可兼得(除非加 pc 锁存或回滚); 取指/别名两处**周期逐位不变** [nangate45] | 12306266 | 556871 | 0.0453 | 1016.6 | 12.10 | 24352.03 | 14532261 | 20.50 | 8563090 | 7481307 | 117.17 | 1081783 | 18.91 | 4.80/4.51 | 7593202 | 52.0 | 23.4 | 17.9 | 6.7 | 0.0 | 0.0 | 92.61 | 58.10 |
 
 ## 记录步骤
 
@@ -529,3 +530,54 @@ make sta    # 面积 24777.368、setup 最差 0.932ns、VIOLATED 0
 - **修复**（`LSU.scala`，零新增触发器）：CSR 侧三条控制信号一律与已复位的 `io.input.valid` 相与 —— `csrCmd = Mux(trapEnter || !valid, 0, ...)`、`trapEnter = valid && trapEnter`、`trapExit = valid && trapExit`。
 - **验收**：网表 X 消失（端口含 X 周期 787→47，且只剩启动瞬态、无有效事务上的 X）；网表全量 microbench 10/10 PASS、UART 539B、AXI `ar/aw/rbeat/wbeat = 104590/48668/252778/48668` 与 RTL 逐位一致；rtthread（新 bin）网表跑到 RTT 自动 microbench PASS 后按"UART 出现 `AM Panic:`"收尾；`make perf` / `make sta` 见上表行。
 - **残留（协议内正常，刻意不动）**：`mepc`、`regFile.rf_3/rf_4`、`clint.wStrbFullReg` 在窗口起点仍是 X —— 它们只会在"先写后读"的协议保证下被选中，不会逃逸到控制路径；给它们加复位要 32/512 个触发器，远超 9 µm² 的面积余量。
+
+### aa5cd4d：store 访存错误的**精确归因**（写全同步，周期 +3.34%）+ 取指总线错误修正
+
+#### 1. 问题：挂后台的写让错误"找不到主人"
+
+`dcache` 的写穿是**挂后台**（posted）的：`aw/w` 发完就回 `Idle`（`writePostDone`），而 AXI 的 `b` 响应要 ~19 拍后才回来；同时 `LSU` 还有 `wrNow` 快路径，store 在 dcache **接受请求那一拍**就退休。
+⇒ `b.fire` 报错时 store 早已离开 LSU，`dcache.writeErr` 被算到"**当时恰好在 LSU 的那条无辜指令**"头上：`mepc`/`mcause` 全错，而且那条无辜指令自己的访存还会被 `!trapEnter` 掐掉。
+
+#### 2. 为什么"锁存 pc 再上报"也不行 —— posted 写与精确异常不可兼得
+
+最省周期的修法是锁存 `storePc` + 延迟上报（约 33 FF ≈ 150 µm²，而当时面积余量只有 247.6）。
+但 **`b` 回来之前已经有十几条更年轻的指令退休了**（实测 `LSU mem wr avg = 18.91` 拍）⇒ 重定向回 `storePc` 会**重放**它们；而 AM 的 `__am_irq_handle` 对 cause 0~19 做 `mepc += 4`，所以实际是"跳过出错的那条 store、把它后面**已经执行过**的指令再执行一遍" ⇒ **UART 会打印两次**等非幂等副作用。这在体系结构上属于**不精确异常**，违反 RISC-V 对同步异常的要求。
+
+> **结论：单发射顺序核上，"posted 写"与"精确异常"不可兼得**（除非加 store buffer + 回滚/ROB）。要精确，store 就必须等到 `b`。
+
+#### 3. 做法（回到 `1d85319` 的同步语义）
+
+- `dcache`：`writePostDone = False` ⇒ `Write` **只由 `writeEnd`(=`b.fire`)退出**
+- `dcache`：`io.rspOut.valid` 恢复三项 —— `readHit || readMissDone || writeDone`（上一版这里是 `writeAccept`，导致 LSU 的 `wrEnd` 分支**永远等不到**，是死逻辑）
+- `LSU`：去掉 `wrNow` 快路径，所有写都进 `WaitMem` 等 `wrEnd`（`= rspOut.valid && needWrite`）⇒ 出错时 store 还在 LSU，`trapEnter` 与 `willValid` **同拍** ⇒ `mepc` 就是出错那条 store 自己的 pc ✓
+
+顺带（**纯面积**）：整套同址顺序性 guard 不再需要 —— 删 `bPending`(1) / `writeAddr`(21) / `writeCacheable`(1) / `sameAddr` / `needWait` / `writeSent` / `writePostDone` = **−23 个触发器**。
+
+`fence.i`：写全同步后 dcache 在 fence 进入 LSU 时必然已空闲 ⇒ `writeBusy` 恒假 ⇒ 去掉 `fenceWait` 与 `redirect.valid` 里的 `!writeBusy`（**两处一起删**，否则前提不一致：只留 `fenceWait` 会出现"指令不退休但重定向照发"，把清 icache 提到写落地之前 ✗）。
+
+#### 4. 取指总线错误的**死逻辑**（同一个 bug 家族）
+
+```scala
+// 改前：tryFetch 要求 state===Idle，而 rspErr 只在缺失完成那一拍出现（此时 state 必然是 WaitMem）
+val fetchExc = tryFetch && (pcMisaligned || rspFault || pfFault)   // ⇒ rspFault 这一项恒为假 ✗
+```
+⇒ 取指总线错误**永远不会变成异常**；更糟的是 `rdataReg` 会锁存错误拍的数据，下一拍 `Done` 状态又把它当指令发给 IDU ⇒ **执行垃圾**。
+修法：`missFault = rspFault && state===WaitMem` 与 `tryFetch && (…)` **平级 OR**；`rdataTmp = Mux(rspFault, 0, rspData)` 同时用于 `rdataReg` 与 `normalInstr`；`normalValid` 的 `WaitMem` 项加 `!rspFault`；icache 侧填回与 `validReg` 都加 `!rspErr`。
+
+#### 5. 频率：三条**被实测否决**的路线（留档，别再走）
+
+| 路线 | 预期 | 实测 |
+|---|---|---|
+| `pcNext` 双加法器并行（把"选择端"挪到加法器**后面**） | 砍掉"选择端 → 32 位 mux → 32 位加法器" | ✗ **频率反而降低** + 面积涨。原因：`pcBsrc` 只依赖 `branch`（流水寄存器输出）**本来就早到**；真正晚到的是 `pcAsrc`（依赖 ALU 的 `less/zero`）—— 原作者的注释里已写明这一点 |
+| 复制控制位寄存器（`aluAsrc` 拆两份）降扇出 | 消掉 `max_FO=24` 触发的 `BUF_X16`（占最差路径 0.062 ns ≈ 6%） | ✗ **无效**：DFF 数 3198→3198 没涨 ⇒ yosys 的 `share -aggressive`/`opt_merge` 把两个**同 D 同使能**的相同触发器**合并回一个**；网表里 `aluAsrc2` 出现 **0 次**，那条 net 上仍有 `BUF_X8` |
+| `lessFlag = a < b` 替掉 `carryFlag ^ subORadd` | 想给 `less` 找"逐位归约"的旁路（像 `zeroFlag` 那样） | ✗ 语义错两处（`adderDataB` 在减法时**已取反**；`<` 只给无符号）+ 结构等价（`<` 的本质就是 `a + ~b + 1` 的借位 ⇒ 同一个电路，甚至可能多一个 32 位加法器） |
+
+⇒ 当前最差路径是 **`EXU 分支解析 → IFU 取指重定向`**（约 16 级；端点 `ifu.stopFetch_reg_p` / 其别名 `io_readAddr_11`，三次数值 1.002 / 1.009 / 0.946 ns 都落在这一族上）⇒ 想再提只能**并行化加法器/比较器（花面积）**或**打拍（伤周期）**，两者都不划算。
+
+#### 6. 验收（nangate45）
+
+- `make perf`：**周期 12,306,266 / 指令 556,871 / IPC 0.0453**；MicroBench **10/10 PASS**；difftest **HIT GOOD TRAP** @ `0xa00056b4` ✓
+- `make sta`：**1016.649 MHz**（`ifu.stopFetch_reg_p` 0.946 ns，slack +1.016）、DFF **3198**、面积 **24,352.034**（余量 **647.97**）✓
+- 周期增量归因：11,908,252 → 12,306,266 = **+398,014（+3.34%）**，全部来自"写不再挂后台"（撤销 posting 本身约 +290,202，其余来自 LSU 也等 `b` 后非访存指令无法再与写重叠）
+- 另两处（取指 `rspErr`、`dataValid` 别名）**周期/指令/全部计数器逐位不变** ✓
+- 两个平台都注册了默认中断 handler（打印 `mcause`）后，`sim-iverilog` 与 `sim-iverilog-netlist` 的收尾判据都验过：RTL 走"ebreak 提交"、网表走 "E1 从地址 0 取指"（靠 handler 里 `prev->mepc = 0`）✓

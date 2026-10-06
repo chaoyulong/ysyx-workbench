@@ -1,5 +1,51 @@
 # NPC RISC-V32E CPU
 
+## 2026-10-06 store 访存错误的**精确归因**（写全同步）+ 取指总线错误修正 + `dataValid` 别名（`aa5cd4d`：1016.6 MHz；周期 12,306,266）
+
+### 1. ★ 真 bug：store 的访存错误算到了**别的指令**头上
+
+`dcache` 的写穿原来挂后台（`aw/w` 发完就回 `Idle`），而 LSU 还有 `wrNow` 快路径 —— store 在 dcache **接受请求那一拍**就退休，可 AXI 的 `b` 要 ~19 拍后才回来。于是 `b.fire` 的 `writeErr` 只能"就地"归因给**当时恰好在 LSU 的无辜指令**：`mepc`/`mcause` 全错，而且那条指令自己的访存还会被 `!trapEnter` 掐掉 ✗。
+
+同一家族还有一处**死逻辑**在 IFU：
+
+```scala
+// 改前：tryFetch 要求 state===Idle，而 rspErr 只在缺失完成那一拍出现（此时必然 WaitMem）
+val fetchExc = tryFetch && (pcMisaligned || rspFault || pfFault)   // ⇒ rspFault 恒为假 ✗
+```
+⇒ 取指总线错误**永远不会变成异常**；而 `rdataReg` 会把错误拍的数据锁存，下一拍被 `normalValid` 当指令发给 IDU ⇒ **执行垃圾**。
+
+### 2. 为什么不用"锁存 pc 再上报"（那条省面积又省周期的路）
+
+锁存 `storePc` + 延迟上报 ≈ 33 FF ≈ 150 µm²、**周期零代价**，看起来很划算。但 `b` 回来之前**已经有十几条更年轻的指令退休了**（实测 `LSU mem wr avg = 18.91` 拍）⇒ 重定向回 `storePc` 会**重放**它们；而 AM 的 `__am_irq_handle` 对 cause 0~19 做 `mepc += 4`，所以实际是"跳过出错的那条 store、把它后面**已经执行过**的指令再执行一遍" ⇒ **UART 会打印两次**等非幂等副作用。
+
+> **单发射顺序核上，"posted 写"与"精确异常"不可兼得**（除非加 store buffer + 回滚）。要精确，store 就必须等到 `b`。
+
+### 3. 做法（回到 `1d85319` 的同步语义）
+
+- `dcache`：`Write` 只由 `writeEnd`(=`b.fire`) 退出；`rspOut.valid` 恢复 `readHit || readMissDone || writeDone`（上一版这里是 `writeAccept` ⇒ LSU 的 `wrEnd` 分支永远等不到，是死逻辑）
+- `LSU`：删掉 `wrNow` 快路径，所有写都进 `WaitMem` 等 `wrEnd` ⇒ 出错时 store 还在 LSU，`trapEnter` 与 `willValid` **同拍** ⇒ `mepc` = 出错那条 store 自己的 pc ✓
+- **顺带删掉整套同址顺序性 guard**（`bPending` / `writeAddr` / `writeCacheable` / `sameAddr` / `needWait` / `writeSent` / `writePostDone`）⇒ **−23 个触发器**，面积 24,397→24,352
+- `fence.i`：写全同步后 dcache 在 fence 进入 LSU 时必然已空闲 ⇒ `writeBusy` 恒假 ⇒ `fenceWait` 与 `redirect.valid` 里的 `!writeBusy` **两处一起删**（前提必须一致：只留 `fenceWait` 会出现"指令不退休但重定向照发"，把清 icache 提前到写落地之前 ✗）
+- IFU / icache：`missFault = rspFault && state===WaitMem` 与 `tryFetch && (…)` **平级 OR**；`rdataTmp = Mux(rspFault, 0, …)` 同时喂 `rdataReg` 与 `normalInstr`；`normalValid` 的 `WaitMem` 项加 `!rspFault`；填回 `dataMem`/`tagMem` 与 `validReg` 都加 `!rspErr`
+- **`dataValid` 别名**：IDU/EXU/LSU/WBU 的 `io.input` 都是 `slave Flow(...)`（`Flow` **没有 ready**）⇒ `.valid` 语义上只能是"本级输入数据有效"，不可能是握手。各模块最前面统一声明 `val dataValid = io.input.valid`，模块内全部改用它（纯别名，零硬件）✓
+
+### 4. 频率：三条**被实测否决**的路线（留档，别再走）
+
+| 路线 | 预期 | 实测 |
+|---|---|---|
+| `pcNext` 双加法器并行（把"选择端"挪到加法器**后面**） | 砍掉"选择端 → 32 位 mux → 32 位加法器" | ✗ **频率反而降低** + 面积涨。原因：`pcBsrc` 只依赖 `branch`（流水寄存器输出）**本来就早到**；真正晚到的是 `pcAsrc`（依赖 ALU 的 `less/zero`）—— 原作者注释里已写明 |
+| 复制控制位寄存器（`aluAsrc` 拆两份）降扇出 | 消掉 `max_FO=24` 触发的 `BUF_X16`（占最差路径 0.062 ns ≈ 6%） | ✗ **无效**：DFF 数 3198→3198 没涨 ⇒ yosys 的 `share -aggressive`/`opt_merge` 把两个**同 D 同使能**的相同触发器**合并回一个**；网表里 `aluAsrc2` 出现 **0 次**，那条 net 上仍有 `BUF_X8` |
+| `lessFlag = a < b` 替掉 `carryFlag ^ subORadd` | 给 `less` 找"逐位归约"的旁路（像 `zeroFlag` 那样） | ✗ 语义错两处（`adderDataB` 在减法时**已取反**；`<` 只给无符号）+ 结构等价（`<` 的本质就是 `a + ~b + 1` 的借位 ⇒ 同一个电路，甚至可能多一个 32 位加法器） |
+
+⇒ 当前最差路径是 **`EXU 分支解析 → IFU 取指重定向`**（约 16 级；端点 `ifu.stopFetch_reg_p` 及其别名 `io_readAddr_11`，三次数值 1.002 / 1.009 / 0.946 ns 都落在这一族）⇒ 想再提只能**并行化加法器/比较器（花面积）**或**打拍（伤周期）**，两者都不划算 ✓。
+
+### 5. 验收（nangate45）
+
+- `make perf`：**周期 12,306,266 / 指令 556,871 / IPC 0.0453**；MicroBench **10/10 PASS**；difftest **HIT GOOD TRAP** @ `0xa00056b4` ✓
+- `make sta`：**1016.649 MHz**（slack +1.016）、DFF **3198**、面积 **24,352.034**（余量 **647.97**）✓
+- 周期增量的**唯一来源**是"写不再挂后台"（11,908,252 → 12,306,266 = **+398,014 / +3.34%**）；取指 `rspErr` 与 `dataValid` 两处**周期/指令/全部计数器逐位不变** ✓
+- AM 侧两个平台都注册了默认中断 handler（打印 `mcause`，`am/src/riscv/{npc,ysyxsoc}/trm.c`）：`sim-iverilog`（RTL）走"ebreak 提交"、`sim-iverilog-netlist` 走 "E1 从地址 0 取指"（靠 handler 里 `prev->mepc = 0`）—— **两条判据都实测通过** ✓ ⚠️ 网表那条路的 UART 会多出 handler 的打印（+39 B / +798 拍）；RTL 那条不变（handler 根本没跑）
+
 ## 2026-10-03 IFU 跳转预译码字段化 + `rdataReg` 复位（修掉"死网表"根因）+ guard 重扫取 W=21（`e3d72f4` / `b54cf81`：1005.4 MHz）
 
 ### 1. ★ 修掉"网表完全不工作"的根因：`ifu.rdataReg` 加 `init(0)`（`e3d72f4`）

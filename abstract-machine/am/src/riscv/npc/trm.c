@@ -91,8 +91,34 @@ void halt(int code) {
   while (1);  
 }
 
+// 默认中断函数(与 riscv/ysyxsoc/trm.c 保持一致)
+// ★ 最后那行 `prev->mepc = 0` 是【必须】的, 不是可选优化:
+//   cte_init 会把 mtvec 从复位值 0 改成 __am_asm_trap, 而 iverilog testbench 的收尾判据
+//   "E1: 从地址 0 取指"(tb_npc.v 里 araddr == 0)依赖 trap 跳到 0。
+//   若不加这一行, halt() 的 ebreak 会被 __am_irq_handle 做 mepc += 4 后返回 ebreak+4,
+//   也就是 halt() 里的 while(1) ⇒ 永远取不到地址 0 ⇒ sim-iverilog-netlist(网表 flatten 后
+//   lsu_commit_trap 恒 0, 只能靠 E1)收不了尾, 只能等看门狗超时。
+static Context *user_handler_default(Event ev, Context *prev) {
+  (void)ev;
+  static const char msg[] = "in user_handler_default, mcause is: ";
+  for (unsigned i = 0; i < sizeof(msg) - 1; i++) {
+    putch(msg[i]);
+  }
+  if(prev->mcause == -1) {
+    putch('-'); putch('1');
+  } else {
+    putch('0' + prev->mcause / 10);
+    putch('0' + prev->mcause % 10);
+  }
+  putch('\n');
+
+  if (prev->mcause == 3) prev->mepc = 0;
+  return prev;
+}
+
 void _trm_init() {
   ysyxsoc_dis_id();
+  cte_init(user_handler_default);
   int ret = main(mainargs);
   halt(ret);
 }

@@ -25,17 +25,18 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
     val redirect = master Flow(RedirectReq())
   }
 
+  val dataValid = io.input.valid                  // 当前的输入数据有效的标志
   val dataProcess = ysyx_23060082_DataProcess()   // 数据处理
-  val dcache  = ysyx_23060082_Dcache(config)   // D-Cache(独占 AXI)
+  val dcache  = ysyx_23060082_Dcache(config)      // D-Cache(独占 AXI)
   // ================================ 输入信号整理 ================================ //
   object LsuState extends SpinalEnum {
     val Idle, WaitMem, Done = newElement()          // lsu等待读写完成的状态机
   }
   val state = RegInit(LsuState.Idle)
-  val memAddr   = io.input.aluResult                // alu的输出结果就是访存地址
-  val needRead  = io.input.valid && io.input.rfCtrl.mem2reg   // 需要读内存
-  val needWrite = io.input.valid && io.input.memCtrl.memWr    // 需要写内存
-  val needMem   = needRead || needWrite                       // 需要访问内存
+  val memAddr   = io.input.aluResult                      // alu的输出结果就是访存地址
+  val needRead  = dataValid && io.input.rfCtrl.mem2reg    // 需要读内存
+  val needWrite = dataValid && io.input.memCtrl.memWr     // 需要写内存
+  val needMem   = needRead || needWrite                   // 需要访问内存
     
   // ================================ 异常检测 ================================ //
   // 必须在发请求之前判定，否则会真的去访存
@@ -68,21 +69,19 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   // ---- 访存结束信号 ----
   // 读命中用 dcache.io.readHit 判(不能用 rspOut.valid: 它还含上一笔 store 的 b 响应/上一笔缺失的完成)
   val rdHitNow = needRead && (state === LsuState.Idle) && dcache.io.readHit
-  val rdEnd    = ((state === LsuState.WaitMem) && dcache.io.rspOut.valid && io.input.rfCtrl.mem2reg) || rdHitNow
+  val rdEnd    = ((state === LsuState.WaitMem) && dcache.io.rspOut.valid && needRead) || rdHitNow
 
-  // val wrNow = needWrite && (state === LsuState.Idle) && dcache.io.writeAccept       // 可以后台写入
-  val wrEnd = ((state === LsuState.WaitMem) && dcache.io.rspOut.valid && io.input.memCtrl.memWr)
+  val wrEnd = ((state === LsuState.WaitMem) && dcache.io.rspOut.valid && needWrite)
   dataProcess.io.rdata := dcache.io.rspOut.readData   // dcache 内已有数据寄存器, 不需要再寄存
 
   // ================================ CSR寄存器 ================================ //
-  // csr的操作一定要用valid进行使能
-  val csrActive     = io.input.valid
+  // csr的操作一定要在数据有效的情况下执行
   val csr = ysyx_23060082_CSR()
   csr.io.csrAddr    := io.input.csrAddr
   csr.io.csrWdata   := io.input.rfReadData
-  csr.io.csrCmd     := Mux(trapEnter || !csrActive, U(0, 3 bits), io.input.csrCtrl.csrCmd)  // 异常/无指令时不执行CSR写
-  csr.io.trapEnter  := csrActive && trapEnter
-  csr.io.trapExit   := csrActive && io.input.csrCtrl.trapExit
+  csr.io.csrCmd     := Mux(trapEnter || !dataValid, U(0, 3 bits), io.input.csrCtrl.csrCmd)  // 异常/无指令时不执行CSR写
+  csr.io.trapEnter  := dataValid && trapEnter
+  csr.io.trapExit   := dataValid && io.input.csrCtrl.trapExit
   csr.io.pcIn       := io.input.pc                                                // 出错那条指令的pc
   csr.io.causeIn    := Mux(io.input.csrCtrl.ecall, io.input.rfReadData,           // ecall指令的cause在a5寄存器中
                                                    excCause.resize(32 bits))      // 其余零扩展
@@ -96,10 +95,6 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
           when(io.output.fire) { state := LsuState.Idle }
           .otherwise           { state := LsuState.Done }
         } 
-        // .elsewhen(wrNow) {                                                        // 不等写入完成就开始握手，让写操作在后台运行
-        //   when(io.output.fire) { state := LsuState.Idle } 
-        //   .otherwise           { state := LsuState.Done } 
-        // } 
         .otherwise {state := LsuState.WaitMem}
       }
       .otherwise{state := LsuState.Idle}
@@ -117,13 +112,13 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
     }
   }
   // ================================ 用于握手的部分 ================================ //
-  val fenceWait = io.input.valid && io.input.fenceI && dcache.io.writeBusy    // fencei指令时要等待写完成
+  val fenceWait = dataValid && io.input.fenceI && dcache.io.writeBusy    // fencei指令时要等待写完成
   // willValid的意义就是当前周期就可以完成任务
-  val willValid = !fenceWait &&                                              // 等待写完成
-                  (trapEnter || (rdEnd || wrEnd) ||                         // 有异常，或需要访存并且访存成功
+  val willValid = !fenceWait &&                                               // 等待写完成
+                  (trapEnter || (rdEnd || wrEnd) ||                           // 有异常，或需要访存并且访存成功
                   (state === LsuState.Done) ||
-                  (state === LsuState.Idle && io.input.valid && !needMem))  // 不需访存，直接一拍通过
-  io.output.valid := io.input.valid && willValid  
+                  (state === LsuState.Idle && dataValid && !needMem))    // 不需访存，直接一拍通过
+  io.output.valid := dataValid && willValid  
 
   // ================================ 数据传输部分 ================================ //
   io.output.regWr       := io.input.rfCtrl.regWr && !trapEnter            // 异常时不写回
@@ -134,7 +129,7 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   val getDataInLsu  = io.input.rfCtrl.mem2reg || io.input.rfCtrl.csr2reg  // 数据来自lsu（访存，csr）中
   io.output.rfWriteData:= Mux(getDataInLsu, memDataOut, aluDataOut)
   // ================================ 数据前递 ================================ //
-  io.forward.state     := Mux(!io.input.valid || !io.input.rfCtrl.regWr, FwdState.NoWriter, // 还没有有效数据，或者不是写寄存器的信号时
+  io.forward.state     := Mux(!dataValid || !io.input.rfCtrl.regWr, FwdState.NoWriter,      // 还没有有效数据，或者不是写寄存器的信号时
                           Mux(willValid, FwdState.DataReady, FwdState.DataPendingHere))     // willValid(数据即将有效时)，Ready，否则(即需要访存)就WaitHere
   io.forward.writeAddr := io.input.rfCtrl.rfWriteAddr
   io.forward.writeData := io.output.rfWriteData      // willValid 那拍就是最终写回值
@@ -142,7 +137,7 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   // ================================ 重定向 ================================ //
   // trap/mret 的目标是CSR寄存器输出, 当拍就有; fence.i的目标是pc+4
   // fence.i放在LSU: LSU顺序处理访存, fence进到LSU时最多有一个后台访存，只要等待访存完成，之后的取指必然看得到新指令
-  io.redirect.valid  := io.input.valid && (trapEnter || io.input.csrCtrl.trapExit || (io.input.fenceI && !dcache.io.writeBusy))
+  io.redirect.valid  := dataValid && (trapEnter || io.input.csrCtrl.trapExit || io.input.fenceI)
   io.redirect.pcNext := Mux(trapEnter, csr.io.mtvec,
                         Mux(io.input.csrCtrl.trapExit, csr.io.mepc, io.input.pc + 4))    // fence.i只是冲刷，pcNext依旧是pc+4
   io.redirect.fenceI := io.input.fenceI

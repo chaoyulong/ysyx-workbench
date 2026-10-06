@@ -175,10 +175,30 @@ void halt(int code) {
   while (1);  
 }
 
+// 默认中断函数
+static Context *user_handler_default(Event ev, Context *prev) {
+  (void)ev;
+  static const char msg[] = "in user_handler_default, mcause is: ";
+  for (unsigned i = 0; i < sizeof(msg) - 1; i++) {
+    putch(msg[i]);
+  }
+  if(prev->mcause == -1) {
+    putch('-'); putch('1');
+  } else {
+    putch('0' + prev->mcause / 10);
+    putch('0' + prev->mcause % 10);
+  }
+  putch('\n');
+ 
+  if (prev->mcause == 3) prev->mepc = 0;
+  return prev;
+}
+
 void _trm_init() {
   extern void __am_uart_init();
   __am_uart_init();
   ysyxsoc_dis_id();
+  cte_init(user_handler_default);
   int ret = main(mainargs);
   halt(ret);
 }

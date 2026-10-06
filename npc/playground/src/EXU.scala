@@ -47,7 +47,7 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
   banchCond.io.zero   := alu.io.zero
 
   // val pcDataA   = Mux(banchCond.io.pcAsrc, io.input.imm, U"32'd4")
-  // val pcDataB   = Mux(banchCond.io.pcBsrc, io.input.rfReadData1, io.input.pc)
+  val pcDataB   = Mux(banchCond.io.pcBsrc, io.input.rfReadData1, io.input.pc)
   // val pcDataTmp = pcDataA + pcDataB
   // 由于pcAsrc到达较晚，所以选择去掉，并且pc+4这个pcnext不需要得出，因为默认运行的就是这个
   // val pcDataB   = Mux(banchCond.io.pcBsrc, io.input.rfReadData1, io.input.pc)

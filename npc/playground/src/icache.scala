@@ -132,8 +132,11 @@ case class ysyx_23060082_Icache(config: CpuConfig = CpuConfig(), param: IcachePa
   axi4Ctrler.io.readReq  := enterMiss
   axi4Ctrler.io.readAddr := (io.reqIn.pc(31 downto param.lineBits) ## U(0, param.lineBits bits)).asUInt // 地址对齐
 
-  // 缺失完成: 写回cache(valid/tag/data)
-  when(missDone) {
+  val rspErr = axi4Ctrler.io.axi4.r.fire && (axi4Ctrler.io.axi4.r.payload.resp =/= B"2'b00")
+  io.rspErr := rspErr
+
+  // 缺失完成: 写回cache(valid/tag/data)，出错不写
+  when(missDone && !rspErr) {
     dataMem (indexReg) := axi4Ctrler.io.readData
     tagMem  (indexReg) := tagReg
   }
@@ -146,8 +149,7 @@ case class ysyx_23060082_Icache(config: CpuConfig = CpuConfig(), param: IcachePa
     discardMiss := False
   }
 
-  val rspErr = axi4Ctrler.io.axi4.r.fire && (axi4Ctrler.io.axi4.r.payload.resp =/= B"2'b00")
-  io.rspErr := rspErr
+
 
   when(io.fenceI) {
     validReg := 0

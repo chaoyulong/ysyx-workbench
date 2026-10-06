@@ -80,6 +80,7 @@ case class ysyx_23060082_IDU(config: CpuConfig = CpuConfig()) extends Component 
     val wbuForward = in(forwardData())
   }
 
+  val dataValid = io.input.valid                  // 当前的输入数据有效的标志
   val instr   = io.input.instr
   val decoder = ysyx_23060082_Decoder(config)
   decoder.instr           := instr
@@ -138,7 +139,7 @@ case class ysyx_23060082_IDU(config: CpuConfig = CpuConfig()) extends Component 
   val stall     = (rs1Outcome === FwdOutcome.Wait) || (rs2Outcome === FwdOutcome.Wait)
   val willValid = !stall
 
-  io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
+  io.output.valid := dataValid && willValid    // dataValid为数据有效信号，是寄存器信号
   // ================================ 数据传输部分 ================================ //
   io.rfRead.addr1 := rfReadAddr1
   io.rfRead.addr2 := rfReadAddr2

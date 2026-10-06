@@ -37,7 +37,6 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
     val reqIn       = slave  Stream(DcacheReqData())
     val rspOut      = master Flow(DcacheRspData())
     val readHit     = out Bool()        // 本拍这次读真的命中(load 用它判"当拍完成")
-    val writeBusy   = out Bool()        // 正在后台写
     val readErr     = out Bool()
     val writeErr    = out Bool()
     val axi4        = master(Axi4(AxiConfig.axiConfig))
@@ -95,7 +94,6 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   // ================================ 响应 ================================ //
   io.reqIn.ready  := (state === DcacheState.Idle)                     // 如果空闲且不用阻塞，就说明可以接受信号
   io.rspOut.valid := readHit || readMissDone || writeDone             // 读命中，或者读缺失但完成，或者请求被接受
-  io.writeBusy    := (state === DcacheState.Write)                    // fence.i要等真正写入进存储
 
   val readDataReg     = RegNextWhen(axi4Ctrler.io.readData, readMissDone)
   io.rspOut.readData := Mux(readHit, dataMem(index),

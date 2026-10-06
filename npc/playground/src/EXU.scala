@@ -26,6 +26,7 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
     val redirect = master Flow(RedirectReq())
   }
 
+  val dataValid = io.input.valid                  // 当前的输入数据有效的标志
   val alu = ysyx_23060082_ALU()
   val banchCond = ysyx_23060082_BranchCond()
 
@@ -66,13 +67,13 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
   io.output.csrCtrl.excCause  := Mux(io.input.ctrl.csrCtrl.trapEnter, io.input.ctrl.csrCtrl.excCause, U(0, 4 bits)) // 0 = 跳转目标未对齐
                
   // ================================ 重定向 ================================ //
-  io.redirect.valid  := io.input.valid && banchCond.io.pcAsrc && !pcMisaligned   // 数据有效并且是跳转指令(pcAsrc,pcBsrc有一个为1就是跳转指令，而pcBsrc为1时，pcAsrc也为1)
+  io.redirect.valid  := dataValid && banchCond.io.pcAsrc && !pcMisaligned   // 数据有效并且是跳转指令(pcAsrc,pcBsrc有一个为1就是跳转指令，而pcBsrc为1时，pcAsrc也为1)
   io.redirect.pcNext := pcNext
   io.redirect.fenceI := False                                   // exu中执行的话，如果上一级lsu在写入，那么此时lsu写入的数据就不是icache可见的了，所以要延迟到lsu阶段再执行
 
   // ================================ 用于握手的部分 ================================ //
   val willValid = True
-  io.output.valid := io.input.valid && willValid    // io.input.valid为数据有效信号，是寄存器信号
+  io.output.valid := dataValid && willValid    // dataValid为数据有效信号，是寄存器信号
   
   // ================================ 数据传输部分 ================================ //
   val useRs1 = io.input.ctrl.csrCtrl.trapEnter || (io.input.ctrl.csrCtrl.csrCmd =/= 0)  // rs1: CSR，rs2: store
@@ -85,7 +86,7 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
   io.output.memCtrl    := io.input.ctrl.memCtrl     // 直通数据，在EXU中无作用
   // ================================ 数据前递 ================================ //
   val getDataInLsu      = io.input.ctrl.rfCtrl.mem2reg || io.input.ctrl.rfCtrl.csr2reg  // 要在lsu中才会得到的数据
-  io.forward.state     := Mux(!io.input.valid || !io.input.ctrl.rfCtrl.regWr, FwdState.NoWriter,  // 还没有有效数据，或者不是写寄存器的信号时
+  io.forward.state     := Mux(!dataValid || !io.input.ctrl.rfCtrl.regWr, FwdState.NoWriter,  // 还没有有效数据，或者不是写寄存器的信号时
                           Mux(getDataInLsu, FwdState.DataPendingLater, FwdState.DataReady)) // 如果要在lsu中才能得到数据，就WaitLater，如果在本级就能得到数据，Ready
   io.forward.writeAddr := io.input.ctrl.rfCtrl.rfWriteAddr
   io.forward.writeData := alu.io.aluResult
@@ -105,8 +106,8 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
     perf.io.req   := B"4'b0"
     perf.io.rsp   := B"4'b0"
     perf.io.evt   := B"8'b0"
-    perf.io.evt(0) := io.input.valid && io.input.isCalc && willValid  // EXU 运算周期
-    perf.io.evt(1) := io.input.valid && io.input.isCalc               // 计算类指令数
+    perf.io.evt(0) := dataValid && io.input.isCalc && willValid  // EXU 运算周期
+    perf.io.evt(1) := dataValid && io.input.isCalc               // 计算类指令数
   }
 }
 

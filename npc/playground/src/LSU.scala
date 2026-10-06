@@ -112,16 +112,14 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
     }
   }
   // ================================ 用于握手的部分 ================================ //
-  val fenceWait = dataValid && io.input.fenceI && dcache.io.writeBusy    // fencei指令时要等待写完成
   // willValid的意义就是当前周期就可以完成任务
-  val willValid = !fenceWait &&                                               // 等待写完成
-                  (trapEnter || (rdEnd || wrEnd) ||                           // 有异常，或需要访存并且访存成功
+  val willValid = trapEnter || (rdEnd || wrEnd) ||                          // 有异常，或需要访存并且访存成功
                   (state === LsuState.Done) ||
-                  (state === LsuState.Idle && dataValid && !needMem))    // 不需访存，直接一拍通过
+                  (state === LsuState.Idle && dataValid && !needMem)        // 不需访存，直接一拍通过
   io.output.valid := dataValid && willValid  
 
   // ================================ 数据传输部分 ================================ //
-  io.output.regWr       := io.input.rfCtrl.regWr && !trapEnter            // 异常时不写回
+  io.output.regWr       := io.input.rfCtrl.regWr && !trapEnter              // 异常时不写回
   io.output.rfWriteAddr := io.input.rfCtrl.rfWriteAddr
   
   val memDataOut    = Mux(io.input.csrCtrl.csrCmd =/= U"3'd0", csr.io.csrRdata, dataProcess.io.rdataReal) // 借用mem_data_out来输出读出的值
@@ -136,7 +134,7 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
 
   // ================================ 重定向 ================================ //
   // trap/mret 的目标是CSR寄存器输出, 当拍就有; fence.i的目标是pc+4
-  // fence.i放在LSU: LSU顺序处理访存, fence进到LSU时最多有一个后台访存，只要等待访存完成，之后的取指必然看得到新指令
+  // fence.i放在LSU: LSU访存结束时才会将in.ready由于out.valid置起, fence进到LSU时访存一定是完成对，之后的取指必然看得到新指令
   io.redirect.valid  := dataValid && (trapEnter || io.input.csrCtrl.trapExit || io.input.fenceI)
   io.redirect.pcNext := Mux(trapEnter, csr.io.mtvec,
                         Mux(io.input.csrCtrl.trapExit, csr.io.mepc, io.input.pc + 4))    // fence.i只是冲刷，pcNext依旧是pc+4

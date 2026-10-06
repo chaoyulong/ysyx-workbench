@@ -92,7 +92,7 @@ case class ysyx_23060082_Icache(config: CpuConfig = CpuConfig(), param: IcachePa
   // ================================ 握手成功锁存数据 ================================ //
   val indexReg = RegNextWhen(index      , io.reqIn.fire)
   val tagReg   = RegNextWhen(tag        , io.reqIn.fire)
-  val reqFire  = io.reqIn.fire
+
   // ================================ 状态机 ================================ //
   object IcacheState extends SpinalEnum {
     val Idle, Miss = newElement()
@@ -148,8 +148,6 @@ case class ysyx_23060082_Icache(config: CpuConfig = CpuConfig(), param: IcachePa
   }elsewhen(missDone) {                   // 只是为了卡住访存完成后的那一个周期，所以之后就可以清空
     discardMiss := False
   }
-
-
 
   when(io.fenceI) {
     validReg := 0

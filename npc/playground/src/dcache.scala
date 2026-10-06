@@ -96,7 +96,6 @@ case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Compone
   io.reqIn.ready  := (state === DcacheState.Idle)                     // 如果空闲且不用阻塞，就说明可以接受信号
   io.rspOut.valid := readHit || readMissDone || writeDone             // 读命中，或者读缺失但完成，或者请求被接受
   io.writeBusy    := (state === DcacheState.Write)                    // fence.i要等真正写入进存储
-  io.writeAccept  := writeAccept
 
   val readDataReg     = RegNextWhen(axi4Ctrler.io.readData, readMissDone)
   io.rspOut.readData := Mux(readHit, dataMem(index),

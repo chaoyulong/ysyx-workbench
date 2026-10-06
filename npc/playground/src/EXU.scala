@@ -31,13 +31,9 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
   val banchCond = ysyx_23060082_BranchCond()
 
   alu.io.aluCtr := io.input.ctrl.aluCtrl.aluCtr
-  alu.io.aluIn1(31 downto 16) := io.input.ctrl.aluCtrl.aluAsrc2.mux(         // 为0时选择rs1，为1时选择PC。
-    True  -> io.input.pc(31 downto 16),
-    False -> io.input.rfReadData1(31 downto 16)
-  )
-  alu.io.aluIn1(15 downto 0) := io.input.ctrl.aluCtrl.aluAsrc1.mux(         // 为0时选择rs1，为1时选择PC。
-    True  -> io.input.pc(15 downto 0),
-    False -> io.input.rfReadData1(15 downto 0)
+  alu.io.aluIn1 := io.input.ctrl.aluCtrl.aluAsrc.mux(         // 为0时选择rs1，为1时选择PC。
+    True  -> io.input.pc,
+    False -> io.input.rfReadData1
   )
   alu.io.aluIn2 := io.input.ctrl.aluCtrl.aluBsrc.mux(          // 为00时选择rs2，为01时选择imm，为10时选择常数4（用于跳转时计算返回地址PC+4）
     U"00" -> io.input.rfReadData2,

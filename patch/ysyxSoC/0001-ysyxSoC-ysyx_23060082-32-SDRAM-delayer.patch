@@ -1,4 +1,4 @@
-From 45e219a92188014120011912bd15d01fb30fb8c2 Mon Sep 17 00:00:00 2001
+From d3fe8e93f6a6ed535834b32c51480d4350a5ecb1 Mon Sep 17 00:00:00 2001
 From: 23060082-ChaoYuLong <2324849716@qq.com>
 Date: Sat, 3 Oct 2026 16:06:38 +0800
 Subject: [PATCH] =?UTF-8?q?ysyxSoC:=20=E6=8E=A5=E5=85=A5=20ysyx=5F23060082?=
@@ -13,6 +13,14 @@ Content-Transfer-Encoding: 8bit
 - patch/firtool 的 firtool/om-linker 二进制不入库(由 make verilog 调 patch/update-firtool.sh 下载)
   ★ 之前误提交 36MB 二进制会把 format-patch 撑到 18.7MB, 超过 CI 要求的 1MB 上限
 - 附带 mill 启动器(上游未跟踪, 但 Makefile 用 ./mill)
+- ★ perip/vga/vga_top_apb.v: 自实现的 VGA(vga_ctrl 抄改自 nvboard 例程; vga_sram 是自己写的帧缓冲)
+  显存布局由【列主序 x*512+y】改为【行主序 y*1024+x】:
+  · 与 AM 契约一致(FBDRAW 的源是行主序) => ysyxsoc 的 gpu.c 可与 npc 平台共用同一套逐行搬运,
+    源和目标都变成单位步长(memcpy 式), 不再有一侧必须跨步
+  · 符合 VGA 常规(扫一行地址连续), 为将来的行缓冲 / Block RAM(必须同步读)铺路
+  · 行宽取 2 的幂 1024 => 480*1024 = 491520 <= 524288, 索引是纯位拼接 {v_addr[8:0], h_addr[9:0]}, 无乘法器
+  · ★ 读必须保持组合(assign): 改成寄存器读会让 vga_data 晚一拍, 画面整体横向偏移一个像素
+  · 验证: 自包含 testbench 逐点回读 69/69 匹配(含 1024 步长与列主序反证)
 ---
  .gitignore                                    |   1 +
  perip/amba/apb_delayer.v                      |  67 ++++-
@@ -29,12 +37,12 @@ Content-Transfer-Encoding: 8bit
  perip/sdram/sdram_top_apb.v                   |  32 +-
  perip/sdram/sdram_top_axi.v                   |  14 +-
  perip/spi/rtl/spi_top_apb.v                   | 246 ++++++++++++++--
- perip/vga/vga_top_apb.v                       | 142 +++++++++
+ perip/vga/vga_top_apb.v                       | 141 +++++++++
  src/CPU.scala                                 |   4 +-
  src/SoC.scala                                 |  38 ++-
  src/Top.scala                                 |   2 +-
  src/device/SDRAM.scala                        |  38 ++-
- 20 files changed, 1587 insertions(+), 135 deletions(-)
+ 20 files changed, 1586 insertions(+), 135 deletions(-)
  create mode 100644 perip/amba/axi4_data_width_converter_64to32.v
 
 diff --git a/.gitignore b/.gitignore
@@ -1965,10 +1973,10 @@ index 92d37516..bc43b2b0 100644
 +endmodule
 \ No newline at end of file
 diff --git a/perip/vga/vga_top_apb.v b/perip/vga/vga_top_apb.v
-index 5c74cfbe..f806c408 100644
+index 5c74cfbe..04a0ae87 100644
 --- a/perip/vga/vga_top_apb.v
 +++ b/perip/vga/vga_top_apb.v
-@@ -20,4 +20,146 @@ module vga_top_apb(
+@@ -20,4 +20,145 @@ module vga_top_apb(
    output        vga_valid
  );
  
@@ -2027,7 +2035,6 @@ index 5c74cfbe..f806c408 100644
 +    output [23:0] vga_data
 +);
 +  
-+  // reg [23:0] vga_mem [0:307199];    // 640 * 480
 +  reg [23:0] vga_mem [524287:0];
 +  always @(posedge clk) begin
 +    if(w_en) begin  
@@ -2041,7 +2048,7 @@ index 5c74cfbe..f806c408 100644
 +  //   $readmemh("/home/chaoyulong/Desktop/ysyx-workbench/nvboard/example/resource/picture.hex", vga_mem);
 +  // end
 +
-+  assign vga_data = vga_mem[{h_addr, v_addr[8:0]}];
++  assign vga_data = vga_mem[{v_addr[8:0], h_addr[9:0]}];
 +
  endmodule
 +

@@ -28,16 +28,14 @@ void __am_gpu_fbdraw(AM_GPU_FBDRAW_T *ctl) {
   uint32_t y = ctl->y;
   uint32_t h = ctl->h;
   uint32_t w = ctl->w;
-
   uint32_t *pixels = (uint32_t *)(uintptr_t)ctl->pixels;
+  
   uint32_t h_len = (h < 480 - y) ? h : 480 - y;       
   uint32_t w_len = (w < 640 - x) ? w : 640 - x;
 
   for(uint32_t row = 0; row < h_len; row++) {
-    volatile uint32_t *dst = &VGA_BUF32[((y + row) << 10) + x];   // {v_addr, h_addr}
-    for(uint32_t col = 0; col < w_len; col++) {
-      dst[col] = pixels[row * w + col];
-    }
+    volatile uint32_t* dst = &VGA_BUF32[((y + row) << 10) + x];   // {v_addr, h_addr}
+    memcpy((void *)dst, pixels + (row * w), w_len * sizeof(uint32_t));
   }
 }
 

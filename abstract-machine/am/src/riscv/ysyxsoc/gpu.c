@@ -34,7 +34,7 @@ void __am_gpu_fbdraw(AM_GPU_FBDRAW_T *ctl) {
   uint32_t w_len = (w < 640 - x) ? w : 640 - x;
 
   for(uint32_t row = 0; row < h_len; row++) {
-    volatile uint32_t *dst = &VGA_BUF32[((x + row) << 10) + x];   // {v_addr, h_addr}
+    volatile uint32_t *dst = &VGA_BUF32[((y + row) << 10) + x];   // {v_addr, h_addr}
     for(uint32_t col = 0; col < w_len; col++) {
       dst[col] = pixels[row * w + col];
     }

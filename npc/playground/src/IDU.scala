@@ -36,7 +36,6 @@ case class MemCtrl() extends Bundle { // LSU中消耗的控制信号
 
 case class CsrCtrl() extends Bundle { // CSR寄存器的控制信号
   val csrCmd    = UInt(3 bits)        // 0=NOP,1=CSRRW,2=CSRRS,其他后续可能有用  
-  val ecall     = Bool()              // ecall指令进入异常，需要读取R15作为cause
   val trapEnter = Bool()              // 异常进入
   val trapExit  = Bool()              // MRET
   val excCause  = UInt(4 bits)        // 异常号
@@ -87,9 +86,7 @@ case class ysyx_23060082_IDU(config: CpuConfig = CpuConfig()) extends Component 
   decoder.io.ifuTrapEnter := io.input.ifuTrapEnter
   decoder.io.ifuExcCause  := io.input.ifuExcCause
   // ================================ 访问寄存器的地址 ================================ //
-  val rfReadAddr1 = decoder.io.ctrl.csrCtrl.trapEnter.mux(   // 如果是触发异常的指令，则选择a5(第15个寄存器)作为数据输入
-                         True  -> U"5'd15", 
-                         False -> instr(19 downto 15))
+  val rfReadAddr1 = instr(19 downto 15)
   val rfReadAddr2 = instr(24 downto 20)  // 为了写起来简洁，写寄存器地址在decoder中赋值
   // ================================ 数据前递 ================================ //
   // 查询的结论: 本条指令的这个 rs 该怎么办

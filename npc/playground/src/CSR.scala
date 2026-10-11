@@ -26,14 +26,14 @@ case class ysyx_23060082_CSR() extends Component {
     val trapExit  = in  Bool()           // MRET
 
     val pcIn      = in  UInt(32 bits)    // 用于写mepc
-    val causeIn   = in  UInt(32 bits)    // 异常原因
+    val causeIn   = in  UInt( 4 bits)    // 异常原因
     val mtvec     = out UInt(32 bits)
     val mepc      = out UInt(32 bits)
 
     val instrRetire = in Bool()           // 指令退休信号(每完成一条指令拉高一拍), 用于计数minstret
   }
 
-  val mstatus   = Reg(UInt(32 bits)) init(0)
+  val mstatus   = Reg(UInt(32 bits)) init(U"32'h1800")
   val mtvec     = Reg(UInt(32 bits)) init(0)
   val mepc      = Reg(UInt(32 bits))
   val mcause    = Reg(UInt(32 bits)) init(0)
@@ -92,15 +92,8 @@ case class ysyx_23060082_CSR() extends Component {
   }
 
   when(io.trapEnter) {
-    mepc                  := io.pcIn; 
-    mcause                := io.causeIn
-    mstatus(3)            := mstatus(7)    // MIE  := MPIE
-    mstatus(7)            := False         // MPIE := 0
-    mstatus(12 downto 11) := U(3, 2 bits)  // MPP  := M
-  } .elsewhen(io.trapExit) {               // mret
-    mstatus(3)            := mstatus(7)    // MIE  := MPIE
-    mstatus(7)            := True          // MPIE := 1
-    mstatus(12 downto 11) := U(0, 2 bits)  // MPP  := U
+    mepc    := io.pcIn; 
+    mcause  := io.causeIn.resize(32 bits)
   }
 
   io.mtvec := mtvec

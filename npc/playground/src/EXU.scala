@@ -64,7 +64,6 @@ case class ysyx_23060082_EXU(config: CpuConfig = CpuConfig()) extends Component 
   val pcMisaligned = banchCond.io.pcAsrc && (pcNext(1) || pcNext(0))  // 跳转/分支目标未对齐
 
   io.output.csrCtrl.csrCmd    := io.input.ctrl.csrCtrl.csrCmd
-  io.output.csrCtrl.ecall     := io.input.ctrl.csrCtrl.ecall
   io.output.csrCtrl.trapExit  := io.input.ctrl.csrCtrl.trapExit
 
   // 上级优先

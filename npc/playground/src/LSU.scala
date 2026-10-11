@@ -82,9 +82,8 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   csr.io.csrCmd     := Mux(trapEnter || !dataValid, U(0, 3 bits), io.input.csrCtrl.csrCmd)  // 异常/无指令时不执行CSR写
   csr.io.trapEnter  := dataValid && trapEnter
   csr.io.trapExit   := dataValid && io.input.csrCtrl.trapExit
-  csr.io.pcIn       := io.input.pc                                                // 出错那条指令的pc
-  csr.io.causeIn    := Mux(io.input.csrCtrl.ecall, io.input.rfReadData,           // ecall指令的cause在a5寄存器中
-                                                   excCause.resize(32 bits))      // 其余零扩展
+  csr.io.pcIn       := io.input.pc                                                // 异常指令的pc
+  csr.io.causeIn    := excCause                                                   // 异常原因
   csr.io.instrRetire := io.output.fire    // 指令传出LSU即计数(比写回提前1拍, 总数正确)
 
   // ================================ lsu状态机 ================================ //
@@ -153,8 +152,12 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
                       (memAddr >= U"32'h80000000" && memAddr < U"32'h88000000") ||  // pmem  128M
                       (memAddr >= U"32'ha0000000" && memAddr < U"32'ha8000000")     // sdram 128M
     val devAccess = needMem && !inMemRegion
-    io.output.difftestSkip := trapEnter || io.input.csrCtrl.trapExit ||
-                              (io.input.csrCtrl.csrCmd =/= U(0, 3 bits)) ||
+
+    val cntCsr = io.input.csrCtrl.csrCmd =/= U(0, 3 bits) && dataValid &&
+                 ((io.input.csrAddr === CSR.mcycle)   || (io.input.csrAddr === CSR.mcycleh) ||   // 这几个csr不需要比对
+                 (io.input.csrAddr === CSR.minstret) || (io.input.csrAddr === CSR.minstreth))
+    val trapNeedSkip = (excCause =/= U"4'd11") && trapEnter                                     // 硬件结构的异常需要跳过
+    io.output.difftestSkip := trapNeedSkip || cntCsr ||
                               io.input.fenceI || devAccess
   }
   // ==================== 仿真专用: LSU 访存性能统计(仅仿真, 4 组: mem/dev × 读/写) ====================

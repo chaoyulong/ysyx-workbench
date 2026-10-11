@@ -128,7 +128,7 @@ case class ysyx_23060082_Decoder(config: CpuConfig = CpuConfig()) extends Compon
 // ================================ 控制信号生成 ================================ //
   val csrWb = i_csrrw | i_csrrs
 
-  io.useRf1 := typeS | typeR | typeB | typeI | i_ecall
+  io.useRf1 := typeS | typeR | typeB | typeI
   io.useRf2 := typeS | typeR | typeB
 
   io.ctrl.rfCtrl.regWr       := typeU | typeJ | typeI | typeR
@@ -180,10 +180,10 @@ case class ysyx_23060082_Decoder(config: CpuConfig = CpuConfig()) extends Compon
                                Mux(i_csrrs, U"3'd2", U"3'd0"))
   io.ctrl.csrCtrl.trapEnter := io.ifuTrapEnter | i_ecall | i_ebreak | i_illegal // idu的异常进入,主动进入或者出现非法指令
   io.ctrl.csrCtrl.excCause  := Mux(io.ifuTrapEnter, io.ifuExcCause,             // 前级的异常优先
-                               Mux(i_illegal, U(2, 4 bits), 
-                               Mux(i_ebreak, U(3, 4 bits), U(0, 4 bits))))
+                               Mux(i_illegal, U"4'd2", 
+                               Mux(i_ecall, U"4'd11",
+                               Mux(i_ebreak, U"4'd3", U"4'd0"))))
   io.ctrl.csrCtrl.trapExit  := i_mret                                           // 退出异常,MRET
-  io.ctrl.csrCtrl.ecall     := i_ecall
   // ================================ 指令类别(仅仿真, 性能统计) ================================ //
   if (config.enableSimDebug) {
     io.isCalc   := i_add | i_sub | i_sll | i_slt | i_sltu | i_xor | i_srl | i_sra | i_or | i_and |

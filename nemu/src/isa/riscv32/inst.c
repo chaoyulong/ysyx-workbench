@@ -130,7 +130,9 @@ static int decode_exec(Decode *s) {
   // INSTPAT("??????? ????? ????? 110 ????? 11100 11", csrrsi , I, puts("csrrsi"));
   // INSTPAT("??????? ????? ????? 111 ????? 11100 11", csrrci , I, puts("csrrci"));
 
-  INSTPAT("0000000 00000 00000 000 00000 11100 11", ecall  , N, IFDEF(CONFIG_ETRACE, e_trace(R(17), s->pc)); s->dnpc = isa_raise_intr(R(17), s->pc)); // R(17) is $a7
+  INSTPAT("0000000 00000 00000 000 00000 11100 11", ecall  , N, MUXDEF(__riscv_e, word_t NO = R(15), word_t NO = R(17)); 
+                                                                IFDEF(CONFIG_ETRACE, e_trace(R(17), s->pc)); 
+                                                                s->dnpc = isa_raise_intr(R(17), s->pc)); // R(17) is $a7
   INSTPAT("0011000 00010 00000 000 00000 11100 11", mret   , N, s->dnpc = riscv32_CSR.mepc;); 
   INSTPAT("0000000 00001 00000 000 00000 11100 11", ebreak , N, NEMUTRAP(s->pc, R(10))); // R(10) is $a0
 

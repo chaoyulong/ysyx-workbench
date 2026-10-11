@@ -167,6 +167,7 @@ uint64_t read_minstret64(void) {
 void putch(char ch) {
   extern void __am_uart_tx(AM_UART_TX_T *tx);
   __am_uart_tx((AM_UART_TX_T *)(&ch));
+  // io_write(AM_UART_TX, ch);
 }
 
 void halt(int code) {

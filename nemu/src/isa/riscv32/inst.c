@@ -34,7 +34,8 @@ enum {
 #define immJ() do { *imm = (SEXT(BITS(i, 31, 31), 1) << 20) | (BITS(i, 19, 12) << 12)| (BITS(i, 20, 20) << 11) | (BITS(i, 30, 21) << 1); } while(0)
 #define immB() do { *imm = (SEXT(BITS(i, 31, 31), 1) << 12) | (BITS(i, 7, 7) << 11)| (BITS(i, 30, 25) << 5) | (BITS(i, 11, 8) << 1); } while(0)
 
-#define csr_uimm BITS((s)->isa.inst, 19, 15)
+#define csrUimm() BITS(INSTPAT_INST(s), 19, 15) 
+#define csrIdx() BITS(INSTPAT_INST(s), 31, 20)      // 12位CSR地址,不符号扩展
 
 static void decode_operand(Decode *s, int *rd, word_t *src1, word_t *src2, word_t *imm, int type) {
   uint32_t i = s->isa.inst;
@@ -122,17 +123,15 @@ static int decode_exec(Decode *s) {
   INSTPAT("??????? ????? ????? 110 ????? 11000 11", bltu   , B, if(src1 < src2) s->dnpc = s->pc + imm);
   INSTPAT("??????? ????? ????? 111 ????? 11000 11", bgeu   , B, if(src1 >= src2) s->dnpc = s->pc + imm);
 
-  INSTPAT("??????? ????? ????? 001 ????? 11100 11", csrrw  , I, R(rd) = *CSR_rw(imm); *CSR_rw(imm) = src1; /*printf("pc = %x, csr = %s, wdata = %x\n",s->pc, get_csr_name(imm), src1);*/);
-  INSTPAT("??????? ????? ????? 010 ????? 11100 11", csrrs  , I, R(rd) = *CSR_rw(imm); *CSR_rw(imm) |= src1; IFDEF(CONFIG_DIFFTEST,difftest_skip_ref());
-                                                                                              /*printf("pc = %x, csr = %s, rdata = %x\n",s->pc, get_csr_name(imm), R(rd));*/);
+  INSTPAT("??????? ????? ????? 001 ????? 11100 11", csrrw  , I, R(rd) = *CSR_rw(csrIdx()); *CSR_rw(csrIdx()) = src1; );
+  INSTPAT("??????? ????? ????? 010 ????? 11100 11", csrrs  , I, R(rd) = *CSR_rw(csrIdx()); if(csrUimm() != 0)*CSR_rw(csrIdx()) |= src1;);
+                                                                                             
   // INSTPAT("??????? ????? ????? 011 ????? 11100 11", csrrc  , I, puts("csrrc"));
   // INSTPAT("??????? ????? ????? 101 ????? 11100 11", csrrwi , I, puts("csrrwi"));
   // INSTPAT("??????? ????? ????? 110 ????? 11100 11", csrrsi , I, puts("csrrsi"));
   // INSTPAT("??????? ????? ????? 111 ????? 11100 11", csrrci , I, puts("csrrci"));
 
-  INSTPAT("0000000 00000 00000 000 00000 11100 11", ecall  , N, MUXDEF(__riscv_e, word_t NO = R(15), word_t NO = R(17)); 
-                                                                IFDEF(CONFIG_ETRACE, e_trace(R(17), s->pc)); 
-                                                                s->dnpc = isa_raise_intr(R(17), s->pc)); // R(17) is $a7
+  INSTPAT("0000000 00000 00000 000 00000 11100 11", ecall  , N, IFDEF(CONFIG_ETRACE, e_trace(11, s->pc)); s->dnpc = isa_raise_intr(11, s->pc));
   INSTPAT("0011000 00010 00000 000 00000 11100 11", mret   , N, s->dnpc = riscv32_CSR.mepc;); 
   INSTPAT("0000000 00001 00000 000 00000 11100 11", ebreak , N, NEMUTRAP(s->pc, R(10))); // R(10) is $a0
 
@@ -140,7 +139,7 @@ static int decode_exec(Decode *s) {
   INSTPAT_END();
 
   R(0) = 0; // reset $zero to 0
-
+  csr_update(); // 更新csr
   return 0;
 }
 

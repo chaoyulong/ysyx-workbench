@@ -60,15 +60,22 @@ void isa_difftest_attach();
 
 //  CSR寄存器
 typedef struct {
-  paddr_t mepc;      // 异常pc    0x341
-  paddr_t mcause;    // 原因      0x342
-  paddr_t mtvec;     // 异常入口地址 0x305
-  paddr_t mstatus;   // 状态      0x300
+  paddr_t mstatus  ;  //  0x300    // 状态
+  paddr_t mtvec    ;  //  0x305    // 异常入口地址
+  paddr_t mepc     ;  //  0x341    // 异常pc
+  paddr_t mcause   ;  //  0x342    // 原因
+  paddr_t mvendorid;  //  0xf11    // VendorID，从中读出ysyx的ASCII码, 即0x79737978    
+  paddr_t marchid  ;  //  0xf12    // ArchitectureID，从中读出学号数字部分的十进制表示, 读出23060082, 即0x15fde72
+  paddr_t mcycle   ;  //  0xB00    // 机器周期计数器(低32位)
+  paddr_t mcycleh  ;  //  0xB80    // 机器周期计数器(高32位)
+  paddr_t minstret ;  //  0xB02    // 机器指令退休计数器(低32位)
+  paddr_t minstreth;  //  0xB82    // 机器指令退休计数器(高32位)
 } riscv32_CSR_state;
 extern riscv32_CSR_state riscv32_CSR;
 
 char *get_csr_name(paddr_t csr);
 paddr_t *CSR_rw(paddr_t csr);
+void csr_update(void);
 
 // ftrace
 typedef struct elffun

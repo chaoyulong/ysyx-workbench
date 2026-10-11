@@ -63,7 +63,11 @@ static inline bool in_sdram(paddr_t addr) {
 
 /* 是否落在任意一块被模拟的内存里(设备区不在其中: 设备访问会被 difftest skip) */
 static inline bool in_mem_region(paddr_t addr) {
+#ifdef CONFIG_TARGET_SHARE
   return in_pmem(addr) || in_flash(addr) || in_sram(addr) || in_sdram(addr);
+#else
+  return in_pmem(addr);
+#endif
 }
 
 word_t paddr_read(paddr_t addr, int len);

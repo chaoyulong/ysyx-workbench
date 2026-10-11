@@ -17,3 +17,5 @@
 /ysyxSoC
 /rt-thread-am
 !/patch/**
+/navy-apps
+/nanos-lite

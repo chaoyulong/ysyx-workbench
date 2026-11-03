@@ -27,15 +27,20 @@ void __am_gpu_config(AM_GPU_CONFIG_T *cfg) {
 
 void __am_gpu_fbdraw(AM_GPU_FBDRAW_T *ctl) {
   int x = ctl->x, y = ctl->y, h = ctl->h, w = ctl->w;
-  int pw = (w < screen_w - x) ? w : screen_w - x;     // 横向裁剪到屏幕内
-  int ph = (h < screen_h - y) ? h : screen_h - y;     // 纵向裁剪到屏幕内
-  size_t len = (size_t)pw * sizeof(uint32_t);
 
-  uint32_t *pixels = (uint32_t *)(uintptr_t)ctl->pixels;
-  for(int i = 0; i < ph; i++) {
-    memcpy(fb +(y + i) * screen_w + x, pixels, len);  // nemu显存一行要跨screen_w的长度
-    pixels += w;                                      // pixels数据一行跨w的长度
+  // 参数合法时才可以搬运
+  if (screen_w > 0 && screen_h > 0 && x >= 0 && y >= 0 && x < screen_w && y < screen_h && w > 0 && h > 0) {
+    int pw = (w < screen_w - x) ? w : screen_w - x;       // 横向裁剪到屏幕内
+    int ph = (h < screen_h - y) ? h : screen_h - y;       // 纵向裁剪到屏幕内
+    size_t len = (size_t)pw * sizeof(uint32_t);
+    uint32_t *pixels = (uint32_t *)(uintptr_t)ctl->pixels;
+
+    for(int row = 0; row < ph; row++) {
+      memcpy(fb +(y + row) * screen_w + x, pixels, len);  // nemu显存一行要跨screen_w的长度
+      pixels += w;                                        // pixels数据一行跨w的长度
+    }
   }
+  // 刷新显示
   if (ctl->sync) {
     outl(SYNC_ADDR, 1);
   }

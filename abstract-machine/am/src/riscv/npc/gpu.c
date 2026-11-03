@@ -2,7 +2,6 @@
 #include <klib.h>
 #include "npc.h"
 
-
 void __am_gpu_init() {
 }
 

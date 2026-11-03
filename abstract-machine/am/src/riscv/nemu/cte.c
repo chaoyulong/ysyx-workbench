@@ -15,8 +15,8 @@ Context* __am_irq_handle(Context *c) {
         c->mepc += 4;
         break;
       }
-      case 3: {
-        ev.event = EVENT_SYSCALL; c->mepc += 4; break;
+      case 3: {                   // 断点异常，也就是ebreak指令，不应该执行到这里
+        ev.event = EVENT_ERROR; break;
       }
       
       default: ev.event = EVENT_ERROR; break;

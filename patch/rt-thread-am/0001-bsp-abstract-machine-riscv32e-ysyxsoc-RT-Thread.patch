@@ -229,7 +229,7 @@ index e4eb86689..80fef0ce0 100644
 -  return (*p != '\0' ? *(p ++) : -1);
 +  // static const char *p = "help\ndate\nversion\nfree\nps\npwd\nls\nmemtrace\nmemcheck\nutest_list\n";
 +  // return (*p != '\0' ? *(p ++) : -1);
-+  static const char *p = "help\nam_microbench test\n";
++  static const char *p = "help\ndate\nversion\nfree\nps\npwd\nls\nmemtrace\nmemcheck\nutest_list\nam_microbench test\n";
 +  return (*p != '\0' ? *(p ++) : io_read(AM_UART_RX).data);
  }
  

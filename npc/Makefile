@@ -89,7 +89,7 @@ VERILATOR_CFLAGS += -MMD --build -cc \
 				--no-timing --timescale "1ns/1ns"	\
 				--autoflush
 
-VSRCS += $(SPINAL_VFILE)
+VSRCS += $(SIM_VFILE)
 VSRCS += $(shell find $(abspath playground/vsrc) -name "*.v")
 CSRCS = $(shell find $(abspath csrc) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
 INCFLAGS = $(addprefix -I, $(INC_PATH))
@@ -113,10 +113,12 @@ $(LIBCAPSTONE):
 
 # ======================================== spinalhdl相关 ======================================== #
 # 只操作spinal的两条命令:verilog与test
-# 默认 0: make verilog 生成给 CI(iverilog/yosys)用的【不含 DPI 黑盒】的 RTL
-# sim/run/wave 用目标特定变量覆盖成 1(见下), 生成带 itrace/difftest/perf DPI 的版本
-SPINAL_SIM_DEBUG ?= 0
-SPINAL_GEN_ENV = SPINAL_TOPNAME=$(SPINAL_TOPNAME) BUILD_DIR=$(BUILD_DIR) SPINAL_SIM_DEBUG=$(SPINAL_SIM_DEBUG) PARTFORM=$(PARTFORM)
+# make verilog 产出【不含 DPI 黑盒、无仿真调试计数器】的 RTL —— 这是 CI 的仿真与综合输入
+# (契约要求无 DPI; 面积也必须是这份: 带 PerfReg 的版本会多约 630 个触发器, 面积 +2860)
+SPINAL_GEN_ENV := SPINAL_TOPNAME=$(SPINAL_TOPNAME) BUILD_DIR=$(BUILD_DIR) SPINAL_SIM_DEBUG=0 PARTFORM=$(PARTFORM)
+# Verilator 仿真用的 RTL: 必须是带 itrace/difftest/perf DPI 的版本, 且【写到另一个文件】,
+# 否则 run/sim 会把 build/ysyx_23060082.v 覆盖成调试版, CI 随后综合面积就变大
+SPINAL_SIMENV = SPINAL_TOPNAME=$(SPINAL_TOPNAME) BUILD_DIR=$(BUILD_DIR)/sim SPINAL_SIM_DEBUG=1 PARTFORM=$(PARTFORM)
 SPINAL_SIM_ENV := SPINAL_SIM_DIR=$(BUILD_DIR)/simulations PARTFORM=$(PARTFORM)
 # 用于生成sta时所需要的不含调试信号的ysyx_23060082.v,所以SPINAL_SIM_DEBUG信号要关闭，PARTFORM永远为ysyxsoc，命令行传PARTFORM也不会影响sta
 SPINAL_STA_ENV := SPINAL_TOPNAME=$(STA_DESIGN) BUILD_DIR=$(STA_BUILD_DIR) SPINAL_SIM_DEBUG=0 PARTFORM=ysyxsoc
@@ -140,8 +142,14 @@ verilog-iverilog: $(SPINAL_SRCS)
 	@mkdir -p $(IV_BUILD_DIR)
 	@$(SPINAL_IV_ENV) $(MILL) -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog
 
+verilog-sim: $(SPINAL_SRCS)
+	@mkdir -p $(BUILD_DIR)/sim
+	@$(SPINAL_SIMENV) $(MILL) -i $(SPINAL_PRJ).runMain $(SPINAL_PRJ).SpinalToVerilog
+
 # 应该每次都重新生成一次verilog文件
 $(SPINAL_VFILE): verilog
+SIM_VFILE := $(abspath $(BUILD_DIR)/sim/$(SPINAL_TOPNAME).v)
+$(SIM_VFILE): verilog-sim
 $(STA_VFILE): verilog-sta
 $(IV_VFILE): verilog-iverilog
 
@@ -166,17 +174,14 @@ endef
 
 # 直接在nvboard上运行，直接查看现象
 # 目标特定变量: 让前提 $(SPINAL_VFILE) -> verilog 以 SIM_DEBUG=1 生成(带 DPI)
-run: SPINAL_SIM_DEBUG = 1
 run: $(CSRCS) $(VSRCS) $(NVBOARD_ARCHIVE) $(SRC_AUTO_BIND)
 	@$(call build_target, $^, -D__USE_NVBOARD__)
 
 # 用于单步执行
-sim: SPINAL_SIM_DEBUG = 1
 sim: $(CSRCS) $(VSRCS)
 	@$(call build_target, $^, )
 
 # 运行并记录波形
-wave: SPINAL_SIM_DEBUG = 1
 wave: $(CSRCS) $(VSRCS)
 	@$(call build_target, $^, -D__GET_WAVE__)
 	@$(GTKWAVE) $(SIM_WAVE)

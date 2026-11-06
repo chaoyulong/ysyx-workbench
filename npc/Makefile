@@ -96,6 +96,10 @@ INCFLAGS = $(addprefix -I, $(INC_PATH))
 CXXFLAGS += $(INCFLAGS) -DTOP_NAME="\"V$(TOPNAME)\"" -D__$(ISA)__ -D__$(PARTFORM)__ -DISA_NAME=$(ISA) -DPARTFORM_NAME=$(PARTFORM)
 CXXFLAGS += $(shell pkg-config --cflags sdl2)
 LDFLAGS += -lreadline $(shell pkg-config --libs sdl2)
+# nvboard 依赖 SDL2: verilator 生成的链接规则是 `$(LINK) $(LDFLAGS) $^ ...`(见 obj_dir/V*.mk),
+# 即 LDFLAGS 排在 nvboard.a/目标文件【之前】⇒ 链接器(as-needed)会丢弃这些库 ⇒ undefined reference。
+# 用 --no-as-needed 让它们被保留, 从而与顺序无关; 显式列一遍以防 CI 上没有 pkg-config。
+LDFLAGS += -Wl,--no-as-needed -lSDL2 -lSDL2_image -lSDL2_ttf
 override ARGS ?=
 IMG ?=
 

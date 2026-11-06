@@ -15,7 +15,9 @@ LDFLAGS   += --defsym=_pmem_start=0x80000000 --defsym=_entry_offset=0x0
 LDFLAGS   += --gc-sections -e _start
 NPCFLAGS  += -l $(shell dirname $(IMAGE).elf)/npc-log.txt
 NPCFLAGS  += -f $(IMAGE).elf
-NPCFLAGS  += -d $(NPC_HOME)/tools/difftest/riscv32-nemu-interpreter-so
+# difftest 参考 so 是本地产物(不在仓库里): 没有它时不传 -d, 由 npc 侧自动关闭 difftest
+DIFFTEST_SO = $(NPC_HOME)/tools/difftest/riscv32-nemu-interpreter-so
+NPCFLAGS += $(if $(wildcard $(DIFFTEST_SO)),-d $(DIFFTEST_SO),)
 
 SDB_VAL := $(SDB) $(sdb)
 ifneq ($(filter N n, $(SDB_VAL)),)

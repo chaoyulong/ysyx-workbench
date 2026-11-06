@@ -17,7 +17,9 @@ LDSCRIPTS 	 += $(AM_HOME)/scripts/linker_ysyxsoc.ld
 LDFLAGS   	 += --gc-sections -e _bootloader
 YSYXSOCFLAGS += -l $(shell dirname $(IMAGE).elf)/ysyxsoc-log.txt
 YSYXSOCFLAGS += -f $(IMAGE).elf
-YSYXSOCFLAGS += -d $(NPC_HOME)/tools/difftest/riscv32-nemu-interpreter-so
+# difftest 参考 so 是本地产物(不在仓库里): 没有它时不传 -d, 由 npc 侧自动关闭 difftest
+DIFFTEST_SO = $(NPC_HOME)/tools/difftest/riscv32-nemu-interpreter-so
+YSYXSOCFLAGS += $(if $(wildcard $(DIFFTEST_SO)),-d $(DIFFTEST_SO),)
 
 SDB_VAL := $(SDB) $(sdb)
 ifneq ($(filter N n, $(SDB_VAL)),)

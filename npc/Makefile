@@ -109,7 +109,10 @@ $(LIBCAPSTONE):
 
 # ======================================== spinalhdl相关 ======================================== #
 # 只操作spinal的两条命令:verilog与test
-SPINAL_GEN_ENV := SPINAL_TOPNAME=$(SPINAL_TOPNAME) BUILD_DIR=$(BUILD_DIR) PARTFORM=$(PARTFORM)
+# 默认 0: make verilog 生成给 CI(iverilog/yosys)用的【不含 DPI 黑盒】的 RTL
+# sim/run/wave 用目标特定变量覆盖成 1(见下), 生成带 itrace/difftest/perf DPI 的版本
+SPINAL_SIM_DEBUG ?= 0
+SPINAL_GEN_ENV = SPINAL_TOPNAME=$(SPINAL_TOPNAME) BUILD_DIR=$(BUILD_DIR) SPINAL_SIM_DEBUG=$(SPINAL_SIM_DEBUG) PARTFORM=$(PARTFORM)
 SPINAL_SIM_ENV := SPINAL_SIM_DIR=$(BUILD_DIR)/simulations PARTFORM=$(PARTFORM)
 # 用于生成sta时所需要的不含调试信号的ysyx_23060082.v,所以SPINAL_SIM_DEBUG信号要关闭，PARTFORM永远为ysyxsoc，命令行传PARTFORM也不会影响sta
 SPINAL_STA_ENV := SPINAL_TOPNAME=$(STA_DESIGN) BUILD_DIR=$(STA_BUILD_DIR) SPINAL_SIM_DEBUG=0 PARTFORM=ysyxsoc
@@ -158,14 +161,18 @@ define build_target
 endef
 
 # 直接在nvboard上运行，直接查看现象
+# 目标特定变量: 让前提 $(SPINAL_VFILE) -> verilog 以 SIM_DEBUG=1 生成(带 DPI)
+run: SPINAL_SIM_DEBUG = 1
 run: $(CSRCS) $(VSRCS) $(NVBOARD_ARCHIVE) $(SRC_AUTO_BIND)
 	@$(call build_target, $^, -D__USE_NVBOARD__)
 
 # 用于单步执行
+sim: SPINAL_SIM_DEBUG = 1
 sim: $(CSRCS) $(VSRCS)
 	@$(call build_target, $^, )
 
 # 运行并记录波形
+wave: SPINAL_SIM_DEBUG = 1
 wave: $(CSRCS) $(VSRCS)
 	@$(call build_target, $^, -D__GET_WAVE__)
 	@$(GTKWAVE) $(SIM_WAVE)

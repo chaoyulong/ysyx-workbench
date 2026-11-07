@@ -174,16 +174,19 @@ endef
 
 # 直接在nvboard上运行，直接查看现象
 # 目标特定变量: 让前提 $(SPINAL_VFILE) -> verilog 以 SIM_DEBUG=1 生成(带 DPI)
+run: VERILATOR_CFLAGS += -D__USE_NVBOARD__
+run: CXXFLAGS += -D__USE_NVBOARD__
 run: $(CSRCS) $(VSRCS) $(NVBOARD_ARCHIVE) $(SRC_AUTO_BIND)
-	@$(call build_target, $^, -D__USE_NVBOARD__)
+	@$(call build_target, $^, )
 
 # 用于单步执行
 sim: $(CSRCS) $(VSRCS)
 	@$(call build_target, $^, )
 
 # 运行并记录波形
+wave: CXXFLAGS += -D__GET_WAVE__
 wave: $(CSRCS) $(VSRCS)
-	@$(call build_target, $^, -D__GET_WAVE__)
+	@$(call build_target, $^, )
 	@$(GTKWAVE) $(SIM_WAVE)
 
 # 性能测试: 运行 microbench(test规模)并输出统计(周期/指令/IPC + PERF计数器)

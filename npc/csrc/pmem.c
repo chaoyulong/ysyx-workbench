@@ -55,7 +55,16 @@ extern "C" void pmem_write(uint32_t waddr, uint32_t wdata, uint8_t wmask) {
     return;
   }
   switch(waddr){
-    case SERIAL_PORT: putc((uint8_t)wdata, stderr); return;
+    case SERIAL_PORT:
+      // 有 nvboard 时不要再自己打印 —— nvboard(CI 用的 no-gui 分支)在
+      // nvboard/src/uart.cpp:55 -> term.cpp:111 里已经做过 putchar+fflush(stdout),
+      // 两份叠加会让每个字符重复两次, 而 CI 的 monitor.py 是整行匹配关键字的
+      // ⇒ "Keyword not detected"(CI 文档也提醒过"一个字符输出多次, 需要自行解决")。
+      // 没有 nvboard(如 make sim)时仍打印到 stderr, 终端才能看到输出。
+#ifndef __USE_NVBOARD__
+      putc((uint8_t)wdata, stderr);
+#endif
+      return;
     case VGACTL_ADDR:
     case VGACTL_ADDR + 4: gpu_io_handler(waddr - VGACTL_ADDR, true, wdata); return;
     default: out_of_bound(waddr, 1); return;

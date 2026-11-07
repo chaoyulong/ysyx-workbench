@@ -8,15 +8,12 @@ int main(int argc, char** argv)
   monitor_init(argc, argv);
   cpu_reset(50);
   monitor_mainloop();
-#ifdef __USE_NVBOARD__
-  void nvboard_wait_quit(void);
-  // 只有程序被【暂停】(交互模式下按 ctrl-c / sdb 停住)时才继续刷新板子;
-  // 程序正常结束(NPC_END)或出错(NPC_ABORT)时直接退出 ——
-  // 否则 CI/无终端环境下会永远卡在这个循环里(表现为 "Kill the process due to timeout")
-  if (npc_state.state == NPC_STOP) {
-    while(1) nvboard_wait_quit();
-  }
-#endif
+  // 原先这里有 `#ifdef __USE_NVBOARD__ while (1) nvboard_wait_quit();`
+  // (为 nvboard 板子演示让进程不退出)。但 sdb_mainloop() 只会在
+  //   ① 批处理模式(-b): cmd_c() 跑完就 return, 状态是 NPC_END/NPC_ABORT
+  //   ② 交互模式: 用户 q/EOF 才 return, 状态是 NPC_QUIT
+  // 两条路径都不会返回 NPC_STOP, 返回后也没有"还需要刷新板子"的状态,
+  // 所以这个循环只会让 CI/无终端环境永远卡住(Kill the process due to timeout)。
   monitor_exit();
   return is_exit_status_bad();
 }

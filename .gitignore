@@ -19,3 +19,5 @@
 !/patch/**
 /navy-apps
 /nanos-lite
+/.ci-harness
+/.yosys-sta-ci

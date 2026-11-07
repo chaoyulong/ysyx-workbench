@@ -21,3 +21,5 @@
 /nanos-lite
 /.ci-harness
 /.yosys-sta-ci
+/.nvboard-ci
+/.nvboard-nogui

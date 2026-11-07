@@ -55,15 +55,7 @@ extern "C" void pmem_write(uint32_t waddr, uint32_t wdata, uint8_t wmask) {
     return;
   }
   switch(waddr){
-    case SERIAL_PORT:
-      // 有 nvboard 时不要再自己打印: CI 没有显示器, nvboard 的串口界面会退化成
-      // 打印到 stdout(文档: "CI 使用的 nvboard 是通过标准输入输出交互的"),
-      // 两份输出叠加会让每个字符重复两次, 而 CI 的 monitor.py 是整行匹配关键字的
-      // ⇒ "Keyword not detected"。本地用 make sim(不定义 __USE_NVBOARD__)时仍打印到 stderr。
-#ifndef __USE_NVBOARD__
-      putc((uint8_t)wdata, stderr);
-#endif
-      return;
+    case SERIAL_PORT: putc((uint8_t)wdata, stderr); return;
     case VGACTL_ADDR:
     case VGACTL_ADDR + 4: gpu_io_handler(waddr - VGACTL_ADDR, true, wdata); return;
     default: out_of_bound(waddr, 1); return;

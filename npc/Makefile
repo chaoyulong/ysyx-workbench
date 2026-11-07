@@ -174,6 +174,10 @@ endef
 
 # 直接在nvboard上运行，直接查看现象
 # 目标特定变量: 让前提 $(SPINAL_VFILE) -> verilog 以 SIM_DEBUG=1 生成(带 DPI)
+ifeq ($(NPC_SIM_LOCKED),)
+run sim wave:
+	+@flock $(BUILD_DIR)/.simulation.lock $(MAKE) $@ NPC_SIM_LOCKED=1
+else
 run: VERILATOR_CFLAGS += -D__USE_NVBOARD__
 run: CXXFLAGS += -D__USE_NVBOARD__
 run: $(CSRCS) $(VSRCS) $(NVBOARD_ARCHIVE) $(SRC_AUTO_BIND)
@@ -188,6 +192,7 @@ wave: CXXFLAGS += -D__GET_WAVE__
 wave: $(CSRCS) $(VSRCS)
 	@$(call build_target, $^, )
 	@$(GTKWAVE) $(SIM_WAVE)
+endif
 
 # 性能测试: 运行 microbench(test规模)并输出统计(周期/指令/IPC + PERF计数器)
 # 配合 git checkout 历史 commit, 可复现当时代码的性能数据(记录见 PERF.md)

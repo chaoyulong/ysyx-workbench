@@ -417,3 +417,30 @@ grep "Chip area" ../npc/build/sta-ci/ysyx_23060082-500MHz/yosys-fixed.log
 3. [ ] **面积优化**(§6.2):以 CI 口径 27,547 为基线,目标 ≤ 16,500;优先看 RegFile、
        流水线级寄存器、CSR,其次才是 dcache/icache;每轮都用 §6.2 的命令量
 4. [ ] 收尾:四值/网表的"1 拍 X"问题(§7),以及 §8 的检查清单过一遍后再提交 CI
+
+## 10. 2026-11-07 CI 42336277202 排查更新（优先于前面的旧状态）
+
+- UART 重复输出已修复并推送：根仓库 `7210bb6`、NPC `7b741eb`。
+  NVBoard 的 `run` 同时向 Verilog 和 C++ 定义 `__USE_NVBOARD__`，
+  SoC UART FIFO 在该宏下关闭 `$write`；最新 CI 的 hello、microbench 已通过。
+- cpu-tests、riscv-tests、riscv-arch-test 的生成文件丢失来自并发构建：CI 设置
+  `MAKEFLAGS=-j4`，多个测试同时进入 NPC，共用 `build/obj_dir`，每次又删除这个目录。
+  `npc/Makefile` 的 run/sim/wave 现通过同一个 `flock` 递归进入实际目标，
+  锁从 RTL 生成前一直保持到仿真结束。仅锁 Verilator 配方不足以保护生成阶段。
+- RT-Thread 的零地址异常发生在 bootloader，尚未进入串口初始化。
+  已用 GCC 11.4 复现：遗漏的三字节 `.srodata.CSWTCH.13` 成为孤立段，
+  使 Flash 中 `_data_load_start` 未按四字节对齐；SSBL 的 `lw` 触发异常，
+  此时 mtvec 为零，随后在地址零取到非法指令。链接脚本改为收集 `*(.srodata*)`，
+  同时保证这些常量落在 bootloader 的 rodata 拷贝范围内。
+- RT-Thread 追加补丁 `patch/rt-thread-am/0002-fix-ci-uart-input-and-optional-fceux.patch`：
+  缺少可选 fceux-am 时跳过集成，移除串口预置命令，让 CI monitor 驱动 shell；
+  把 AM 的 `0xff` 无数据标记转换为 RT-Thread 期望的 `-1`（RISC-V 的 char 默认无符号）。
+- 验证日志与 GCC 11 复现工程在 `/tmp/ysyx-ci-repro/`；最新 CI 原始日志为
+  `/tmp/ysyx-ci-run-42336277202.log`。不要把临时复现工程加入提交。
+- 并发锁验证覆盖生成、编译、运行全过程以及错误返回；实际 `cpu-tests` 以 `-j2`
+  同时发起 add、if-else，两项均 PASS（复用现有仿真 RTL，`MILL=true git_commit=`）。
+  其余测试集尚未全量重跑，不能据此声称全部指令测试已通过。
+- RT-Thread 已使用 GCC 11.4、am-kernels 的 ci 分支、no-gui NVBoard 和同一份
+  CI monitor 验证：help、am_hello、am_microbench、echo 关键字完整通过，
+  monitor 输出 `Keyword detected, OK!`，进程返回零；日志为
+  `/tmp/ysyx-ci-repro/ci-monitor.log`。

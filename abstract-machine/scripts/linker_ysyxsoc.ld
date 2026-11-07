@@ -47,7 +47,7 @@ SECTIONS {
     . = ALIGN(8);
     _rodata_start = .;
     *(.rodata*)
-    *(.srodata.mainargs)  
+    *(.srodata*)
     . = ALIGN(8);
   } > sdram AT> flash
   _rodata_end = .;
@@ -88,4 +88,3 @@ SECTIONS {
   PROVIDE(_bss_extra_start = 0);
   PROVIDE(_bss_extra_end = 0);
 }
-

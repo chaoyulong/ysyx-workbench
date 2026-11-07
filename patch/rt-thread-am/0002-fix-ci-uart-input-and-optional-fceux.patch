@@ -1,0 +1,45 @@
+From: 23060082-ChaoYuLong <2324849716@qq.com>
+Subject: [PATCH 2/2] bsp: accept CI UART input and make fceux optional
+
+Let the CI monitor drive the shell instead of injecting local commands.
+Translate the AM UART no-data sentinel to the -1 expected by RT-Thread,
+including targets where plain char is unsigned.
+
+The CI workspace does not contain fceux-am, so integrate it only when
+the optional checkout exists.
+---
+ bsp/abstract-machine/integrate-am-apps.py | 4 +++-
+ bsp/abstract-machine/src/uart.c          | 6 ++----
+ 2 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/bsp/abstract-machine/integrate-am-apps.py b/bsp/abstract-machine/integrate-am-apps.py
+--- a/bsp/abstract-machine/integrate-am-apps.py
++++ b/bsp/abstract-machine/integrate-am-apps.py
+@@ -11,8 +11,10 @@ app_dir_list = [
+   AM_KERNELS_HOME / "benchmarks" / "microbench",
+   AM_KERNELS_HOME / "kernels" / "typing-game",
+   AM_KERNELS_HOME / "kernels" / "snake",
+-  AM_KERNELS_HOME / ".." / "fceux-am",
+ ]
++fceux_dir = AM_KERNELS_HOME / ".." / "fceux-am"
++if fceux_dir.is_dir():
++    app_dir_list.append(fceux_dir)
+ 
+ if len(sys.argv) != 3:
+     print("Usage: python3 integrate-am-apps.py ARCH=[AM arch] CROSS_COMPILE=[prefix]")
+diff --git a/bsp/abstract-machine/src/uart.c b/bsp/abstract-machine/src/uart.c
+--- a/bsp/abstract-machine/src/uart.c
++++ b/bsp/abstract-machine/src/uart.c
+@@ -39,10 +39,8 @@ static int _uart_putc(struct rt_serial_device *serial, char c) {
+ }
+ 
+ static int _uart_getc(struct rt_serial_device *serial) {
+-  // static const char *p = "help\ndate\nversion\nfree\nps\npwd\nls\nmemtrace\nmemcheck\nutest_list\n";
+-  // return (*p != '\0' ? *(p ++) : -1);
+-  static const char *p = "help\ndate\nversion\nfree\nps\npwd\nls\nmemtrace\nmemcheck\nutest_list\nam_microbench test\n";
+-  return (*p != '\0' ? *(p ++) : io_read(AM_UART_RX).data);
++  char data = io_read(AM_UART_RX).data;
++  return data == (char)0xff ? -1 : (unsigned char)data;
+ }
+ 
+ const struct rt_uart_ops _uart_ops = {

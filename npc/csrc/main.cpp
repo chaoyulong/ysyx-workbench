@@ -8,10 +8,10 @@ int main(int argc, char** argv)
   monitor_init(argc, argv);
   cpu_reset(50);
   monitor_mainloop();
-#ifdef __USE_NVBOARD__
+#if defined(__USE_NVBOARD__) && !defined(__CI_MODE__)
 // 为nvboard板子演示让进程不退出; 但留着会让CI测试卡住
-  // void nvboard_update(void);
-  // while(1) nvboard_update(void);
+  void nvboard_update(void);
+  while(1) nvboard_update();
 #endif
   monitor_exit();
   return is_exit_status_bad();

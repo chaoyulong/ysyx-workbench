@@ -291,8 +291,8 @@ RTL 功能已经正确(跑通 hello/microbench/rt-thread 并 `HIT GOOD TRAP`),�
 | npc | https://github.com/chaoyulong/npc.git | **`main`** | 根仓库也跟踪 `npc/` 下的同名文件 ⇒ **改动要两处都提交** |
 | tracer | 同上(主仓库内) | **`tracer-ysyx`** | 1.11 §5 硬性要求,**必须推送**;已推 ✓(由根 `Makefile` 的 `git_commit` 自动维护) |
 
-⚠️ `navy-apps`、`nanos-lite` **不要提交**(已写入 `.gitignore`);`.ci-harness/`、`.yosys-sta-ci/`、
-`.nvboard-ci/`、`.nvboard-nogui/` 是本地分析用的克隆,也已忽略。
+⚠️ `navy-apps`、`nanos-lite` **不要提交**(已写入 `.gitignore`);`tools/yosys-sta-ci/` 是本地保留的
+CI 综合工具副本,已忽略；临时 CI harness 和 NVBoard 克隆已清理。
 
 ## 2. CI(1.11)对我们代码的契约(实测自 harness 源码)
 
@@ -307,7 +307,7 @@ RTL 功能已经正确(跑通 hello/microbench/rt-thread 并 `HIT GOOD TRAP`),�
 
 **CI 用上游代码**(不能依赖对这些的修改):`am-kernels`、`nvboard`(**`no-gui` 分支**)、`yosys-sta`(**`OSCPU/yosys-sta` 的 `ci` 分支**)。
 
-## 3. CI 的 job 清单(`.ci-harness/.github/workflows/autotest.yml`)
+## 3. CI 的 job 清单（以 GitHub Actions workflow 为准）
 
 `parse` / `setup` / **`hello`** / **`cpu-tests`** / **`riscv-tests`** / **`riscv-arch-test`** /
 **`microbench`** / **`rt-thread`** / **`iverilog-microbench`** / **`yosys-sta`** /
@@ -356,14 +356,8 @@ CI 用 `monitor.py --good=$KEY`(**KEY 由 mainargs 传入,如 `ETPUXBZB`**)且�
 **仍存的怀疑**:`monitor.py` 用 **`pty.openpty()`** 接子进程 stdout(`stdout=slave`)⇒ pty 的
 ECHO/行规程可能**把输出回显一次** ⇒ 本地(真终端/文件)看不到,CI 才出现。
 
-**下一步(最快的验证)**:
-```bash
-cd ~/Desktop/ysyx-workbench
-NVBOARD_HOME=$PWD/.nvboard-nogui make -C am-kernels/kernels/hello ARCH=riscv32e-ysyxsoc run | cat
-```
-- **能复现重复** ⇒ 问题在 `no-gui` nvboard 的初始化/`term` ⇒ 继续查它
-- **不复现** ⇒ 问题在 `pty`/`monitor.py` 层 ⇒ 需要另想"让 KEY 只出现一次"的办法
-  (例如让程序把 KEY 单独打印成一行,或换掉输出路径)
+本地不再保留 CI 的 NVBoard 克隆；需要复现时由 CI workflow 重新拉取
+`no-gui` 分支。
 
 ### 6.2 ⭐ 面积超预算(CI 口径 27,547 / 预算 16,500)
 
@@ -376,10 +370,10 @@ NVBOARD_HOME=$PWD/.nvboard-nogui make -C am-kernels/kernels/hello ARCH=riscv32e-
 - **结论**:优化要以 **CI 口径(27,547)** 为基线,要减 **~11,000 µm²(40%)** ✗
 - **用户的优化计划**(尚未开始):去掉 dcache、缩小 icache,再做其他优化 —— ⚠️ 但按数据估算,
   这两项只能省 ~1,500-2,500;大头是 **RegFile(32×32≈1024 DFF≈4,600 µm²)**、流水线级寄存器、CSR
-- **本地用 CI 口径量面积**(已备好 `npc/build/sta-ci/`,工具在 `.yosys-sta-ci/`):
+- **本地用 CI 口径量面积**(工具在 `tools/yosys-sta-ci/`):
 ```bash
 make -C npc verilog          # 必做:生成干净 RTL,否则量的是调试版(+3,000)
-cd .yosys-sta-ci && make sta DESIGN=ysyx_23060082 CLK_FREQ_MHZ=500 CLK_PORT_NAME=clock \
+cd tools/yosys-sta-ci && make sta DESIGN=ysyx_23060082 CLK_FREQ_MHZ=500 CLK_PORT_NAME=clock \
     RTL_FILES=$PWD/../npc/build/ysyx_23060082.v O=$PWD/../npc/build/sta-ci
 grep "Chip area" ../npc/build/sta-ci/ysyx_23060082-500MHz/yosys-fixed.log
 ```
@@ -387,9 +381,9 @@ grep "Chip area" ../npc/build/sta-ci/ysyx_23060082-500MHz/yosys-fixed.log
 ## 7. 工具/环境的既定事实(省得重新踩)
 
 - 本地 `~/tools/yosys-sta`(老流程)`make sta` ⇒ 面积/频率写 `npc/build/sta/…/synth_stat.txt`、`*.rpt`
-- `.yosys-sta-ci/` = CI 用的 `yosys-sta@ci`(已 `make init` 装好 `bin/iEDA`)
-- `.nvboard-nogui/` = CI 用的 nvboard `no-gui` 分支;`.nvboard-ci/` = 主分支
-- `.ci-harness/` = CI 服务端代码(`autotest.yml` / `monitor.py`,判断逻辑都在里面)
+- `tools/yosys-sta-ci/` = CI 用的 `yosys-sta@ci`(已 `make init` 装好 `bin/iEDA`)
+- 本地 `make -C npc sta` 只运行 `YOSYS_STA_PATH` 指定的本地流程；需要比较 CI 口径时，
+  手动运行 `tools/yosys-sta-ci`，报告写入单独的 `npc/build/sta-ci/` 目录。
 - 跑 Verilator 模型前常要 `export CCACHE_DISABLE=1`(沙箱里 ccache 只读)
 - 四值/网表:`make -C npc sim-iverilog IMG=…`、`… sim-iverilog-netlist … IV_ARGS="+no_ebreak_stop"`
   - 已知遗留:**1 拍写数据含 X**(`cyc=96 addr=80008ff0`,没打到设备,不影响结果),网表同样复现

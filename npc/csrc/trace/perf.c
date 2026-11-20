@@ -74,9 +74,9 @@ void perf_stat(void) {
     Log_nohead("  %-17s cnt=%-10lu total=%-10lu avg=%7.2f cyc/access", lsu_name[i],
            (unsigned long)lsu_cnt[i], (unsigned long)lsu_sum[i],
            lsu_cnt[i] ? (double)lsu_sum[i] / lsu_cnt[i] : 0);
-  Log_nohead("  %-17s cnt=%-10lu miss=%-11lu hit=%7.2f%%", "Dcache access:",
-         (unsigned long)(lsu_evt[2] + lsu_evt[0]), (unsigned long)lsu_evt[0],
-         (lsu_evt[2] + lsu_evt[0]) ? 100.0 * lsu_evt[2] / (lsu_evt[2] + lsu_evt[0]) : 0);
+  // Log_nohead("  %-17s cnt=%-10lu miss=%-11lu hit=%7.2f%%", "Dcache access:",
+  //        (unsigned long)(lsu_evt[2] + lsu_evt[0]), (unsigned long)lsu_evt[0],
+  //        (lsu_evt[2] + lsu_evt[0]) ? 100.0 * lsu_evt[2] / (lsu_evt[2] + lsu_evt[0]) : 0);
   Log_nohead("  %-17s cnt=%-10lu total=%-10lu avg=%7.2f cyc/inst", "EXU calc:",
          (unsigned long)exuCyc, (unsigned long)exuCalcCnt,
          exuCalcCnt ? (double)exuCyc / exuCalcCnt : 0);

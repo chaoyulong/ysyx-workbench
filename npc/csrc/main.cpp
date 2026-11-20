@@ -2,14 +2,17 @@
 #include "monitor.h"
 #include "cpu-exec.h"
 #include "sdb.h"
+#include "log.h"
 
 int main(int argc, char** argv) 
 {
   monitor_init(argc, argv);
   cpu_reset(50);
   monitor_mainloop();
+
+// 使用nvboard，并且不处于CI测试时，会进入死循环便于查看现象
 #if defined(__USE_NVBOARD__) && !defined(__CI_MODE__)
-// 为nvboard板子演示让进程不退出; 但留着会让CI测试卡住
+  Log(ANSI_FMT("nvboard sim end", ANSI_FG_GREEN));
   void nvboard_update(void);
   while(1) nvboard_update();
 #endif

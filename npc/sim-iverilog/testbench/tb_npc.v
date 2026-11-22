@@ -21,7 +21,7 @@
 //
 // 用法：vvp sim.vvp +img=xxx.hex [选项]   （由 make sim-iverilog[-netlist] 调用）
 //   +img=<hex>      必需；每行一个字节的十六进制文本（sim-iverilog/tools/bin2mem.sh 生成）
-//   +img_size=<N>   镜像字节数（区分"镜像区"和"清零区"）
+//   +img_size=<N>   必需；镜像字节数（区分"镜像区"和"清零区"）
 //   +zero=<N>       启动清零字节数（模拟 malloc 的零内存；要盖住 .bss/stack，默认 16MB）
 //   +max_cycles=<N> watchdog 上限
 //   +no_ebreak_stop 关掉 RTL 专用的 ebreak 提前收尾
@@ -142,6 +142,8 @@ module tb_npc;
   reg [1023:0] img_file;
   reg quiet = 1'b0, trace_uart = 1'b0;
   reg [8*9-1:0] uart_tail = 72'd0;           // 最近 9 个 UART 字节（给 E3 匹配 "AM Panic:"）
+  integer    uart_bytes_next;
+  reg [8*9-1:0] uart_tail_next;              // 在一次 W 拍内累积所有选中的字节道
 
   always @(posedge clock) cycles <= cycles + 64'd1;
 
@@ -170,15 +172,13 @@ module tb_npc;
   // 写内存
   task wr_byte(input [31:0] addr, input [7:0] data);
     if (in_pmem(addr)) begin
-      // ★ 含 X 的写数据按 0 落内存：verilator 流程的内存是二值的(未初始化即 0)，
-      //   若原样存 X，之后读回就是 X，会把"存未初始化值"这种无害情况放大成大面积 X 传播。
-      if (has_x32({24'b0, data})) pmem[addr - PMEM_BASE] <= 8'h00;
-      else                        pmem[addr - PMEM_BASE] <= data;
+      // 保留四值语义：未初始化数据若被程序实际读回，应继续显示为 X。
+      pmem[addr - PMEM_BASE] <= data;
     end
     else if (in_serial(addr)) begin
       $write("%c", data);                               // UART: 直接打到 stdout
-      uart_bytes <= uart_bytes + 1;
-      uart_tail  <= {uart_tail[8*9-1-8:0], data};       // 给 E3 保留最近 9 个字节
+      uart_bytes_next = uart_bytes_next + 1;
+      uart_tail_next  = {uart_tail_next[8*9-1-8:0], data};
     end
   endtask
 
@@ -189,23 +189,26 @@ module tb_npc;
   reg [31:0] r_addr = 32'd0;
   reg [3:0]  r_id   = 4'd0;
   reg [8:0]  r_left = 9'd0;                  // 剩余拍数(含当前拍)
+  reg [31:0] r_data = 32'd0;                 // 每拍响应单独采样，背压时保持不变
   wire       r_fire = io_master_rvalid && io_master_rready;
 
   assign io_master_arready = ~r_busy;
   assign io_master_rvalid  = r_busy;
-  assign io_master_rdata   = mem_word(r_addr);
+  assign io_master_rdata   = r_data;
   assign io_master_rresp   = 2'b00;          // OKAY
   assign io_master_rlast   = r_busy && (r_left == 9'd1);
   assign io_master_rid     = r_id;
 
   always @(posedge clock) begin
     if (reset) begin
-      r_busy <= 1'b0; r_left <= 9'd0; r_addr <= 32'd0; r_id <= 4'd0;
+      r_busy <= 1'b0; r_left <= 9'd0; r_addr <= 32'd0; r_id <= 4'd0; r_data <= 32'd0;
     end else if (!r_busy) begin
       if (io_master_arvalid) begin
         r_busy <= 1'b1;
         r_id   <= io_master_arid;
         r_addr <= {io_master_araddr[31:2], 2'b00};
+        // 不用连续函数调用读取 pmem：同一地址被写入后，Icarus 可能不重新求值。
+        r_data <= mem_word({io_master_araddr[31:2], 2'b00});
         r_left <= {1'b0, io_master_arlen} + 9'd1;
         if (io_master_arburst != 2'b01 && !quiet)
           $display("[TB][WARN] 非 INCR 读突发 burst=%b addr=%h (按 INCR 处理)",
@@ -222,6 +225,7 @@ module tb_npc;
       else begin
         r_left <= r_left - 9'd1;
         r_addr <= r_addr + 32'd4;              // 32 位数据宽度 ⇒ 每拍 +4
+        r_data <= mem_word(r_addr + 32'd4);
       end
     end
   end
@@ -260,9 +264,13 @@ module tb_npc;
           $display("[TB][UART-W] addr=%h strb=%b data=%h", w_addr, io_master_wstrb, io_master_wdata);
         // ★ 窄传输(sb/sh)时 AWADDR 是【字节地址】，数据在 WSTRB 对应的【字节道】上：
         //   字节 k 的落点 = 字对齐基址 + k，不是 AWADDR + k（写成后者会把 sb 写歪 —— 踩过）
+        uart_bytes_next = uart_bytes;
+        uart_tail_next = uart_tail;
         for (k = 0; k < 4; k = k + 1)
           if (io_master_wstrb[k])
             wr_byte({w_addr[31:2], 2'b00} + k, io_master_wdata[8*k +: 8]);
+        uart_bytes <= uart_bytes_next;
+        uart_tail <= uart_tail_next;
         w_addr <= {w_addr[31:2], 2'b00} + 32'd4;   // INCR: 每拍 +4
         if (io_master_wlast || w_left == 9'd1) w_state <= W_RESP;
         else                                   w_left  <= w_left - 9'd1;
@@ -288,8 +296,8 @@ module tb_npc;
 `endif
 
   //------------------------------------------------------------------
-  // X 检查 / AXI 计数 / 结束判据 E1
-  //   ★ negedge 采样：门级网表在 posedge 那一刻组合逻辑还在收敛，posedge 采样有假阳性
+  // AXI 握手在 posedge 采样，与 DUT 和从机状态机一致；
+  // 通用 X 观察与 E1 汇总放在 negedge，避开 posedge 的 NBA 更新。
   //------------------------------------------------------------------
   // 端口 X 位图：[arv awv wv rv bv araddr awaddr wdata rdata]
   wire [8:0] x_bits = { has_x1(io_master_arvalid), has_x1(io_master_awvalid),
@@ -309,8 +317,9 @@ module tb_npc;
   integer    x_w_beats = 0;                  // 有效 W 拍里 wdata 含 X 的次数
   integer    x_w_dev   = 0;                  // 其中落到 UART(设备) 的次数
   reg [31:0] x_w_first_addr = 32'hFFFF_FFFF;
+  reg        end_at_zero = 1'b0;
 
-  always @(negedge clock) begin
+  always @(posedge clock) begin
     if (!reset) begin
       if (io_master_arvalid && io_master_arready) begin
         ar_fires <= ar_fires + 64'd1;
@@ -326,15 +335,8 @@ module tb_npc;
         //      ⇒ mret 回到地址 0, 见 am/src/riscv/{npc,ysyxsoc}/trm.c 的 user_handler_default
         //   ⚠ 网表仿真里 lsu_commit_trap 恒 0(flatten 掉了) ⇒ 只剩这条判据可用,
         //     所以情况 ② 里那句 `prev->mepc = 0` 是【必须】的, 不能删
-        if (io_master_araddr == 32'h0000_0000) begin
-          $display("");
-          $display("================ [TB] 程序结束 (检测到 trap 到 0) ================");
-          $display("  E1: 从地址 0 取指 ⇒ 程序已 trap 退出 (mtvec=0 直跳, 或 handler 主动将 mepc 置 0)");
-          $display("  共 %0d 个周期, UART 输出 %0d 字节, AXI: ar=%0d aw=%0d rbeat=%0d wbeat=%0d",
-                   cycles, uart_bytes, ar_fires, aw_fires, r_beats, w_beats);
-          $display("==============================================================");
-          $finish;
-        end
+        if (io_master_araddr == 32'h0000_0000)
+          end_at_zero <= 1'b1;
       end
       if (io_master_rvalid && io_master_rready) r_beats <= r_beats + 64'd1;
       if (io_master_awvalid && io_master_awready) begin
@@ -360,6 +362,20 @@ module tb_npc;
               $display("[TB][XCHK]    ★ 这笔 X 写打到 UART 设备!");
           end
         end
+      end
+    end
+  end
+
+  always @(negedge clock) begin
+    if (!reset) begin
+      if (end_at_zero) begin
+        $display("");
+        $display("================ [TB] 程序停止 (检测到地址 0 的读事务) ================");
+        $display("  E1: 通常由 trap/mret 跳到 0 触发；测试是否通过仍需检查程序输出");
+        $display("  共 %0d 个周期, UART 输出 %0d 字节", cycles, uart_bytes);
+        report_x();
+        $display("====================================================================");
+        $finish;
       end
       if (xcheck) begin
         if (x_now) begin
@@ -393,7 +409,7 @@ module tb_npc;
       $display("");
       $display("================ [TB] 程序结束 (UART 出现 \"%0s\") ================", PANIC_STR);
       $display("  UART 输出 %0d 字节, 共 %0d 个周期", uart_bytes, cycles);
-      $display("  AXI 事务: ar=%0d aw=%0d rbeat=%0d wbeat=%0d", ar_fires, aw_fires, r_beats, w_beats);
+      report_x();
       $display("================================================================");
       $finish;
     end
@@ -403,6 +419,7 @@ module tb_npc;
   // 主流程
   //------------------------------------------------------------------
   integer i;
+  integer img_fd;
   initial begin
     if ($test$plusargs("quiet"))      quiet = 1'b1;
     if ($test$plusargs("trace_uart")) trace_uart = 1'b1;
@@ -411,15 +428,18 @@ module tb_npc;
     if ($test$plusargs("no_ebreak_stop")) ebreak_stop = 1'b0;
     if ($value$plusargs("max_cycles=%d", max_cycles)) begin end
     if ($value$plusargs("zero=%d",       zero_size )) begin end
-    if ($value$plusargs("img_size=%d",   img_size  )) begin end
-    if (!$value$plusargs("img=%s", img_file)) begin
-      $display("[TB][FATAL] 需要 +img=<hex 文件>（用 sim-iverilog/tools/bin2mem.sh 从 .bin 生成）");
-      $finish;
-    end
+    if (!$value$plusargs("img_size=%d", img_size) || img_size == 0 || img_size > PMEM_SIZE)
+      $fatal(1, "[TB] 需要 +img_size=<镜像字节数>，范围为 1..%0d", PMEM_SIZE);
+    if (!$value$plusargs("img=%s", img_file))
+      $fatal(1, "[TB] 需要 +img=<hex 文件>（用 sim-iverilog/tools/bin2mem.sh 从 .bin 生成）");
+    if (zero_size > PMEM_SIZE || max_cycles == 0)
+      $fatal(1, "[TB] zero 不能超过 pmem 容量，max_cycles 必须大于 0");
+    img_fd = $fopen(img_file, "r");
+    if (img_fd == 0) $fatal(1, "[TB] 无法打开镜像 %0s", img_file);
+    $fclose(img_fd);
 
-    // ★ 顺序很重要：iverilog 的 $readmemh 会把文件没覆盖到的部分也置 X，
-    //   所以必须【先装载、再清零镜像之外】，否则 .bss/stack 区会读到 X（踩过）
-    $readmemh(img_file, pmem);
+    // 限定镜像范围；随后仅清零镜像之外的内存，避免覆盖已装载的程序。
+    $readmemh(img_file, pmem, 0, img_size - 1);
     if (!quiet) $display("[TB] 已装载镜像 %0s (%0d 字节) -> pmem[0] (= 0x80000000)", img_file, img_size);
 
     // 清零"镜像之外"（模拟 verilator 流程 malloc 出来的零内存）。
@@ -458,11 +478,11 @@ module tb_npc;
       if (cycles >= max_cycles) begin
         $display("");
         $display("================ [TB] watchdog 超时 ================");
-        $display("  跑了 %0d 个周期仍未看到 ebreak", cycles);
+        $display("  跑了 %0d 个周期仍未触发结束判据", cycles);
         $display("  UART 输出 %0d 字节", uart_bytes);
         report_x();
         $display("===================================================");
-        $finish;
+        $fatal(1, "[TB] watchdog 超时");
       end
     end
   end

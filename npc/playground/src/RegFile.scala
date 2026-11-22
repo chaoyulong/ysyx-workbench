@@ -35,13 +35,25 @@ case class ysyx_23060082_RegFile() extends Component {
     val writeBus = slave(RegFileWriteBus())
   }
 
-  val rf = Vec(Reg(UInt(32 bits)),16)    // riscv32e,有16个通用寄存器
+  // val rf = Vec(Reg(UInt(32 bits)),16)    // riscv32e,有16个通用寄存器
 
-  rf(0) := U"32'h0" 
-  when(io.writeBus.en && (io.writeBus.addr(3 downto 0) =/= U(0))){
-    rf(io.writeBus.addr(3 downto 0)) := io.writeBus.data
-  }
+  // rf(0) := U"32'h0" 
+  // when(io.writeBus.en && (io.writeBus.addr(3 downto 0) =/= U(0))){
+  //   rf(io.writeBus.addr(3 downto 0)) := io.writeBus.data
+  // }
   
+  val rfStorage = Vec(Reg(UInt(32 bits)), 15)
+
+  // x0没有寄存器
+  val rf = Vec(UInt(32 bits), 16)
+  rf(0) := U(0, 32 bits)
+
+  for (i <- 1 until 16) {
+    rf(i) := rfStorage(i - 1)
+    when(io.writeBus.en && (io.writeBus.addr(3 downto 0) === U(i, 4 bits))) {
+      rfStorage(i - 1) := io.writeBus.data
+    }
+  }
 
   io.readBus.data1 := rf(io.readBus.addr1(3 downto 0))
   io.readBus.data2 := rf(io.readBus.addr2(3 downto 0))

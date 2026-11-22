@@ -19,120 +19,120 @@ import spinal.lib.bus.amba4.axi._
          写不分配(缺失时不占 cache, 只写内存) —— 这样 cache 永远与内存一致, 不会读到旧值
    - 面积: 4×32 数据 + 4×28 tag + 4 valid, 实测约 +1.7k um2
 **************************************************************** */
-case class DcacheReqData() extends Bundle {
-  val write     = Bool()
-  val writeData = UInt(32 bits)
-  val writeMask = UInt(4 bits)
-  val read      = Bool()
-  val size      = UInt(3 bits)
-  val addr      = UInt(32 bits)
-}
+// case class DcacheReqData() extends Bundle {
+//   val write     = Bool()
+//   val writeData = UInt(32 bits)
+//   val writeMask = UInt(4 bits)
+//   val read      = Bool()
+//   val size      = UInt(3 bits)
+//   val addr      = UInt(32 bits)
+// }
 
-case class DcacheRspData() extends Bundle {
-  val readData = UInt(32 bits)
-}
+// case class DcacheRspData() extends Bundle {
+//   val readData = UInt(32 bits)
+// }
 
-case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Component {
-  val io = new Bundle {
-    val reqIn       = slave  Stream(DcacheReqData())
-    val rspOut      = master Flow(DcacheRspData())
-    val readHit     = out Bool()        // 本拍这次读真的命中(load 用它判"当拍完成")
-    val readErr     = out Bool()
-    val writeErr    = out Bool()
-    val axi4        = master(Axi4(AxiConfig.axiConfig))
+// case class ysyx_23060082_Dcache(config: CpuConfig = CpuConfig()) extends Component {
+//   val io = new Bundle {
+//     val reqIn       = slave  Stream(DcacheReqData())
+//     val rspOut      = master Flow(DcacheRspData())
+//     val readHit     = out Bool()        // 本拍这次读真的命中(load 用它判"当拍完成")
+//     val readErr     = out Bool()
+//     val writeErr    = out Bool()
+//     val axi4        = master(Axi4(AxiConfig.axiConfig))
 
-    val miss        = if (config.enableSimDebug) out Bool() else null   // 缺失脉冲(供 perf 计数)
-    val missDone    = if (config.enableSimDebug) out Bool() else null   // 缺失完成脉冲
-  }
+//     val miss        = if (config.enableSimDebug) out Bool() else null   // 缺失脉冲(供 perf 计数)
+//     val missDone    = if (config.enableSimDebug) out Bool() else null   // 缺失完成脉冲
+//   }
 
-  def inDcache(addr: UInt): Bool =
-    (addr >= U(0x30000000L, 32 bits) && addr < U(0x40000000L, 32 bits)) ||   // flash
-    (addr >= U(0x80000000L, 32 bits) && addr < U(0xc0000000L, 32 bits))      // psram + sdram
+//   def inDcache(addr: UInt): Bool =
+//     (addr >= U(0x30000000L, 32 bits) && addr < U(0x40000000L, 32 bits)) ||   // flash
+//     (addr >= U(0x80000000L, 32 bits) && addr < U(0xc0000000L, 32 bits))      // psram + sdram
 
-  // ================================ AXI 控制器(读写共用, 单拍) ================================ //
-  val axi4Ctrler  = ysyx_23060082_Axi4_Ctrler()
-  io.axi4 <> axi4Ctrler.io.axi4
+//   // ================================ AXI 控制器(读写共用, 单拍) ================================ //
+//   val axi4Ctrler  = ysyx_23060082_Axi4_Ctrler()
+//   io.axi4 <> axi4Ctrler.io.axi4
 
-  // ================================ 存储阵列: 每项 1 个字 ================================ //
-  val tag       = io.reqIn.addr(31 downto 4)
-  val index     = io.reqIn.addr(3 downto 2)
-  val dataMem   = Reg(Vec(UInt(32 bits), 4))      // 数据
-  val tagMem    = Reg(Vec(UInt(28 bits), 4))      // 标签
-  val validReg  = Reg(Bits(4 bits)) init(0)       // 每项 1 位有效位
-  val cacheable = inDcache(io.reqIn.addr)
-  val hit       = validReg(index) && (tagMem(index) === tag) && cacheable
+//   // ================================ 存储阵列: 每项 1 个字 ================================ //
+//   val tag       = io.reqIn.addr(31 downto 4)
+//   val index     = io.reqIn.addr(3 downto 2)
+//   val dataMem   = Reg(Vec(UInt(32 bits), 4))      // 数据
+//   val tagMem    = Reg(Vec(UInt(28 bits), 4))      // 标签
+//   val validReg  = Reg(Bits(4 bits)) init(0)       // 每项 1 位有效位
+//   val cacheable = inDcache(io.reqIn.addr)
+//   val hit       = validReg(index) && (tagMem(index) === tag) && cacheable
 
-  // ================================ 状态机 ================================ //
-  object DcacheState extends SpinalEnum {
-    val Idle, ReadMiss, Write = newElement()
-  }
-  val state = RegInit(DcacheState.Idle)
+//   // ================================ 状态机 ================================ //
+//   object DcacheState extends SpinalEnum {
+//     val Idle, ReadMiss, Write = newElement()
+//   }
+//   val state = RegInit(DcacheState.Idle)
 
-  val reqRead  = io.reqIn.valid && io.reqIn.read
-  val reqWrite = io.reqIn.valid && io.reqIn.write
+//   val reqRead  = io.reqIn.valid && io.reqIn.read
+//   val reqWrite = io.reqIn.valid && io.reqIn.write
 
-  val readHit  = (state === DcacheState.Idle) && reqRead && hit             // 读地址命中cache
+//   val readHit  = (state === DcacheState.Idle) && reqRead && hit             // 读地址命中cache
 
-  val writeAccept = (state === DcacheState.Idle) && reqWrite                // 写请求被接受，这个是在valid信号为1的同时就能判断出来的
-  val readAccept  = (state === DcacheState.Idle) && reqRead
+//   val writeAccept = (state === DcacheState.Idle) && reqWrite                // 写请求被接受，这个是在valid信号为1的同时就能判断出来的
+//   val readAccept  = (state === DcacheState.Idle) && reqRead
 
-  // 读的时候由于会阻塞，不会产生写信号，但是在后台写的时候下一条指令可能会产生读信号
-  when(state === DcacheState.Idle) {
-    when(reqRead && !hit)    { state := DcacheState.ReadMiss }         // 读缺失，没有命中但是不需要阻塞等待，直接向控制器发出读信号
-    .elsewhen(reqWrite)      { state := DcacheState.Write    }         // 请求写，并且不需要阻塞等待
-    .otherwise                            { state := DcacheState.Idle     }
-  } elsewhen(state === DcacheState.ReadMiss) {                                      // 读只能等到结束
-    when(axi4Ctrler.io.readEnd)           { state := DcacheState.Idle     }
-    .otherwise                            { state := DcacheState.ReadMiss }
-  } elsewhen(state === DcacheState.Write) {
-    when(axi4Ctrler.io.writeEnd) { state := DcacheState.Idle  }    // 读取完成，或者可以挂后台，就返回idle状态
-    .otherwise                                    { state := DcacheState.Write }
-  }
+//   // 读的时候由于会阻塞，不会产生写信号，但是在后台写的时候下一条指令可能会产生读信号
+//   when(state === DcacheState.Idle) {
+//     when(reqRead && !hit)    { state := DcacheState.ReadMiss }         // 读缺失，没有命中但是不需要阻塞等待，直接向控制器发出读信号
+//     .elsewhen(reqWrite)      { state := DcacheState.Write    }         // 请求写，并且不需要阻塞等待
+//     .otherwise                            { state := DcacheState.Idle     }
+//   } elsewhen(state === DcacheState.ReadMiss) {                                      // 读只能等到结束
+//     when(axi4Ctrler.io.readEnd)           { state := DcacheState.Idle     }
+//     .otherwise                            { state := DcacheState.ReadMiss }
+//   } elsewhen(state === DcacheState.Write) {
+//     when(axi4Ctrler.io.writeEnd) { state := DcacheState.Idle  }    // 读取完成，或者可以挂后台，就返回idle状态
+//     .otherwise                                    { state := DcacheState.Write }
+//   }
 
-  val readMissDone = (state === DcacheState.ReadMiss) && axi4Ctrler.io.readEnd      // 读事务完成
-  val writeDone    = (state === DcacheState.Write) && axi4Ctrler.io.writeEnd
-  // ================================ 响应 ================================ //
-  io.reqIn.ready  := (state === DcacheState.Idle)                     // 如果空闲且不用阻塞，就说明可以接受信号
-  io.rspOut.valid := readHit || readMissDone || writeDone             // 读命中，或者读缺失但完成，或者请求被接受
+//   val readMissDone = (state === DcacheState.ReadMiss) && axi4Ctrler.io.readEnd      // 读事务完成
+//   val writeDone    = (state === DcacheState.Write) && axi4Ctrler.io.writeEnd
+//   // ================================ 响应 ================================ //
+//   io.reqIn.ready  := (state === DcacheState.Idle)                     // 如果空闲且不用阻塞，就说明可以接受信号
+//   io.rspOut.valid := readHit || readMissDone || writeDone             // 读命中，或者读缺失但完成，或者请求被接受
 
-  val readDataReg     = RegNextWhen(axi4Ctrler.io.readData, readMissDone)
-  io.rspOut.readData := Mux(readHit, dataMem(index),
-                        Mux(readMissDone, axi4Ctrler.io.readData, readDataReg))
-  io.readHit         := readHit
+//   val readDataReg     = RegNextWhen(axi4Ctrler.io.readData, readMissDone)
+//   io.rspOut.readData := Mux(readHit, dataMem(index),
+//                         Mux(readMissDone, axi4Ctrler.io.readData, readDataReg))
+//   io.readHit         := readHit
 
-  // ================================ AXI ================================ //
-  axi4Ctrler.io.readReq   := readAccept && !hit   // 请求信号只持续一拍
-  axi4Ctrler.io.readAddr  := io.reqIn.addr
+//   // ================================ AXI ================================ //
+//   axi4Ctrler.io.readReq   := readAccept && !hit   // 请求信号只持续一拍
+//   axi4Ctrler.io.readAddr  := io.reqIn.addr
 
-  axi4Ctrler.io.writeReq  := writeAccept
-  axi4Ctrler.io.writeAddr := io.reqIn.addr
-  axi4Ctrler.io.writeData := io.reqIn.writeData
-  axi4Ctrler.io.writeMask := io.reqIn.writeMask
-  axi4Ctrler.io.size      := io.reqIn.size
+//   axi4Ctrler.io.writeReq  := writeAccept
+//   axi4Ctrler.io.writeAddr := io.reqIn.addr
+//   axi4Ctrler.io.writeData := io.reqIn.writeData
+//   axi4Ctrler.io.writeMask := io.reqIn.writeMask
+//   axi4Ctrler.io.size      := io.reqIn.size
 
-  io.readErr  := axi4Ctrler.io.axi4.r.fire && (axi4Ctrler.io.axi4.r.payload.resp =/= B"2'b00")
-  io.writeErr := axi4Ctrler.io.axi4.b.fire && (axi4Ctrler.io.axi4.b.payload.resp =/= B"2'b00")
-  // ================================ 写穿更新 / 缺失填回 ================================ //
-  // store 命中: 按字节使能改 cache 里那一个字(与发给内存的 data/mask 完全一致)
-  val writeMaskFull = (io.reqIn.writeMask(3) #* 8) ## (io.reqIn.writeMask(2) #* 8) ##
-                      (io.reqIn.writeMask(1) #* 8) ## (io.reqIn.writeMask(0) #* 8)
+//   io.readErr  := axi4Ctrler.io.axi4.r.fire && (axi4Ctrler.io.axi4.r.payload.resp =/= B"2'b00")
+//   io.writeErr := axi4Ctrler.io.axi4.b.fire && (axi4Ctrler.io.axi4.b.payload.resp =/= B"2'b00")
+//   // ================================ 写穿更新 / 缺失填回 ================================ //
+//   // store 命中: 按字节使能改 cache 里那一个字(与发给内存的 data/mask 完全一致)
+//   val writeMaskFull = (io.reqIn.writeMask(3) #* 8) ## (io.reqIn.writeMask(2) #* 8) ##
+//                       (io.reqIn.writeMask(1) #* 8) ## (io.reqIn.writeMask(0) #* 8)
 
-  val storeData = ((dataMem(index).asBits & ~writeMaskFull) | (io.reqIn.writeData.asBits & writeMaskFull)).asUInt
+//   val storeData = ((dataMem(index).asBits & ~writeMaskFull) | (io.reqIn.writeData.asBits & writeMaskFull)).asUInt
 
-  when(readMissDone && cacheable && !io.readErr) {                   // 读缺失填回(只有可缓存地址才占 cache)
-    dataMem(index)  := axi4Ctrler.io.readData
-    tagMem(index)   := tag
-    validReg(index) := True
-  } elsewhen(writeAccept && hit) {   // 如果是写入的地址正好命中，就更新cache
-    dataMem(index)  := storeData                                
-  }
+//   when(readMissDone && cacheable && !io.readErr) {                   // 读缺失填回(只有可缓存地址才占 cache)
+//     dataMem(index)  := axi4Ctrler.io.readData
+//     tagMem(index)   := tag
+//     validReg(index) := True
+//   } elsewhen(writeAccept && hit) {   // 如果是写入的地址正好命中，就更新cache
+//     dataMem(index)  := storeData                                
+//   }
 
-  // ================================ 仿真信号 ================================ //
-  if (config.enableSimDebug) {
-    io.miss     := readAccept && cacheable && !hit
-    io.missDone := readMissDone
-  }
-}
+//   // ================================ 仿真信号 ================================ //
+//   if (config.enableSimDebug) {
+//     io.miss     := readAccept && cacheable && !hit
+//     io.missDone := readMissDone
+//   }
+// }
 
 // case class ysyx_23060082_Axi4_Ctrler() extends Component {
 //   val io = new Bundle {

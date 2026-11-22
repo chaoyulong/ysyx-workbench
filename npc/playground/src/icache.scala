@@ -41,7 +41,7 @@ object Axi4Define {
 // 缺失: 进入 Miss 状态, 经 AXI 读回并写回 cache(valid/tag/data), 完成后返回
 case class IcacheParams(
   lineBytes: Int = 16,      // 块大小(字节), 4B 起步(后续可加大配合突发)
-  lines:     Int = 8        // 块数(直接映射组数)
+  lines:     Int = 2        // 块数(直接映射组数)
 ) {
   // ---- 派生常量  ----
   val lineBits  = log2Up(lineBytes)              // 块内偏移位宽
@@ -93,9 +93,10 @@ case class ysyx_23060082_Icache(config: CpuConfig = CpuConfig(), param: IcachePa
   val indexReg = RegNextWhen(index      , io.reqIn.fire)
   val tagReg   = RegNextWhen(tag        , io.reqIn.fire)
 
+  val readEnd = axi4Ctrler.io.readEnd
   // ================================ 状态机 ================================ //
   object IcacheState extends SpinalEnum {
-    val Idle, Miss = newElement()
+    val Idle, Miss, MissDone = newElement()
   }
   val state = RegInit(IcacheState.Idle)
 
@@ -103,55 +104,71 @@ case class ysyx_23060082_Icache(config: CpuConfig = CpuConfig(), param: IcachePa
     when(io.reqIn.valid && !hit) { state := IcacheState.Miss }  // 有请求但是没有命中
     .otherwise { state := IcacheState.Idle }
   } elsewhen(state === IcacheState.Miss) {
-    when(axi4Ctrler.io.readEnd) { state := IcacheState.Idle }   // 访存完成, 返回
+    when(readEnd) { state := IcacheState.MissDone }             // 访存完成进入完成状态，这个状态是必须的，因为需要readEnd为1时需要将最后一个数据写入cache
     .otherwise { state := IcacheState.Miss }
-  } 
+  } elsewhen(state === IcacheState.MissDone) {
+    state := IcacheState.Idle                                   // rspOut是flow类型，不需要握手
+  }
   // ================================  ================================ //
   // 请求握手: Idle时接受(命中同拍组合返回rspOut, 缺失进入Miss)
   io.reqIn.ready := (state === IcacheState.Idle)
 
-  // 命中 或 缺失但是读取完成
-  val missDone = (state === IcacheState.Miss) && axi4Ctrler.io.readEnd
-  io.rspOut.valid := (io.reqIn.fire && hit) || missDone
+  val readEndOnce = (state === IcacheState.Miss) && axi4Ctrler.io.readEndOnce
+  io.rspOut.valid := (io.reqIn.fire && hit) || (state === IcacheState.MissDone)   // 命中，或者未命中但读取完成
   
-
   // 把一个 dataBits 位的"行"拆成 words 个 32 位字, 用动态索引选(SpinalHDL 会生成 mux 树)
-  val hitWordVec  = Vec(UInt(32 bits), param.words)
-  val missWordVec = Vec(UInt(32 bits), param.words)
+  val wordVec = Vec(UInt(32 bits), param.words)
+  val indexRead   = Mux(io.reqIn.fire, index, indexReg)               // 如果命中，当前周期就要读出，此时indexReg没有更新，要使用index
+  val wordSelRead = Mux(io.reqIn.fire && hit, wordSel, wordSelReg)    // 如果命中，当前周期就要读出，此时wordSelReg没有更新，要使用wordSel
   for (i <- 0 until param.words) {
-    hitWordVec (i) := dataMem(index)(i*32 + 31 downto i*32)
-    missWordVec(i) := axi4Ctrler.io.readData(i*32 + 31 downto i*32)
+    wordVec(i) := dataMem(indexRead)(i*32 + 31 downto i*32)
   }
-
-  io.rspOut.rdata := Mux(io.reqIn.fire && hit,
-                        hitWordVec (wordSel),      // 命中: 当前pc的字
-                        missWordVec(wordSelReg))   // 缺失: 请求时锁存的字
+ 
+  io.rspOut.rdata := wordVec(wordSelRead)
                           
   // readReq要求只持续一个周期
   val enterMiss = (state === IcacheState.Idle) && io.reqIn.valid && !hit
   axi4Ctrler.io.readReq  := enterMiss
   axi4Ctrler.io.readAddr := (io.reqIn.pc(31 downto param.lineBits) ## U(0, param.lineBits bits)).asUInt // 地址对齐
 
-  val rspErr = axi4Ctrler.io.axi4.r.fire && (axi4Ctrler.io.axi4.r.payload.resp =/= B"2'b00")
-  io.rspErr := rspErr
+  val readErr = RegInit(False)
+  val rspErr = readErr || axi4Ctrler.io.rspErr // 最后一个数据等不等更新完成，相当于提前一个周期
+  
+  when(state === IcacheState.MissDone) {        // 发送到IFU后清空
+    readErr := False
+  } elsewhen(axi4Ctrler.io.rspErr) {
+    readErr := True
+  }
 
-  // 缺失完成: 写回cache(valid/tag/data)，出错不写
-  when(missDone && !rspErr) {
-    dataMem (indexReg) := axi4Ctrler.io.readData
-    tagMem  (indexReg) := tagReg
+  io.rspErr := (state === IcacheState.MissDone) && rspErr
+
+  when(readEndOnce && !rspErr) {              // 读一个存一个
+    for (i <- 0 until param.words) {
+      when (axi4Ctrler.io.wordCnt === i) {
+        dataMem(indexReg)(i*32 + 31 downto i*32) := axi4Ctrler.io.readDataOnce
+      }    
+    }
+  }
+
+  when(readEnd && !rspErr) {                // tag最后更新
+    tagMem (indexReg) := tagReg
   }
 
   // fence.i: 清空全部有效位(后续取指缺失重读新指令)
-  val discardMiss = RegInit(False)        // fence到达时正在读取的miss
+  val discardMiss = RegInit(False)              // fence到达时正在读取的miss
   when(io.fenceI) {
     discardMiss := (state === IcacheState.Miss)
-  }elsewhen(missDone) {                   // 只是为了卡住访存完成后的那一个周期，所以之后就可以清空
+  } elsewhen(state === IcacheState.MissDone) {  // 只是为了卡住访存完成后的那一个周期，所以之后就可以清空
     discardMiss := False
+  } otherwise {
+    discardMiss := discardMiss
   }
 
   when(io.fenceI) {
     validReg := 0
-  } elsewhen(missDone && !discardMiss && !rspErr) {  // 如果是卡住的话，vaild不会置起，所以会开始下一次访存
+  } elsewhen(io.rspErr) {   // 如果有错误，直接将这一行清掉
+    validReg(indexReg) := False
+  } elsewhen(readEnd && !discardMiss) {  // 如果是卡住的话，vaild不会置起，所以会开始下一次访存
     validReg(indexReg) := True
   } otherwise {
     validReg := validReg
@@ -161,7 +178,7 @@ case class ysyx_23060082_Icache(config: CpuConfig = CpuConfig(), param: IcachePa
     // 缺失脉冲: 每一次缺失拉高一拍(交给 IFU 的 PerfReg 计数, 用于统计命中率)
     // 等价于 io.reqIn.fire && !hit —— 因为 reqIn.ready 只在 Idle 时拉高
     io.miss := enterMiss
-    io.missDone := missDone
+    io.missDone := state === IcacheState.MissDone
   } 
 }
 
@@ -170,15 +187,16 @@ case class ysyx_23060082_Icache(config: CpuConfig = CpuConfig(), param: IcachePa
 **************************************************************** */
 case class ysyx_23060082_Axi4_Ctrler_ReadOnly_Burst(param: IcacheParams = IcacheParams()) extends Component {
   val io = new Bundle {
-    val readReq  = in  Bool()
-    val readAddr = in  UInt(32 bits)
-    val readEnd  = out Bool()
-    val readData = out UInt(param.dataBits bits)
-    val axi4     = master(Axi4ReadOnly(AxiConfig.axiConfig))
+    val readReq     = in  Bool()
+    val readAddr    = in  UInt(32 bits)
+    val readEnd     = out Bool()
+    val readDataOnce= out UInt(32 bits)
+    val readEndOnce = out Bool()
+    val wordCnt     = if (param.words > 1) out UInt(param.wordBits bits) else out UInt(1 bits)
+    val rspErr      = out Bool()   // 读到的数据有错误
+    val axi4        = master(Axi4ReadOnly(AxiConfig.axiConfig))
   }
 
-  // 正在拼装的行(逐字填入)，最后一位由于之前代码的规则，直接靠拼接
-  val lineReg  = if (param.words > 1) Reg(Bits(param.dataBits - 32 bits)) else Reg(Bits(32 bits))
   val wordCnt  = if (param.words > 1) Reg(UInt(param.wordBits bits)) else Reg(UInt(1 bits))     // 读取到了第几个数，按照约束最多只会一次8个
   val readOnce = io.axi4.r.fire                   // 每次读回一个数据完成的信号，用于icache数据的存储
 
@@ -204,18 +222,11 @@ case class ysyx_23060082_Axi4_Ctrler_ReadOnly_Burst(param: IcacheParams = Icache
   }
   
   io.axi4.r.ready := io.axi4.r.valid
-  io.readEnd  := io.axi4.r.fire && io.axi4.r.last     // 突发结束(r.last)才算读完
-  io.readData := (if (param.words > 1) io.axi4.r.data ## lineReg else io.axi4.r.data).asUInt  // 拼接成一行数据                              
+  io.readEnd  := readOnce && io.axi4.r.last     // 突发结束(r.last)才算读完                          
 
-  when(readOnce) {
-    val chain = when(wordCnt === 0) { lineReg(31 downto 0)  := io.axi4.r.data }
-    for (i <- 1 until param.words - 1) {          // i = 1, .. ,  words-2
-      chain.elsewhen(wordCnt === i) { lineReg(i*32 + 31 downto i*32) := io.axi4.r.data }
-    }
-    // 注意: 这里【不能】写 chain.otherwise { lineReg := lineReg }
-    //   lineReg 是 Reg, 分支不赋值即保持; 而整体赋值会和上面的分片赋值冲突,
-    //   触发 SpinalHDL 的 ASSIGNMENT OVERLAP (words=2 时循环为空才侥幸没报)
-  }
+  io.readEndOnce := readOnce
+  io.readDataOnce := io.axi4.r.data.asUInt
+  io.wordCnt := wordCnt
 
   when(io.readReq) {      // 请求开始时清零，所以不需要reset信号
     wordCnt := 0
@@ -225,4 +236,5 @@ case class ysyx_23060082_Axi4_Ctrler_ReadOnly_Burst(param: IcacheParams = Icache
     wordCnt := wordCnt
   }
 
+  io.rspErr := io.axi4.r.fire && (io.axi4.r.payload.resp =/= B"2'b00")
 }

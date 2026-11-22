@@ -59,13 +59,12 @@ case class ysyx_23060082_LSU(config: CpuConfig = CpuConfig()) extends Component 
   dataProcess.io.wdata  := io.input.rfReadData                              // 写数据为rs2的数据
 
   io.axi4 <> axi4Ctrler.io.axi4
+  axi4Ctrler.io.addr      := memAddr
   // AXI 控制器的请求只发一拍，等待响应期间由控制器保持各通道的 valid。
   val memReq = (state === LsuState.Idle) && !trapEnter                      // 保证每次请求只有一个周期
   axi4Ctrler.io.readReq   := needRead && memReq
   axi4Ctrler.io.writeReq  := needWrite && memReq
   axi4Ctrler.io.size      := (False ## io.input.memCtrl.memOp(1 downto 0)).asUInt  // 最高位清零保证不会超过size范围
-  axi4Ctrler.io.readAddr  := memAddr
-  axi4Ctrler.io.writeAddr := memAddr
   axi4Ctrler.io.writeData := dataProcess.io.wdataReal
   axi4Ctrler.io.writeMask := dataProcess.io.wmask
 
@@ -266,11 +265,10 @@ case class ysyx_23060082_DataProcess() extends Component {
 
 case class ysyx_23060082_Axi4_Ctrler() extends Component {
   val io = new Bundle {
+    val addr      = in UInt(32 bits)
     val readReq   = in Bool()
     val writeReq  = in Bool()
     val size      = in UInt(3 bits)
-    val readAddr  = in UInt(32 bits)
-    val writeAddr = in UInt(32 bits)
     val writeData = in UInt(32 bits)
     val writeMask = in UInt(4 bits)
     val readEnd   = out Bool()
@@ -287,11 +285,13 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
   io.axi4.ar.size := io.size  
   io.axi4.ar.burst:= B"2'b01"         // 突发类型INCR
   // ================================ 读地址 ================================ //
-  val arValidReg = RegInit(False)
-  val arAddrReg  = RegNextWhen(io.readAddr, io.readReq)
-  val arValidOut = io.readReq || arValidReg    // 提前一周期发出arvalid信号
-  io.axi4.ar.valid := arValidOut
-  io.axi4.ar.addr  := Mux(io.readReq, io.readAddr, arAddrReg)
+  val arValidReg  = RegInit(False)
+  // val addrReg     = RegNextWhen(io.addr, io.readReq || io.writeReq)
+  // val axiAddr     = Mux(io.readReq || io.writeReq, io.addr, addrReg)
+  val axiAddr     = io.addr
+
+  io.axi4.ar.valid := io.readReq || arValidReg          // 提前一周期发出arvalid信号
+  io.axi4.ar.addr  := axiAddr
 
   when(arValidReg) {
     when(io.axi4.ar.fire) {
@@ -326,10 +326,9 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
   io.axi4.w.last  := True             // lsu没有加突发
   // ================================ 写地址 ================================ //
   val awValidReg = RegInit(False)
-  val awAddrReg  = RegNextWhen(io.writeAddr, io.writeReq)
   val awValidOut = io.writeReq || awValidReg    // 提前一周期发出valid信号
   io.axi4.aw.valid := awValidOut
-  io.axi4.aw.addr  := Mux(io.writeReq, io.writeAddr, awAddrReg)
+  io.axi4.aw.addr  := axiAddr
 
   when(awValidReg) {
     when(io.axi4.aw.fire) {
@@ -346,12 +345,14 @@ case class ysyx_23060082_Axi4_Ctrler() extends Component {
   }
   // ================================ 写数据 ================================ //
   val wValidReg = RegInit(False)
-  val wDataReg  = RegNextWhen(io.writeData.asBits, io.writeReq)
-  val wStrbReg  = RegNextWhen(io.writeMask.asBits, io.writeReq)
+  // val wDataReg  = RegNextWhen(io.writeData.asBits, io.writeReq)
+  // val wStrbReg  = RegNextWhen(io.writeMask.asBits, io.writeReq)
   val wValidOut = io.writeReq || wValidReg    // 提前一周期发出valid信号
   io.axi4.w.valid := wValidOut
-  io.axi4.w.data  := Mux(io.writeReq, io.writeData.asBits, wDataReg)
-  io.axi4.w.strb  := Mux(io.writeReq, io.writeMask.asBits, wStrbReg)
+  io.axi4.w.data  := io.writeData.asBits
+  io.axi4.w.strb  := io.writeMask.asBits
+    // io.axi4.w.data  := Mux(io.writeReq, io.writeData.asBits, wDataReg)
+  // io.axi4.w.strb  := Mux(io.writeReq, io.writeMask.asBits, wStrbReg)
 
   when(wValidReg) {
     when(io.axi4.w.fire) {

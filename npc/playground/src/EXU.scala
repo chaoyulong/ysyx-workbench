@@ -185,12 +185,12 @@ case class ysyx_23060082_ALU() extends Component {
 
   val zeroFlag         = (io.aluIn1 === io.aluIn2)  // 跳过alu，缩短路径
   val overflowFlag     = (adderDataA(31) === adderDataB(31)) && (resultAdder(31) =/= adderDataA(31))  // 溢出
-  // ================================ 移位寄存器 ================================ //
-  val resultShift = io.aluCtr(3 downto 2).mux(            // 直接移位操作与自己写桶形移位器没有区别
-    U"01"   -> (io.aluIn1 |>> io.aluIn2(4 downto 0)),     // 逻辑右移
-    U"11"   -> U(S(io.aluIn1) >> io.aluIn2(4 downto 0)),  // 算数右移
-    default -> (io.aluIn1 |<< io.aluIn2(4 downto 0))      // 左移,使用的逻辑左移
-  )
+  // ================================ 共享桶形移位器 ================================ //
+  val shifter = ysyx_23060082_BarrelShifter()
+  shifter.io.din   := io.aluIn1
+  shifter.io.shamt := io.aluIn2(4 downto 0)
+  shifter.io.bsCtr := io.aluCtr(3 downto 2)
+  val resultShift = shifter.io.result
   // ================================ 小于比较判断 ================================ //
   val lessFlag0 = overflowFlag ^ resultAdder(31)          // 有符号小于
   val lessFlag1 = carryFlag ^ subORadd                    // 无符号小于
@@ -216,27 +216,27 @@ case class ysyx_23060082_ALU() extends Component {
   )
 }
 
-// case class ysyx_23060082_BarrelShifter() extends Component {
-//   val io = new Bundle {
-//     val din    = in UInt(32 bits)
-//     val shamt  = in UInt(5 bits)
-//     val bsCtr  = in UInt(2 bits)   // 01=逻辑右移, 11=算术右移, 00/10=左移
-//     val result = out UInt(32 bits)
-//   }
+case class ysyx_23060082_BarrelShifter() extends Component {
+  val io = new Bundle {
+    val din    = in UInt(32 bits)
+    val shamt  = in UInt(5 bits)
+    val bsCtr  = in UInt(2 bits)   // 01=逻辑右移, 11=算术右移, 00/10=左移
+    val result = out UInt(32 bits)
+  }
 
-//   val isRight = io.bsCtr(0)               // 01/11: 右移; 00/10: 左移
-//   val isArith = io.bsCtr === U"2'b11"     // 11: 算术右移
+  val isRight = io.bsCtr(0)               // 01/11: 右移; 00/10: 左移
+  val isArith = io.bsCtr === U"2'b11"     // 11: 算术右移
 
-//   // 左移 = 反转 -> 右移 -> 反转, 这样三种移位共用一套右移器
-//   val xb   = Mux(isRight, io.din, io.din.reversed).asBits
-//   val fill = Mux(isArith, xb(31), False)  // 算术右移填符号位, 逻辑右移填 0
+  // 左移 = 反转 -> 右移 -> 反转, 这样三种移位共用一套右移器
+  val xb   = Mux(isRight, io.din, io.din.reversed).asBits
+  val fill = Mux(isArith, xb(31), False)  // 算术右移填符号位, 逻辑右移填 0
 
-//   // 5 级右移: 分别移 1/2/4/8/16 位
-//   val s0 = Mux(io.shamt(0), (fill #* 1)  ## xb(31 downto 1 ), xb)
-//   val s1 = Mux(io.shamt(1), (fill #* 2)  ## s0(31 downto 2 ), s0)
-//   val s2 = Mux(io.shamt(2), (fill #* 4)  ## s1(31 downto 4 ), s1)
-//   val s3 = Mux(io.shamt(3), (fill #* 8)  ## s2(31 downto 8 ), s2)
-//   val s4 = Mux(io.shamt(4), (fill #* 16) ## s3(31 downto 16), s3)
+  // 5 级右移: 分别移 1/2/4/8/16 位
+  val s0 = Mux(io.shamt(0), (fill #* 1)  ## xb(31 downto 1 ), xb)
+  val s1 = Mux(io.shamt(1), (fill #* 2)  ## s0(31 downto 2 ), s0)
+  val s2 = Mux(io.shamt(2), (fill #* 4)  ## s1(31 downto 4 ), s1)
+  val s3 = Mux(io.shamt(3), (fill #* 8)  ## s2(31 downto 8 ), s2)
+  val s4 = Mux(io.shamt(4), (fill #* 16) ## s3(31 downto 16), s3)
 
-//   io.result := Mux(isRight, s4, s4.reversed).asUInt
-// }
+  io.result := Mux(isRight, s4, s4.reversed).asUInt
+}

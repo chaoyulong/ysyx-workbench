@@ -7,11 +7,13 @@
 // csr_mcause:用于判断ebreak
 #ifdef __ysyxsoc__
 #include "VysyxSoCFull___024root.h"
-#define cpu_rf      top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__regFile__DOT__rf_0
+// #define cpu_rf      top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__regFile__DOT__rf_0
+#define cpu_rf      top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__regFile__DOT__rfStorage_0
 #define csr_mcause  top->rootp->ysyxSoCFull__DOT__asic__DOT__cpu__DOT__cpu__DOT__lsu__DOT__csr__DOT__mcause                          
 #else
 #include "VNPC_TOP___024root.h"
-#define cpu_rf      top->rootp->NPC_TOP__DOT__cpu__DOT__regFile__DOT__rf_0
+// #define cpu_rf      top->rootp->NPC_TOP__DOT__cpu__DOT__regFile__DOT__rf_0
+#define cpu_rf      top->rootp->NPC_TOP__DOT__cpu__DOT__regFile__DOT__rfStorage_0
 #define csr_mcause  top->rootp->NPC_TOP__DOT__cpu__DOT__lsu__DOT__csr__DOT__mcause
 #endif
 
@@ -38,7 +40,9 @@ uint32_t gpr(int n) {
     printf("register only [0 - 15]");
     assert(0);
   }
-  return rf_base_addr[n];
+
+  if(n == 0) return 0;
+  return rf_base_addr[n - 1];
 }
 
 void isa_reg_display() {  // 共有32个寄存器 
